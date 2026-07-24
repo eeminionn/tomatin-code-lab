@@ -1,4 +1,4 @@
-const CACHE_NAME = "tomatin-code-lab-v2";
+const CACHE_NAME = "tomatin-code-lab-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const APP_SHELL = [
   "./js/admin.js",
   "./js/app.js",
   "./js/auth.js",
+  "./js/github.js",
   "./js/missions.js",
   "./js/runner.js",
   "./js/store.js"

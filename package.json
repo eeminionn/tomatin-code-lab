@@ -6,11 +6,10 @@
   "description": "Misiones universitarias de programacion con humor chileno.",
   "scripts": {
     "test": "node --test",
-    "check": "node --check js/app.js && node --check js/auth.js && node --check js/missions.js && node --check js/runner.js && node --check js/store.js && node --check sw.js && node --test"
+    "check": "node --check js/app.js && node --check js/auth.js && node --check js/github.js && node --check js/missions.js && node --check js/runner.js && node --check js/store.js && node --check sw.js && node --test"
   },
   "engines": {
     "node": ">=20"
   },
   "license": "MIT"
 }
-

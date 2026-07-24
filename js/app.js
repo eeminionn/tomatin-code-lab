@@ -1,5 +1,6 @@
 import { missions } from "./missions.js";
 import { runCode } from "./runner.js";
+import { fetchGitHubSnapshot, formatGitHubDate } from "./github.js";
 import {
   ensureDemoAccounts,
   getPublicUsers,
@@ -28,6 +29,7 @@ const viewLabels = {
   missions: "misiones",
   lab: "laboratorio",
   ranking: "ranking",
+  github: "github",
   admin: "admin",
 };
 
@@ -44,8 +46,10 @@ const authDialog = document.querySelector("#auth-dialog");
 const authForm = document.querySelector("#auth-form");
 const authFields = document.querySelector("#auth-fields");
 const sessionPanel = document.querySelector("#session-panel");
+const githubStatus = document.querySelector("#github-status");
 let currentSession = getSession();
 let authMode = "login";
+let githubLoaded = false;
 
 const practiceRanks = [
   { id: "practice-1", name: "KernelConPalta", xp: 4380, completed: 17 },
@@ -85,6 +89,7 @@ function showView(name) {
 
   currentViewLabel.textContent = viewLabels[name] ?? name;
   if (name === "ranking") renderRanking();
+  if (name === "github") renderGitHubTelemetry();
   if (name === "admin") renderAdmin();
   sidebar.classList.remove("is-open");
   document.querySelector("#main-content").focus({ preventScroll: true });
@@ -507,6 +512,89 @@ function showToast(message) {
   window.setTimeout(() => toast.remove(), 4200);
 }
 
+async function renderGitHubTelemetry(force = false) {
+  if (githubLoaded && !force) return;
+
+  githubStatus.innerHTML = `
+    <div class="github-loading">
+      <i data-lucide="loader-circle" aria-hidden="true"></i>
+      <span>Consultando api.github.com...</span>
+    </div>
+  `;
+  refreshIcons();
+
+  try {
+    const snapshot = await fetchGitHubSnapshot();
+    githubLoaded = true;
+    githubStatus.innerHTML = `
+      <div class="github-repository">
+        <div>
+          <p class="eyebrow">ORIGEN CONFIRMADO</p>
+          <h2>${escapeHtml(snapshot.name)}</h2>
+          <p>${escapeHtml(snapshot.description)}</p>
+        </div>
+        <span class="api-status"><i data-lucide="radio" aria-hidden="true"></i>API ONLINE</span>
+      </div>
+      <div class="github-metrics">
+        <article>
+          <i data-lucide="star" aria-hidden="true"></i>
+          <span>Estrellas</span>
+          <strong>${snapshot.stars}</strong>
+        </article>
+        <article>
+          <i data-lucide="git-fork" aria-hidden="true"></i>
+          <span>Forks</span>
+          <strong>${snapshot.forks}</strong>
+        </article>
+        <article>
+          <i data-lucide="circle-dot" aria-hidden="true"></i>
+          <span>Issues + PRs</span>
+          <strong>${snapshot.issues}</strong>
+        </article>
+        <article>
+          <i data-lucide="git-branch" aria-hidden="true"></i>
+          <span>Rama base</span>
+          <strong>${escapeHtml(snapshot.branch)}</strong>
+        </article>
+      </div>
+      <div class="github-details">
+        <div>
+          <span>Ultima sincronizacion</span>
+          <strong>${escapeHtml(formatGitHubDate(snapshot.updatedAt))}</strong>
+        </div>
+        <div>
+          <span>Licencia</span>
+          <strong>${escapeHtml(snapshot.license)}</strong>
+        </div>
+        <div>
+          <span>Release</span>
+          ${
+            snapshot.release
+              ? `<a href="${escapeHtml(snapshot.release.url)}" target="_blank" rel="noreferrer">${escapeHtml(snapshot.release.tag)}</a>`
+              : "<strong>Sin release</strong>"
+          }
+        </div>
+        <div>
+          <span>Consultas API restantes</span>
+          <strong>${snapshot.rateLimitRemaining ?? "No informado"}</strong>
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    githubStatus.innerHTML = `
+      <div class="github-error">
+        <i data-lucide="cloud-off" aria-hidden="true"></i>
+        <div>
+          <h2>Telemetria no disponible</h2>
+          <p>${escapeHtml(error.message)}</p>
+        </div>
+      </div>
+    `;
+  }
+
+  refreshIcons();
+}
+
 function renderAccount() {
   const progress = getProgress(currentSession?.userId);
   const percentage = Math.round((progress.completed.length / missions.length) * 100);
@@ -581,6 +669,11 @@ document.querySelectorAll("[data-view-target]").forEach((trigger) => {
 
 document.querySelector("#mobile-menu").addEventListener("click", () => {
   sidebar.classList.toggle("is-open");
+});
+
+document.querySelector("#refresh-github").addEventListener("click", () => {
+  githubLoaded = false;
+  renderGitHubTelemetry(true);
 });
 
 runButton.addEventListener("click", executeLabCode);

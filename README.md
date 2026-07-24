@@ -20,6 +20,7 @@ Funciona como sitio estatico en GitHub Pages y puede instalarse para uso offline
 - Laboratorio JavaScript ejecutado en un Web Worker con limite de tiempo.
 - Pruebas visibles, progreso, XP, rachas y rangos persistentes.
 - Ranking local con rivales ficticios claramente identificados.
+- Telemetria en vivo del repositorio mediante la API REST publica de GitHub.
 - Registro de estudiantes y panel admin de demostracion.
 - Controles responsive, soporte de teclado, movimiento reducido y modo offline.
 - Easter eggs discretos en la terminal y la interfaz.
@@ -62,6 +63,7 @@ push a `main`.
 - `index.html` y `styles.css`: shell accesible y sistema visual.
 - `js/missions.js`: catalogo y pruebas de las veinte misiones.
 - `js/runner.js`: ejecucion aislada y limitada.
+- `js/github.js`: integracion con la API REST publica de GitHub.
 - `js/auth.js`, `js/store.js`, `js/admin.js`: datos locales de demostracion.
 - `sw.js` y `manifest.webmanifest`: instalacion y soporte offline.
 

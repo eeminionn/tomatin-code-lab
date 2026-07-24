@@ -99,6 +99,10 @@
             <i data-lucide="trophy" aria-hidden="true"></i>
             <span>Ranking</span>
           </button>
+          <button class="nav-item" data-view-target="github">
+            <i data-lucide="github" aria-hidden="true"></i>
+            <span>GitHub</span>
+          </button>
           <button class="nav-item admin-only" data-view-target="admin" hidden>
             <i data-lucide="shield-check" aria-hidden="true"></i>
             <span>Admin</span>
@@ -324,6 +328,42 @@ console.log(saludo);</textarea>
               </div>
             </header>
             <div id="ranking-table" class="table-shell"></div>
+          </section>
+
+          <section class="view content-view" id="github-view" data-view="github">
+            <header class="page-heading">
+              <div>
+                <p class="eyebrow">API PUBLICA // GITHUB</p>
+                <h1>Repositorio en vivo</h1>
+                <p>Estado verificable del codigo que mantiene este laboratorio.</p>
+              </div>
+              <div class="page-actions">
+                <button
+                  class="icon-button"
+                  id="refresh-github"
+                  type="button"
+                  title="Actualizar datos de GitHub"
+                  aria-label="Actualizar datos de GitHub"
+                >
+                  <i data-lucide="refresh-cw" aria-hidden="true"></i>
+                </button>
+                <a
+                  class="secondary-button"
+                  href="https://github.com/eeminionn/tomatin-code-lab"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <i data-lucide="external-link" aria-hidden="true"></i>
+                  Abrir repositorio
+                </a>
+              </div>
+            </header>
+            <div id="github-status" class="github-status" aria-live="polite">
+              <div class="github-loading">
+                <i data-lucide="loader-circle" aria-hidden="true"></i>
+                <span>Consultando api.github.com...</span>
+              </div>
+            </div>
           </section>
 
           <section class="view content-view" id="admin-view" data-view="admin">
