@@ -8,3 +8,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  __TOMATIN_EDITOR__?: {
+    getValue(): string;
+    setValue(value: string): void;
+  };
+}

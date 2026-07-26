@@ -596,6 +596,11 @@ export function Component() {
                 theme="tomatin-terminal"
                 value={currentCode}
                 beforeMount={configureMonaco}
+                onMount={(editor) => {
+                  if (import.meta.env.DEV) {
+                    window.__TOMATIN_EDITOR__ = editor;
+                  }
+                }}
                 onChange={(value) =>
                   setCodeByLanguage((current) => ({
                     ...current,

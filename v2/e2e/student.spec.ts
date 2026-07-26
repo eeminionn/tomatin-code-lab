@@ -24,11 +24,17 @@ test("opens an assigned mission in two actions and runs visible tests", async ({
 });
 
 test("keeps independent code when changing language", async ({ page }) => {
+  const pythonDraft = "def total_once(precios):\n    return 42";
   await page.getByRole("link", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "PY", exact: true }).click();
-  await page.locator(".monaco-editor .view-lines").click();
-  await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-  await page.keyboard.type("def total_once(precios):\n    return 42");
+  await expect
+    .poll(() =>
+      page.evaluate(() => Boolean(window.__TOMATIN_EDITOR__)),
+    )
+    .toBe(true);
+  await page.evaluate((code) => {
+    window.__TOMATIN_EDITOR__?.setValue(code);
+  }, pythonDraft);
   await expect(page.locator(".sync-state.saving")).toBeVisible();
   await expect(page.locator(".sync-state.saved")).toContainText("Borrador guardado");
 
@@ -40,11 +46,11 @@ test("keeps independent code when changing language", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "PY", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await page.locator(".monaco-editor textarea").focus();
-  await page.keyboard.press(
-    process.platform === "darwin" ? "Meta+ArrowUp" : "Control+Home",
-  );
-  await expect(page.locator(".view-lines")).toContainText("total_once");
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.__TOMATIN_EDITOR__?.getValue()),
+    )
+    .toBe(pythonDraft);
 });
 
 test("dashboard has no serious automated accessibility violations", async ({
