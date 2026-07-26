@@ -29,12 +29,22 @@ test("keeps independent code when changing language", async ({ page }) => {
   await page.locator(".monaco-editor .view-lines").click();
   await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
   await page.keyboard.type("def total_once(precios):\n    return 42");
-  await page.waitForTimeout(700);
+  await expect(page.locator(".sync-state.saving")).toBeVisible();
+  await expect(page.locator(".sync-state.saved")).toContainText("Borrador guardado");
 
   await page.getByRole("button", { name: "JS", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "JS", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "PY", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "PY", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.locator(".monaco-editor textarea").focus();
+  await page.keyboard.press(
+    process.platform === "darwin" ? "Meta+ArrowUp" : "Control+Home",
+  );
   await expect(page.locator(".view-lines")).toContainText("total_once");
-  await expect(page.getByText("Borrador guardado")).toBeVisible();
 });
 
 test("dashboard has no serious automated accessibility violations", async ({
