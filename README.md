@@ -83,8 +83,8 @@ Para activarlo, crea un fine-grained personal access token de GitHub cuyo
 resource owner sea `eeminionn`, con acceso a todos los repositorios y permisos
 `Administration: Read and write` y `Contents: Read and write`. Guárdalo como el
 secret de Actions `GITHUB_REPOSITORY_TOKEN` y vuelve a ejecutar `Deploy
-Supabase`. La variable opcional `GITHUB_REPOSITORY_OWNER` permite cambiar el
-propietario; si no existe, se usa `eeminionn`.
+Supabase`. La variable opcional `SUBMISSION_REPOSITORY_OWNER` permite cambiar
+el propietario; si no existe, se usa `eeminionn`.
 
 ## Verificación
 
