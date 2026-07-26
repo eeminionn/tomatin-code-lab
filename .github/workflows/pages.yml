@@ -21,11 +21,31 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Use pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Build beta
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
       - name: Assemble static site
         run: |
           mkdir _site
           cp index.html 404.html styles.css manifest.webmanifest robots.txt sitemap.xml sw.js .nojekyll _site/
           cp -R assets js _site/
+          cp -R dist-beta _site/beta
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
@@ -45,4 +65,3 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
-

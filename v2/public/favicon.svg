@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tomatin">
+  <rect width="64" height="64" rx="8" fill="#07100d"/>
+  <path d="M32 15c-11 0-20 8-20 19s9 19 20 19 20-8 20-19-9-19-20-19Z" fill="#ff5b57"/>
+  <path d="m32 16-7-7 2 9-10-3 7 7h16l7-7-10 3 2-9-7 7Z" fill="#9cff57"/>
+  <path d="M23 33h7m4 0h7M27 42h10" fill="none" stroke="#07100d" stroke-width="4" stroke-linecap="round"/>
+</svg>

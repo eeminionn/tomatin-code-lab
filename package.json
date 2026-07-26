@@ -3,13 +3,52 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Misiones universitarias de programacion con humor chileno.",
+  "description": "Aula multilenguaje para practicar Programacion I y II.",
   "scripts": {
-    "test": "node --test",
-    "check": "node --check js/app.js && node --check js/auth.js && node --check js/github.js && node --check js/missions.js && node --check js/runner.js && node --check js/store.js && node --check sw.js && node --test"
+    "dev": "vite --config v2/vite.config.ts",
+    "prebuild": "pnpm seed:generate",
+    "build": "vite build --config v2/vite.config.ts",
+    "typecheck": "tsc --project v2/tsconfig.json --noEmit",
+    "typecheck:edge": "deno check supabase/functions/run-code/index.ts supabase/functions/submit-code/index.ts supabase/functions/mission-admin/index.ts",
+    "test": "pnpm test:legacy && pnpm test:v2",
+    "test:legacy": "node --test tests/*.test.js",
+    "test:v2": "vitest run --config v2/vitest.config.ts",
+    "test:e2e": "playwright test --config v2/playwright.config.ts",
+    "seed:generate": "tsx --tsconfig v2/tsconfig.json scripts/generate-supabase-seed.ts",
+    "check:legacy": "node --check js/app.js && node --check js/auth.js && node --check js/github.js && node --check js/missions.js && node --check js/runner.js && node --check js/store.js && node --check sw.js && node --test tests/*.test.js",
+    "check": "pnpm check:legacy && node --check v2/public/sw.js && pnpm typecheck && pnpm typecheck:edge && pnpm test:v2 && pnpm build"
   },
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "packageManager": "pnpm@11.9.0",
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@supabase/supabase-js": "^2.110.8",
+    "@tanstack/react-query": "^5.101.4",
+    "lucide-react": "~0.468.0",
+    "monaco-editor": "~0.52.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^6.30.4"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "~1.55.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "deno-bin": "2.2.7",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^26.1.0",
+    "tsx": "4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
+  }
 }

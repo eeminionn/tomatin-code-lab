@@ -1,0 +1,17 @@
+{
+  "name": "Tomatin Code Lab 2.0",
+  "short_name": "Tomatin Lab",
+  "description": "Aula multilenguaje para Programacion I y II.",
+  "start_url": "./#/",
+  "display": "standalone",
+  "background_color": "#040906",
+  "theme_color": "#07100c",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

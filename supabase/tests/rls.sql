@@ -1,0 +1,202 @@
+begin;
+
+create extension if not exists pgtap with schema extensions;
+select plan(7);
+
+insert into auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+)
+values
+  (
+    '00000000-0000-0000-0000-000000000101',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated', 'owner@test.local', '',
+    now(), '{}', '{"user_name":"eeminionn","provider_id":"109454414"}',
+    now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000102',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated', 'one@test.local', '',
+    now(), '{}', '{"name":"Student One"}', now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000103',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated', 'two@test.local', '',
+    now(), '{}', '{"name":"Student Two"}', now(), now()
+  );
+
+insert into public.classes (id, name, owner_id)
+values (
+  '00000000-0000-0000-0000-000000000201',
+  'RLS Test Class',
+  '00000000-0000-0000-0000-000000000101'
+);
+
+insert into public.memberships (class_id, user_id, role)
+values
+  (
+    '00000000-0000-0000-0000-000000000201',
+    '00000000-0000-0000-0000-000000000101',
+    'owner'
+  ),
+  (
+    '00000000-0000-0000-0000-000000000201',
+    '00000000-0000-0000-0000-000000000102',
+    'student'
+  ),
+  (
+    '00000000-0000-0000-0000-000000000201',
+    '00000000-0000-0000-0000-000000000103',
+    'student'
+  );
+
+insert into public.assignments (
+  id, class_id, mission_id, mission_version, title, due_at, points,
+  student_ids, status, created_by
+)
+values (
+  '00000000-0000-0000-0000-000000000301',
+  '00000000-0000-0000-0000-000000000201',
+  'p1-01-la-once',
+  1,
+  'RLS assignment',
+  now() + interval '1 day',
+  100,
+  array[
+    '00000000-0000-0000-0000-000000000102'::uuid,
+    '00000000-0000-0000-0000-000000000103'::uuid
+  ],
+  'published',
+  '00000000-0000-0000-0000-000000000101'
+);
+
+insert into public.student_progress (class_id, user_id, assignment_id)
+values
+  (
+    '00000000-0000-0000-0000-000000000201',
+    '00000000-0000-0000-0000-000000000102',
+    '00000000-0000-0000-0000-000000000301'
+  ),
+  (
+    '00000000-0000-0000-0000-000000000201',
+    '00000000-0000-0000-0000-000000000103',
+    '00000000-0000-0000-0000-000000000301'
+  );
+
+insert into public.attempts (
+  id, class_id, user_id, mission_id, assignment_id, mission_version,
+  language, kind, remote, code, result
+)
+values (
+  '00000000-0000-0000-0000-000000000401',
+  '00000000-0000-0000-0000-000000000201',
+  '00000000-0000-0000-0000-000000000103',
+  'p1-01-la-once',
+  '00000000-0000-0000-0000-000000000301',
+  1,
+  'python',
+  'run',
+  false,
+  'print(42)',
+  '{"status":"passed","tests":[]}'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000102',
+  true
+);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select is(
+  (select count(*) from public.attempts),
+  0::bigint,
+  'students cannot read another student code'
+);
+
+select is(
+  (select count(*) from public.student_progress),
+  1::bigint,
+  'students only read their own progress'
+);
+
+select throws_ok(
+  $$select * from private.mission_variants_secure limit 1$$,
+  '42501',
+  'permission denied for schema private',
+  'students cannot access private tests or solutions'
+);
+
+select throws_ok(
+  $$
+    insert into public.attempts (
+      class_id, user_id, mission_id, assignment_id, mission_version,
+      language, kind, remote, code, result
+    )
+    values (
+      '00000000-0000-0000-0000-000000000201',
+      '00000000-0000-0000-0000-000000000102',
+      'p1-01-la-once',
+      '00000000-0000-0000-0000-000000000301',
+      1, 'python', 'submit', false, 'print(42)', '{"status":"passed"}'
+    )
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "attempts"',
+  'students cannot forge a submission'
+);
+
+select lives_ok(
+  $$
+    insert into public.attempts (
+      class_id, user_id, mission_id, assignment_id, mission_version,
+      language, kind, remote, code, result
+    )
+    values (
+      '00000000-0000-0000-0000-000000000201',
+      '00000000-0000-0000-0000-000000000102',
+      'p1-01-la-once',
+      '00000000-0000-0000-0000-000000000301',
+      1, 'python', 'run', false, 'print(42)', '{"status":"passed"}'
+    )
+  $$,
+  'students can record their own local run'
+);
+
+select throws_ok(
+  $$
+    update public.student_progress
+    set status = 'approved'
+    where user_id = '00000000-0000-0000-0000-000000000102'
+  $$,
+  '42501',
+  'permission denied for table student_progress',
+  'students cannot approve their own work'
+);
+
+reset role;
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000101',
+  true
+);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select is(
+  (
+    select count(*)
+    from public.attempts
+    where user_id = '00000000-0000-0000-0000-000000000103'
+  ),
+  1::bigint,
+  'the owner can review student attempts'
+);
+
+select * from finish();
+rollback;

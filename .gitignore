@@ -1,7 +1,10 @@
 .DS_Store
 coverage/
 dist/
+dist-beta/
 node_modules/
 playwright-report/
 test-results/
-
+.env
+.env.*
+!.env.example

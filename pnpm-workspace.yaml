@@ -1,0 +1,6 @@
+packages:
+  - "."
+
+allowBuilds:
+  deno-bin: true
+  esbuild: true

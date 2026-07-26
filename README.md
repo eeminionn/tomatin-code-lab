@@ -1,85 +1,97 @@
 # Tomatin Code Lab
 
-Plataforma web gratuita para practicar Programacion I y II con veinte misiones
-originales, evaluacion automatica, humor chileno y una estetica glass-terminal.
-Funciona como sitio estatico en GitHub Pages y puede instalarse para uso offline.
+Aula multilenguaje, actualmente en desarrollo, para practicar Programación I y
+II con veinte misiones originales.
 
-**Sitio:** [eeminionn.github.io/tomatin-code-lab](https://eeminionn.github.io/tomatin-code-lab/)
+- **Versión estable:** [eeminionn.github.io/tomatin-code-lab](https://eeminionn.github.io/tomatin-code-lab/)
+- **Aula 2.0 beta:** [eeminionn.github.io/tomatin-code-lab/beta](https://eeminionn.github.io/tomatin-code-lab/beta/)
 
-> Proyecto independiente. No esta afiliado ni respaldado por MIT. El temario
-> toma como referencia conceptos habituales de cursos universitarios de
-> introduccion a ciencias de la computacion; todos los enunciados y recursos de
-> esta plataforma son originales.
+> Proyecto independiente. No está afiliado ni respaldado por MIT. El temario
+> toma como referencia conceptos habituales de cursos universitarios; los
+> enunciados y recursos de esta plataforma son originales.
 
-## Que incluye
+## Aula 2.0
 
-- Diez misiones de Programacion I: variables, control de flujo, funciones,
-  colecciones, strings, objetos, depuracion, pruebas y proyecto integrador.
-- Diez misiones de Programacion II: recursion, complejidad, busqueda,
-  ordenamiento, listas, colas, arboles, grafos, hashing y programacion dinamica.
-- Laboratorio JavaScript ejecutado en un Web Worker con limite de tiempo.
-- Pruebas visibles, progreso, XP, rachas y rangos persistentes.
-- Ranking local con rivales ficticios claramente identificados.
-- Telemetria en vivo del repositorio mediante la API REST publica de GitHub.
-- Registro de estudiantes y panel admin de demostracion.
-- Controles responsive, soporte de teclado, movimiento reducido y modo offline.
-- Easter eggs discretos en la terminal y la interfaz.
+- React, TypeScript, Vite, rutas con hash y Monaco Editor cargado bajo demanda.
+- Veinte misiones con variantes reales de JavaScript, Python y C++.
+- Enunciado, editor, consola, tests, pistas e historial en un mismo workspace.
+- Borradores separados por lenguaje, guardados en IndexedDB y sincronizados al
+  backend cuando está disponible.
+- JavaScript en Web Worker, Python con Pyodide y ejecución remota con Judge0.
+- Supabase Auth, Postgres, Realtime, RLS, invitaciones de un uso y roles
+  `owner`, `mentor` y `student`.
+- Asignaciones por estudiante, revisión, reentrega, XP idempotente y ranking
+  basado únicamente en tareas aprobadas.
+- Panel mentor con matriz del curso, atrasos, cola de revisión, asignaciones,
+  catálogo versionado e invitaciones.
 
-## Demo local
+Las soluciones de referencia y los tests ocultos solo aparecen en
+`private.mission_variants_secure`. El catálogo que Vite entrega al navegador se
+genera por separado y no contiene esos campos.
 
-No hay backend. Las cuentas y el progreso quedan solo en el navegador:
+## Desarrollo local
 
-| Rol | Correo | Clave |
-| --- | --- | --- |
-| Estudiante | `demo@tomatin.local` | `tomatin123` |
-| Admin | `admin@tomatin.local` | `mustakis42` |
-
-Estas credenciales son publicas y no protegen datos reales. Lee
-[SECURITY.md](./SECURITY.md) antes de adaptar el proyecto.
-
-## Ejecutar
-
-Sirve el repositorio con cualquier servidor estatico:
+Requiere Node.js 20 o superior y pnpm 11:
 
 ```bash
-python3 -m http.server 4173
+pnpm install
+pnpm dev
 ```
 
-Luego abre `http://127.0.0.1:4173`.
+La beta queda disponible en
+`http://127.0.0.1:4173/tomatin-code-lab/beta/`. Sin variables de entorno abre
+un aula demostrativa local para diez estudiantes.
 
-## Verificar
+## Activar Supabase
 
-Requiere Node.js 20 o superior:
+1. Crea un proyecto Supabase y configura GitHub como proveedor OAuth.
+2. Añade como redirect URL
+   `https://eeminionn.github.io/tomatin-code-lab/beta/`.
+3. Copia `.env.example` a `.env.local` y completa:
 
 ```bash
-npm run check
+VITE_SUPABASE_URL=https://PROJECT_REF.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-La misma verificacion se ejecuta en GitHub Actions para cada pull request y
-push a `main`.
+4. En GitHub, crea los secrets `SUPABASE_ACCESS_TOKEN`,
+   `SUPABASE_DB_PASSWORD` y `SUPABASE_PROJECT_ID`.
+5. En GitHub Actions, crea las variables `VITE_SUPABASE_URL` y
+   `VITE_SUPABASE_PUBLISHABLE_KEY`.
+6. Ejecuta manualmente el workflow `Deploy Supabase`; desde entonces los
+   cambios en `supabase/` se despliegan al hacer merge a `main`.
 
-## Arquitectura
+`SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` son suministradas automáticamente
+a las Edge Functions. `JUDGE0_URL` y `JUDGE0_API_KEY` son opcionales; por
+defecto se usa la instancia pública de Judge0 CE.
 
-- `index.html` y `styles.css`: shell accesible y sistema visual.
-- `js/missions.js`: catalogo y pruebas de las veinte misiones.
-- `js/runner.js`: ejecucion aislada y limitada.
-- `js/github.js`: integracion con la API REST publica de GitHub.
-- `js/auth.js`, `js/store.js`, `js/admin.js`: datos locales de demostracion.
-- `sw.js` y `manifest.webmanifest`: instalacion y soporte offline.
+## Verificación
 
-## Privacidad
+```bash
+pnpm check
+pnpm test:e2e
+supabase db start
+supabase test db
+```
 
-La aplicacion no envia cuentas, soluciones ni progreso a un servidor. Los
-recursos tipograficos y los iconos se cargan desde proveedores publicos; el
-resto se sirve desde el propio repositorio.
+La verificación incluye la aplicación estable, tipos, build y las 60 soluciones
+de referencia: JavaScript se ejecuta, Python se interpreta y C++ se compila con
+C++20. Playwright cubre los recorridos de estudiante y mentor; pgTAP comprueba
+las políticas RLS contra una base temporal. El catálogo y la migración SQL se
+regeneran desde una única fuente para evitar que se desalineen.
 
-## Contribuir
+## Estructura
 
-Consulta [CONTRIBUTING.md](./CONTRIBUTING.md). Los ejercicios nuevos deben ser
-originales, tener objetivos claros, al menos dos pruebas ejecutables y funcionar
-con teclado en escritorio y movil.
+- `v2/`: aplicación React de la beta.
+- `v2/src/data/programming-*.ts`: fuente privada del catálogo y soluciones.
+- `v2/src/data/missions-public.generated.ts`: catálogo apto para el navegador.
+- `supabase/migrations/`: esquema, RLS y catálogo inicial.
+- `supabase/functions/`: endpoints seguros `run-code`, `submit-code` y
+  `mission-admin`.
+- `scripts/generate-supabase-seed.ts`: generador reproducible del catálogo.
+- `index.html`, `styles.css`, `js/`: versión estable, preservada durante el piloto.
 
 ## Licencia
 
-El codigo se distribuye bajo licencia MIT. El contenido educativo original se
+El código se distribuye bajo licencia MIT. El contenido educativo original se
 publica bajo [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

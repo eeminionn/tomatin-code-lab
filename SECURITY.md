@@ -1,31 +1,41 @@
 # Security
 
-## Demo authentication
+## Versiones publicadas
 
-Tomatin Code Lab is a static GitHub Pages application. Its accounts, progress,
-ranking, and admin settings live only in `localStorage` in the current browser.
+La versión estable mantiene cuentas y progreso de demostración en
+`localStorage`. Sus credenciales públicas no protegen datos reales.
 
-The published demo credentials are intentionally public:
+La beta 2.0 funciona en dos modos:
 
-- student: `demo@tomatin.local` / `tomatin123`
-- admin: `admin@tomatin.local` / `mustakis42`
+- Sin variables Supabase usa datos ficticios locales para recorrer la interfaz.
+- Con Supabase usa OAuth o magic link, invitaciones de un uso, roles de servidor,
+  RLS y Edge Functions para ejecutar entregas.
 
-They protect no real data. Never reuse those passwords elsewhere and do not put
-personal, private, or sensitive information into this demo.
+No ingreses datos personales o soluciones reales en el modo demo.
 
-The registration flow hashes local passwords to avoid storing plain text, but
-client-side storage is not an authentication boundary. Anyone who controls the
-browser can inspect or modify its data.
+## Ejecución de código
 
-## Production deployments
+- El navegador limita el código a 64 KB y la salida a 32 KB.
+- JavaScript y Python se ejecutan en Web Workers para pruebas visibles.
+- C++ y todas las entregas verificadas pasan por una Edge Function y Judge0.
+- La Edge Function limita CPU a 2 segundos, pared a 5 segundos y memoria a
+  128 MB.
+- Los endpoints no aceptan tests enviados por el cliente. Resuelven la versión y
+  los tests ocultos desde el esquema privado.
+- El límite inicial es de 20 ejecuciones remotas y 10 entregas por usuario/hora.
 
-A real multi-user deployment must replace the local auth and data modules with
-a server-side identity provider and database, enforce authorization on the
-server, rate-limit login attempts, and define retention and privacy policies.
+La instancia pública de Judge0 sirve para el piloto y no ofrece un SLA. Para
+clases con requisitos de disponibilidad se debe configurar una instancia
+gestionada o propia mediante `JUDGE0_URL`.
 
-## Reporting a vulnerability
+## Secretos
 
-Open a private security advisory in the GitHub repository. Include the affected
-version, reproduction steps, impact, and a minimal proof of concept. Do not put
-secrets or personal data in a public issue.
+Nunca confirmes `.env`, service-role keys, access tokens, contraseñas de base de
+datos ni claves de Judge0. La clave publicable de Supabase puede vivir en el
+frontend; la seguridad depende de RLS, no de ocultarla.
 
+## Reportar una vulnerabilidad
+
+Abre un security advisory privado en el repositorio. Incluye versión, pasos de
+reproducción, impacto y una prueba mínima. No publiques secretos ni datos
+personales en issues.

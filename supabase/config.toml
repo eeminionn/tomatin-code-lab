@@ -1,0 +1,33 @@
+project_id = "tomatin-code-lab"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173/tomatin-code-lab/beta/"
+additional_redirect_urls = [
+  "http://localhost:5173/tomatin-code-lab/beta/",
+  "https://eeminionn.github.io/tomatin-code-lab/beta/"
+]
+
+[functions.run-code]
+verify_jwt = false
+
+[functions.submit-code]
+verify_jwt = false
+
+[functions.mission-admin]
+verify_jwt = false
