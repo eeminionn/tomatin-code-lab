@@ -5,6 +5,8 @@ import {
   CircleDot,
   Clock3,
   Code2,
+  ExternalLink,
+  Github,
   MessageSquareText,
   ShieldCheck,
   Trophy,
@@ -16,7 +18,7 @@ import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
 
 export function Component() {
-  const { profile, snapshot } = useClassroom();
+  const { profile, snapshot, backendMode } = useClassroom();
   const { getMissionById } = useCatalog();
   if (!profile || !snapshot) return null;
 
@@ -71,6 +73,9 @@ export function Component() {
     : undefined;
   const unread = snapshot.notifications.filter(
     (entry) => entry.userId === profile.id && !entry.readAt,
+  );
+  const repository = snapshot.repositories?.find(
+    (entry) => entry.userId === profile.id,
   );
 
   return (
@@ -209,6 +214,55 @@ export function Component() {
         </section>
 
         <aside className="dashboard-side">
+          {!isMentor && backendMode === "supabase" ? (
+            <section
+              className="student-repository"
+              aria-labelledby="student-repository-title"
+            >
+              <div className="repository-heading">
+                <Github aria-hidden="true" />
+                <div>
+                  <p className="eyebrow">GITHUB</p>
+                  <h2 id="student-repository-title">Tus entregas</h2>
+                </div>
+              </div>
+              {repository ? (
+                <>
+                  <a
+                    className="repository-link"
+                    href={repository.htmlUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span>
+                      <strong>{repository.name}</strong>
+                      <small>Repositorio privado</small>
+                    </span>
+                    <ExternalLink aria-hidden="true" />
+                  </a>
+                  <span
+                    className={`repository-state repository-${repository.status}`}
+                  >
+                    <span aria-hidden="true" />
+                    {repository.lastSyncedAt
+                      ? `Actualizado ${formatDate(repository.lastSyncedAt, true)}`
+                      : repository.collaboratorStatus === "invited"
+                        ? "Invitación enviada"
+                        : "Repositorio listo"}
+                  </span>
+                </>
+              ) : (
+                <div className="repository-pending" role="status">
+                  <span className="system-dot supabase" aria-hidden="true" />
+                  <span>
+                    <strong>Preparando repositorio</strong>
+                    <small>@{profile.githubLogin}</small>
+                  </span>
+                </div>
+              )}
+            </section>
+          ) : null}
+
           {nextMission && nextAssignment ? (
             <section className="next-task" aria-labelledby="next-task-title">
               <div className="next-task-top">

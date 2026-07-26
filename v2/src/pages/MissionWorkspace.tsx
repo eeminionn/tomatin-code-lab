@@ -15,7 +15,9 @@ import {
   CircleAlert,
   Clock3,
   Code2,
+  ExternalLink,
   FileCode2,
+  Github,
   History,
   Lightbulb,
   LoaderCircle,
@@ -118,6 +120,38 @@ function ResultSummary({ result }: { result: RunResult | null }) {
           </span>
         </div>
       </div>
+
+      {result.repositorySync &&
+      result.repositorySync.status !== "not_applicable" ? (
+        <div
+          className={`repository-sync repository-sync-${result.repositorySync.status}`}
+          role="status"
+        >
+          <Github aria-hidden="true" />
+          <span>
+            <strong>
+              {result.repositorySync.status === "synced"
+                ? "Entrega guardada en GitHub"
+                : result.repositorySync.status === "pending_setup"
+                  ? "GitHub pendiente"
+                  : "GitHub no se actualizó"}
+            </strong>
+            <small>{result.repositorySync.message}</small>
+          </span>
+          {result.repositorySync.fileUrl ? (
+            <a
+              className="icon-button"
+              href={result.repositorySync.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Abrir entrega en GitHub"
+              title="Abrir entrega en GitHub"
+            >
+              <ExternalLink aria-hidden="true" />
+            </a>
+          ) : null}
+        </div>
+      ) : null}
 
       {result.diagnostics.length > 0 ? (
         <section className="diagnostic-list" aria-labelledby="diagnostics-title">

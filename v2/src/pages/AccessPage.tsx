@@ -1,16 +1,14 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Github, LoaderCircle, Mail, TerminalSquare } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Github, LoaderCircle, TerminalSquare } from "lucide-react";
 import { useClassroom } from "@/state/classroom-context";
 import {
   isSupabaseConfigured,
   rememberInvitationFromLocation,
-  sendMagicLink,
   signInWithGitHub,
 } from "@/services/supabase";
 
 export function AccessPage() {
   const { loginDemo, error: accessError } = useClassroom();
-  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [hasInvitation, setHasInvitation] = useState(false);
@@ -26,20 +24,6 @@ export function AccessPage() {
       await signInWithGitHub();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
-      setBusy(false);
-    }
-  }
-
-  async function handleEmail(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setMessage("");
-    try {
-      await sendMagicLink(email);
-      setMessage("Enlace enviado. Revisa tu correo para continuar.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
-    } finally {
       setBusy(false);
     }
   }
@@ -78,42 +62,19 @@ export function AccessPage() {
           ) : null}
 
           {isSupabaseConfigured ? (
-            <>
-              <button
-                className="button primary wide"
-                type="button"
-                onClick={handleGitHub}
-                disabled={busy}
-              >
-                {busy ? (
-                  <LoaderCircle className="spin" aria-hidden="true" />
-                ) : (
-                  <Github aria-hidden="true" />
-                )}
-                Continuar con GitHub
-              </button>
-              <div className="access-divider">
-                <span>o usa correo</span>
-              </div>
-              <form className="access-form" onSubmit={handleEmail}>
-                <label htmlFor="magic-email">Correo</label>
-                <div className="field-with-icon">
-                  <Mail aria-hidden="true" />
-                  <input
-                    id="magic-email"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="nombre@universidad.cl"
-                    autoComplete="email"
-                    required
-                  />
-                </div>
-                <button className="button secondary wide" disabled={busy}>
-                  Enviar enlace
-                </button>
-              </form>
-            </>
+            <button
+              className="button primary wide"
+              type="button"
+              onClick={handleGitHub}
+              disabled={busy}
+            >
+              {busy ? (
+                <LoaderCircle className="spin" aria-hidden="true" />
+              ) : (
+                <Github aria-hidden="true" />
+              )}
+              Continuar con GitHub
+            </button>
           ) : (
             <>
               <div className="demo-notice">
@@ -145,8 +106,8 @@ export function AccessPage() {
           </p>
           <p className="access-footnote">
             {hasInvitation
-              ? "El enlace se consumirá una sola vez al completar el acceso."
-              : "El acceso real requiere una invitación activa del curso."}
+              ? "Usa la cuenta de GitHub donde quieres recibir tus entregas."
+              : "El acceso de estudiantes requiere una invitación activa del curso."}
           </p>
         </div>
       </section>

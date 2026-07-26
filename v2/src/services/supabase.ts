@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { StudentRepository } from "@/types";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -44,14 +45,18 @@ export async function signInWithGitHub() {
   if (error) throw error;
 }
 
-export async function sendMagicLink(email: string) {
+export async function provisionStudentRepository(): Promise<{
+  status: "ready" | "pending_setup" | "not_applicable";
+  repository?: StudentRepository;
+}> {
   if (!supabase) throw new Error("Supabase no está configurado.");
-  const redirectTo = `${window.location.origin}${window.location.pathname}#/auth/callback`;
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectTo },
-  });
+  const { data, error } = await supabase.functions.invoke<{
+    status: "ready" | "pending_setup" | "not_applicable";
+    repository?: StudentRepository;
+  }>("provision-repository", { body: {} });
   if (error) throw error;
+  if (!data) throw new Error("El backend no respondió.");
+  return data;
 }
 
 export async function signOutSupabase() {

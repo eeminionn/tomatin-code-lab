@@ -18,10 +18,12 @@ II con veinte misiones originales.
 - Borradores separados por lenguaje, guardados en IndexedDB y sincronizados al
   backend cuando está disponible.
 - JavaScript en Web Worker, Python con Pyodide y ejecución remota con Judge0.
-- Supabase Auth, Postgres, Realtime, RLS, invitaciones de un uso y roles
-  `owner`, `mentor` y `student`.
+- Supabase Auth exclusivamente con GitHub, Postgres, Realtime, RLS,
+  invitaciones de un uso y roles `owner`, `mentor` y `student`.
 - Asignaciones por estudiante, revisión, reentrega, XP idempotente y ranking
   basado únicamente en tareas aprobadas.
+- Un repositorio privado por estudiante bajo `eeminionn`, con una carpeta por
+  misión y actualización automática al entregar.
 - Panel mentor con matriz del curso, atrasos, cola de revisión, asignaciones,
   catálogo versionado e invitaciones.
 
@@ -65,6 +67,25 @@ VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 a las Edge Functions. `JUDGE0_URL` y `JUDGE0_API_KEY` son opcionales; por
 defecto se usa la instancia pública de Judge0 CE.
 
+## Repositorios de estudiantes
+
+La aplicación crea un repositorio privado
+`tomatin-code-lab-USUARIO-ID` bajo `eeminionn`, invita al estudiante como
+colaborador y guarda cada entrega en:
+
+```text
+misiones/slug-de-la-mision/solucion.js
+misiones/slug-de-la-mision/solucion.py
+misiones/slug-de-la-mision/solucion.cpp
+```
+
+Para activarlo, crea un fine-grained personal access token de GitHub cuyo
+resource owner sea `eeminionn`, con acceso a todos los repositorios y permisos
+`Administration: Read and write` y `Contents: Read and write`. Guárdalo como el
+secret de Actions `GITHUB_REPOSITORY_TOKEN` y vuelve a ejecutar `Deploy
+Supabase`. La variable opcional `GITHUB_REPOSITORY_OWNER` permite cambiar el
+propietario; si no existe, se usa `eeminionn`.
+
 ## Verificación
 
 ```bash
@@ -86,8 +107,8 @@ regeneran desde una única fuente para evitar que se desalineen.
 - `v2/src/data/programming-*.ts`: fuente privada del catálogo y soluciones.
 - `v2/src/data/missions-public.generated.ts`: catálogo apto para el navegador.
 - `supabase/migrations/`: esquema, RLS y catálogo inicial.
-- `supabase/functions/`: endpoints seguros `run-code`, `submit-code` y
-  `mission-admin`.
+- `supabase/functions/`: endpoints seguros `run-code`, `submit-code`,
+  `provision-repository` y `mission-admin`.
 - `scripts/generate-supabase-seed.ts`: generador reproducible del catálogo.
 - `index.html`, `styles.css`, `js/`: versión estable, preservada durante el piloto.
 

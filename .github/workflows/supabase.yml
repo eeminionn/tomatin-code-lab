@@ -23,6 +23,8 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      GITHUB_REPOSITORY_TOKEN: ${{ secrets.GITHUB_REPOSITORY_TOKEN }}
+      GITHUB_REPOSITORY_OWNER: ${{ vars.GITHUB_REPOSITORY_OWNER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -41,6 +43,15 @@ jobs:
       - name: Apply database migrations
         if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_DB_PASSWORD != ''
         run: supabase db push
+
+      - name: Configure repository sync
+        if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.GITHUB_REPOSITORY_TOKEN != ''
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER:-eeminionn}"
+          supabase secrets set \
+            --project-ref "$PROJECT_ID" \
+            GITHUB_REPOSITORY_TOKEN="$GITHUB_REPOSITORY_TOKEN" \
+            GITHUB_REPOSITORY_OWNER="$owner"
 
       - name: Deploy Edge Functions
         if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_DB_PASSWORD != ''

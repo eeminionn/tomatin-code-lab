@@ -166,7 +166,37 @@ export interface RunResult {
   tests: TestResult[];
   durationMs?: number;
   memoryKb?: number;
+  repositorySync?: RepositorySyncResult;
   createdAt: string;
+}
+
+export type RepositorySyncStatus =
+  | "synced"
+  | "pending_setup"
+  | "failed"
+  | "not_applicable";
+
+export interface RepositorySyncResult {
+  status: RepositorySyncStatus;
+  message: string;
+  repositoryUrl?: string;
+  fileUrl?: string;
+  path?: string;
+  commitSha?: string;
+}
+
+export interface StudentRepository {
+  id: string;
+  classId: string;
+  userId: string;
+  ownerLogin: string;
+  name: string;
+  htmlUrl: string;
+  visibility: "private";
+  status: "ready" | "error";
+  collaboratorStatus: "pending" | "invited" | "active" | "error";
+  lastSyncedAt?: string;
+  lastError?: string;
 }
 
 export interface Attempt {
@@ -217,6 +247,7 @@ export interface ClassroomSnapshot {
   reviews: Review[];
   notifications: AppNotification[];
   invitations: Invitation[];
+  repositories: StudentRepository[];
 }
 
 export interface RunnerRequest {

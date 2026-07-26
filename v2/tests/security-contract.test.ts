@@ -29,4 +29,45 @@ describe("security contracts", () => {
       "with check (user_id = auth.uid() and kind = 'run' and remote = false)",
     );
   });
+
+  it("requires GitHub login and keeps repository credentials server-side", () => {
+    const accessPage = readFileSync(
+      resolve("v2/src/pages/AccessPage.tsx"),
+      "utf8",
+    );
+    const authService = readFileSync(
+      resolve("v2/src/services/supabase.ts"),
+      "utf8",
+    );
+    const repositoryMigration = readFileSync(
+      resolve(
+        "supabase/migrations/202607250003_github_submission_repositories.sql",
+      ),
+      "utf8",
+    );
+    const repositoryService = readFileSync(
+      resolve("supabase/functions/_shared/github-submissions.ts"),
+      "utf8",
+    );
+
+    expect(accessPage).toContain("Continuar con GitHub");
+    expect(accessPage).not.toContain("magic-email");
+    expect(authService).not.toContain("signInWithOtp");
+    expect(repositoryMigration).toContain(
+      "GitHub authentication is required.",
+    );
+    expect(repositoryMigration).toContain(
+      "new.github_login is distinct from old.github_login",
+    );
+    expect(repositoryMigration).toContain(
+      "user_id = auth.uid() or is_class_staff(class_id)",
+    );
+    expect(repositoryService).toContain(
+      'Deno.env.get("GITHUB_REPOSITORY_TOKEN")',
+    );
+    expect(repositoryService).toContain("private: true");
+    expect(repositoryService).toContain(
+      "misiones/${mission.slug}/${fileNames[input.language]}",
+    );
+  });
 });

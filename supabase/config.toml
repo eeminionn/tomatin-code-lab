@@ -31,3 +31,6 @@ verify_jwt = false
 
 [functions.mission-admin]
 verify_jwt = false
+
+[functions.provision-repository]
+verify_jwt = false

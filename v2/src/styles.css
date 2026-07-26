@@ -999,7 +999,8 @@ fieldset legend {
 
 .dashboard-section,
 .activity-feed,
-.next-task {
+.next-task,
+.student-repository {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
@@ -1207,6 +1208,102 @@ fieldset legend {
 
 .activity-feed {
   padding: 17px;
+}
+
+.student-repository {
+  padding: 17px;
+}
+
+.repository-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+
+.repository-heading > svg {
+  width: 20px;
+  color: var(--green);
+}
+
+.repository-heading h2 {
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.repository-link,
+.repository-pending {
+  display: flex;
+  min-width: 0;
+  min-height: 49px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.repository-link:hover {
+  border-color: rgba(103, 232, 165, 0.36);
+  background: rgba(103, 232, 165, 0.05);
+}
+
+.repository-link > span,
+.repository-pending > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.repository-link strong,
+.repository-pending strong {
+  overflow: hidden;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repository-link small,
+.repository-pending small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.repository-link > svg {
+  width: 14px;
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.repository-pending {
+  justify-content: flex-start;
+}
+
+.repository-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.repository-state > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.repository-state.repository-error {
+  color: var(--red);
+}
+
+.repository-state.repository-error > span {
+  background: var(--red);
 }
 
 .activity-item {
@@ -2473,6 +2570,51 @@ fieldset legend {
 .result-summary.result-runtime_error,
 .result-summary.result-timeout,
 .result-summary.result-provider_error {
+  color: var(--red);
+  border-color: rgba(240, 127, 124, 0.25);
+  background: rgba(240, 127, 124, 0.05);
+}
+
+.repository-sync {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  margin: -5px 0 14px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  grid-template-columns: 17px minmax(0, 1fr) auto;
+  color: var(--cyan);
+  background: rgba(101, 201, 232, 0.05);
+}
+
+.repository-sync > svg {
+  width: 16px;
+}
+
+.repository-sync > span {
+  display: grid;
+  min-width: 0;
+}
+
+.repository-sync strong {
+  font-size: 10px;
+}
+
+.repository-sync small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.repository-sync-synced {
+  color: var(--green);
+  border-color: rgba(103, 232, 165, 0.25);
+  background: rgba(103, 232, 165, 0.05);
+}
+
+.repository-sync-failed {
   color: var(--red);
   border-color: rgba(240, 127, 124, 0.25);
   background: rgba(240, 127, 124, 0.05);

@@ -9,7 +9,7 @@
     "prebuild": "pnpm seed:generate",
     "build": "vite build --config v2/vite.config.ts",
     "typecheck": "tsc --project v2/tsconfig.json --noEmit",
-    "typecheck:edge": "deno check supabase/functions/run-code/index.ts supabase/functions/submit-code/index.ts supabase/functions/mission-admin/index.ts",
+    "typecheck:edge": "deno check supabase/functions/run-code/index.ts supabase/functions/submit-code/index.ts supabase/functions/mission-admin/index.ts supabase/functions/provision-repository/index.ts",
     "test": "pnpm test:legacy && pnpm test:v2",
     "test:legacy": "node --test tests/*.test.js",
     "test:v2": "vitest run --config v2/vitest.config.ts",

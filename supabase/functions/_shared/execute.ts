@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "./cors.ts";
 import { executeJudge0 } from "./judge0.ts";
+import { syncSubmissionToGitHub } from "./github-submissions.ts";
 import type { Language, MissionTest } from "./types.ts";
 
 interface ExecuteBody {
@@ -240,11 +241,31 @@ export function createExecutionHandler(kind: "run" | "submit") {
       return jsonResponse(request, { error: "No se pudo registrar el intento." }, 503);
     }
 
+    const repositorySync =
+      kind === "submit"
+        ? await syncSubmissionToGitHub({
+            admin,
+            attemptId: attempt.id,
+            classId,
+            userId,
+            missionId: body.missionId,
+            assignmentId: assignment?.id ?? null,
+            language: body.language,
+            code: body.code,
+          })
+        : undefined;
     const persistedResult = {
       ...result,
+      ...(repositorySync ? { repositorySync } : {}),
       id: attempt.id,
       createdAt: attempt.created_at,
     };
+    if (repositorySync) {
+      await admin
+        .from("attempts")
+        .update({ result: persistedResult })
+        .eq("id", attempt.id);
+    }
 
     if (assignment) {
       const passed = result.status === "passed";

@@ -20,6 +20,7 @@ import type {
 import {
   acceptPendingInvitation,
   isSupabaseConfigured,
+  provisionStudentRepository,
   signOutSupabase,
   supabase,
 } from "@/services/supabase";
@@ -103,6 +104,7 @@ async function fetchSupabaseSnapshot(session: Session) {
     reviews,
     notifications,
     invitations,
+    repositories,
   ] = await Promise.all([
     supabase.from("classes").select("*").eq("id", classId).single(),
     supabase
@@ -116,6 +118,7 @@ async function fetchSupabaseSnapshot(session: Session) {
     supabase.from("reviews").select("*, attempts!inner(class_id)").eq("attempts.class_id", classId),
     supabase.from("notifications").select("*").eq("user_id", session.user.id),
     supabase.from("invitations").select("*").eq("class_id", classId),
+    supabase.from("student_repositories").select("*").eq("class_id", classId),
   ]);
 
   const firstError = [
@@ -127,6 +130,7 @@ async function fetchSupabaseSnapshot(session: Session) {
     reviews,
     notifications,
     invitations,
+    repositories,
   ].find((query) => query.error)?.error;
   if (firstError) throw firstError;
 
@@ -198,6 +202,19 @@ async function fetchSupabaseSnapshot(session: Session) {
         expiresAt: row.expires_at,
         usedAt: row.used_at ?? undefined,
       })),
+      repositories: (repositories.data ?? []).map((row) => ({
+        id: row.id,
+        classId: row.class_id,
+        userId: row.user_id,
+        ownerLogin: row.owner_login,
+        name: row.repository_name,
+        htmlUrl: row.html_url,
+        visibility: row.visibility,
+        status: row.status,
+        collaboratorStatus: row.collaborator_status,
+        lastSyncedAt: row.last_synced_at ?? undefined,
+        lastError: row.last_error ?? undefined,
+      })),
     },
   };
 }
@@ -208,6 +225,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasLoaded = useRef(false);
+  const provisionRequested = useRef(new Set<string>());
   const backendMode = isSupabaseConfigured ? "supabase" : "demo";
 
   const persistDemo = useCallback((next: ClassroomSnapshot) => {
@@ -230,6 +248,36 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         const loaded = await fetchSupabaseSnapshot(data.session);
         setProfile(loaded.profile);
         setSnapshot(loaded.snapshot);
+        if (
+          loaded.profile.role === "student" &&
+          !loaded.snapshot.repositories.some(
+            (repository) => repository.userId === loaded.profile.id,
+          ) &&
+          !provisionRequested.current.has(loaded.profile.id)
+        ) {
+          provisionRequested.current.add(loaded.profile.id);
+          void provisionStudentRepository()
+            .then((result) => {
+              const repository = result.repository;
+              if (!repository) return;
+              setSnapshot((current) =>
+                current
+                  ? {
+                      ...current,
+                      repositories: [
+                        ...current.repositories.filter(
+                          (entry) => entry.id !== repository.id,
+                        ),
+                        repository,
+                      ],
+                    }
+                  : current,
+              );
+            })
+            .catch(() => {
+              provisionRequested.current.delete(loaded.profile.id);
+            });
+        }
         return;
       }
 
@@ -295,6 +343,16 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         },
         scheduleRefresh,
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "student_repositories",
+          filter: `class_id=eq.${snapshot.classroom.id}`,
+        },
+        scheduleRefresh,
+      )
       .subscribe();
 
     return () => {
@@ -312,6 +370,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     if (supabase) await signOutSupabase();
     localStorage.removeItem(DEMO_SESSION_KEY);
+    provisionRequested.current.clear();
     setProfile(null);
     if (!supabase) setSnapshot(readDemoSnapshot());
   }, []);
