@@ -11,11 +11,19 @@ export const supabase: SupabaseClient | null =
         auth: {
           persistSession: true,
           detectSessionInUrl: true,
+          flowType: "pkce",
         },
       })
     : null;
 
 export const isSupabaseConfigured = Boolean(supabase);
+
+export function getOAuthRedirectUrl(currentUrl = window.location.href) {
+  const redirectUrl = new URL(currentUrl);
+  redirectUrl.search = "";
+  redirectUrl.hash = "";
+  return redirectUrl.toString();
+}
 
 export function rememberInvitationFromLocation(): string | null {
   const match = window.location.hash.match(/^#\/join\/([a-f0-9]{36})$/i);
@@ -37,10 +45,9 @@ export async function acceptPendingInvitation(): Promise<boolean> {
 
 export async function signInWithGitHub() {
   if (!supabase) throw new Error("Supabase no está configurado.");
-  const redirectTo = `${window.location.origin}${window.location.pathname}#/auth/callback`;
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "github",
-    options: { redirectTo },
+    options: { redirectTo: getOAuthRedirectUrl() },
   });
   if (error) throw error;
 }

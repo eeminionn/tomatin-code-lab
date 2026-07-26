@@ -47,20 +47,24 @@ un aula demostrativa local para diez estudiantes.
 ## Activar Supabase
 
 1. Crea un proyecto Supabase y configura GitHub como proveedor OAuth.
-2. Añade como redirect URL
-   `https://eeminionn.github.io/tomatin-code-lab/beta/`.
-3. Copia `.env.example` a `.env.local` y completa:
+2. En la OAuth App de GitHub, usa como `Authorization callback URL` la URL de
+   callback que muestra Supabase. Para este proyecto es
+   `https://vowopvcxrzpuudtsraik.supabase.co/auth/v1/callback`.
+3. En Supabase, bajo `Authentication > URL Configuration`, usa
+   `https://eeminionn.github.io/tomatin-code-lab/beta/` como `Site URL` y añade
+   esa misma URL exacta a `Redirect URLs`.
+4. Copia `.env.example` a `.env.local` y completa:
 
 ```bash
 VITE_SUPABASE_URL=https://PROJECT_REF.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-4. En GitHub, crea los secrets `SUPABASE_ACCESS_TOKEN`,
+5. En GitHub, crea los secrets `SUPABASE_ACCESS_TOKEN`,
    `SUPABASE_DB_PASSWORD` y `SUPABASE_PROJECT_ID`.
-5. En GitHub Actions, crea las variables `VITE_SUPABASE_URL` y
+6. En GitHub Actions, crea las variables `VITE_SUPABASE_URL` y
    `VITE_SUPABASE_PUBLISHABLE_KEY`.
-6. Ejecuta manualmente el workflow `Deploy Supabase`; desde entonces los
+7. Ejecuta manualmente el workflow `Deploy Supabase`; desde entonces los
    cambios en `supabase/` se despliegan al hacer merge a `main`.
 
 `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` son suministradas automáticamente
