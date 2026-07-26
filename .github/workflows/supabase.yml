@@ -23,7 +23,7 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      GITHUB_REPOSITORY_TOKEN: ${{ secrets.GITHUB_REPOSITORY_TOKEN }}
+      SUBMISSION_REPOSITORY_TOKEN: ${{ secrets.SUBMISSION_REPOSITORY_TOKEN }}
       SUBMISSION_REPOSITORY_OWNER: ${{ vars.SUBMISSION_REPOSITORY_OWNER }}
     steps:
       - name: Checkout
@@ -45,12 +45,12 @@ jobs:
         run: supabase db push
 
       - name: Configure repository sync
-        if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.GITHUB_REPOSITORY_TOKEN != ''
+        if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.SUBMISSION_REPOSITORY_TOKEN != ''
         run: |
           owner="${SUBMISSION_REPOSITORY_OWNER:-eeminionn}"
           supabase secrets set \
             --project-ref "$PROJECT_ID" \
-            GITHUB_REPOSITORY_TOKEN="$GITHUB_REPOSITORY_TOKEN" \
+            GITHUB_REPOSITORY_TOKEN="$SUBMISSION_REPOSITORY_TOKEN" \
             GITHUB_REPOSITORY_OWNER="$owner"
 
       - name: Deploy Edge Functions
