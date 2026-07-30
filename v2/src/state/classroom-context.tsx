@@ -16,6 +16,8 @@ import type {
   Attempt,
   ClassroomSnapshot,
   CreateAssignmentInput,
+  Invitation,
+  InvitationInput,
   Language,
   Profile,
   Review,
@@ -57,7 +59,9 @@ interface ClassroomContextValue {
     details?: Pick<Review, "inlineComments" | "criteria">,
   ) => Promise<void>;
   createAssignment: (input: CreateAssignmentInput) => void;
-  createInvitations: (count: number) => void;
+  createInvitation: (input: InvitationInput) => Promise<void>;
+  updateInvitation: (id: string, input: InvitationInput) => Promise<void>;
+  getInvitationToken: (id: string) => Promise<string>;
   updateProfile: (input: {
     displayName: string;
     avatarConfig: Profile["avatarConfig"];
@@ -299,9 +303,12 @@ async function fetchSupabaseSnapshot(session: Session) {
       invitations: (invitations.data ?? []).map((row) => ({
         id: row.id,
         label: row.label,
-        token: row.token_preview ?? "",
+        tokenPreview: row.token_preview ?? "",
         expiresAt: row.expires_at,
         usedAt: row.used_at ?? undefined,
+        maxUses: row.max_uses ?? 1,
+        useCount: row.use_count ?? (row.used_at ? 1 : 0),
+        revokedAt: row.revoked_at ?? undefined,
       })),
       repositories: (repositories.data ?? []).map((row) => ({
         id: row.id,
@@ -458,6 +465,16 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             profile.role === "owner" || profile.role === "mentor"
               ? `class_id=eq.${snapshot.classroom.id}`
               : `user_id=eq.${profile.id}`,
+        },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "invitations",
+          filter: `class_id=eq.${snapshot.classroom.id}`,
         },
         scheduleRefresh,
       )
@@ -692,57 +709,142 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     [persistDemo, previewStudentId, refresh, snapshot],
   );
 
-  const createInvitations = useCallback(
-    (count: number) => {
+  const createInvitation = useCallback(
+    async (input: InvitationInput) => {
       if (previewStudentId || !snapshot) return;
       if (supabase) {
-        void supabase
-          .rpc("create_invitations", { p_count: count })
-          .then(({ data, error: invitationError }) => {
-            if (invitationError) {
-              setError(invitationError.message);
-              return;
-            }
-            if (!data) return;
-            setSnapshot((current) =>
-              current
-                ? {
-                    ...current,
-                    invitations: [
-                      ...current.invitations,
-                      ...data.map((row: {
-                        id: string;
-                        label: string;
-                        token: string;
-                        expires_at: string;
-                      }) => ({
-                        id: row.id,
-                        label: row.label,
-                        token: row.token,
-                        expiresAt: row.expires_at,
-                      })),
-                    ],
-                  }
-                : current,
-            );
-          });
+        const { data, error: invitationError } = await supabase.rpc(
+          "create_class_invitation",
+          {
+            p_label: input.label,
+            p_max_uses: input.maxUses,
+            p_expires_at: input.expiresAt,
+          },
+        );
+        if (invitationError) {
+          setError(invitationError.message);
+          throw invitationError;
+        }
+        const row = data?.[0];
+        if (!row) throw new Error("El backend no devolvió la invitación.");
+        const invitation: Invitation = {
+          id: row.id,
+          label: row.label,
+          token: row.token,
+          tokenPreview: row.token_preview,
+          expiresAt: row.expires_at,
+          usedAt: row.used_at ?? undefined,
+          maxUses: row.max_uses,
+          useCount: row.use_count,
+          revokedAt: row.revoked_at ?? undefined,
+        };
+        setSnapshot((current) =>
+          current
+            ? {
+                ...current,
+                invitations: [invitation, ...current.invitations],
+              }
+            : current,
+        );
         return;
       }
-      const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
+      const token = `${crypto.randomUUID().replaceAll("-", "")}abcd`;
       persistDemo({
         ...snapshot,
         invitations: [
-          ...snapshot.invitations,
-          ...Array.from({ length: count }, (_, index) => ({
+          {
             id: crypto.randomUUID(),
-            label: `Invitación ${snapshot.invitations.length + index + 1}`,
-            token: crypto.randomUUID(),
-            expiresAt,
-          })),
+            label: input.label.trim(),
+            token,
+            tokenPreview: token.slice(-8),
+            expiresAt: input.expiresAt,
+            maxUses: input.maxUses,
+            useCount: 0,
+            revokedAt: input.active ? undefined : new Date().toISOString(),
+          },
+          ...snapshot.invitations,
         ],
       });
     },
+    [persistDemo, previewStudentId, snapshot],
+  );
+
+  const updateInvitation = useCallback(
+    async (id: string, input: InvitationInput) => {
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        const { error: invitationError } = await supabase.rpc(
+          "update_class_invitation",
+          {
+            p_invitation_id: id,
+            p_label: input.label,
+            p_max_uses: input.maxUses,
+            p_expires_at: input.expiresAt,
+            p_active: input.active,
+          },
+        );
+        if (invitationError) {
+          setError(invitationError.message);
+          throw invitationError;
+        }
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        invitations: snapshot.invitations.map((invitation) =>
+          invitation.id === id
+            ? {
+                ...invitation,
+                label: input.label.trim(),
+                maxUses: input.maxUses,
+                expiresAt: input.expiresAt,
+                revokedAt: input.active
+                  ? undefined
+                  : invitation.revokedAt ?? new Date().toISOString(),
+              }
+            : invitation,
+        ),
+      });
+    },
     [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const getInvitationToken = useCallback(
+    async (id: string) => {
+      const invitation = snapshot?.invitations.find((entry) => entry.id === id);
+      if (!invitation) throw new Error("Invitación no encontrada.");
+      if (invitation.token) return invitation.token;
+      if (!supabase) throw new Error("El token no está disponible.");
+      const { data, error: invitationError } = await supabase.rpc(
+        "get_invitation_token",
+        { p_invitation_id: id },
+      );
+      if (invitationError) {
+        setError(invitationError.message);
+        throw invitationError;
+      }
+      const token = String(data ?? "");
+      if (!token) throw new Error("El backend no devolvió el enlace.");
+      setSnapshot((current) =>
+        current
+          ? {
+              ...current,
+              invitations: current.invitations.map((entry) =>
+                entry.id === id
+                  ? {
+                      ...entry,
+                      token,
+                      tokenPreview: token.slice(-8),
+                    }
+                  : entry,
+              ),
+            }
+          : current,
+      );
+      return token;
+    },
+    [snapshot?.invitations],
   );
 
   const updateProfile = useCallback(
@@ -950,7 +1052,9 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       recordAttempt,
       reviewAttempt,
       createAssignment,
-      createInvitations,
+      createInvitation,
+      updateInvitation,
+      getInvitationToken,
       updateProfile,
       markNotificationRead,
       dismissNotification,
@@ -963,12 +1067,13 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       backendMode,
       clearError,
       createAssignment,
-      createInvitations,
+      createInvitation,
       dismissNotification,
       error,
       loading,
       loginDemo,
       logout,
+      getInvitationToken,
       markNotificationRead,
       profile,
       viewProfile,
@@ -982,6 +1087,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       snapshot,
       startStudentPreview,
       stopStudentPreview,
+      updateInvitation,
       updateProfile,
     ],
   );

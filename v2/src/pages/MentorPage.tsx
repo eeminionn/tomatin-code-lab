@@ -14,8 +14,10 @@ import {
   Eye,
   FilePlus2,
   Link2,
+  LoaderCircle,
   MailPlus,
   MessageSquareText,
+  Pencil,
   Plus,
   Save,
   Search,
@@ -44,6 +46,8 @@ import {
   LANGUAGE_META,
   LANGUAGES,
   type CreateAssignmentInput,
+  type Invitation,
+  type InvitationInput,
   type Language,
   type MissionDraftInput,
 } from "@/types";
@@ -1899,15 +1903,99 @@ function MissionManager() {
 }
 
 function InvitationsManager() {
-  const { snapshot, createInvitations } = useClassroom();
+  const {
+    snapshot,
+    createInvitation,
+    updateInvitation,
+    getInvitationToken,
+  } = useClassroom();
   const [copied, setCopied] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [form, setForm] = useState<InvitationInput>(() => ({
+    label: "",
+    maxUses: 1,
+    expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    active: true,
+  }));
   if (!snapshot) return null;
 
-  async function copyInvitation(token: string) {
-    const url = `${window.location.origin}${window.location.pathname}#/join/${token}`;
-    await navigator.clipboard.writeText(url);
-    setCopied(token);
-    window.setTimeout(() => setCopied(null), 1800);
+  function toLocalInput(value: string) {
+    const date = new Date(value);
+    const offset = date.getTimezoneOffset() * 60_000;
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  }
+
+  function fromLocalInput(value: string) {
+    return new Date(value).toISOString();
+  }
+
+  function openNewInvitation() {
+    setEditingId("new");
+    setMessage("");
+    setForm({
+      label: `Invitación ${(snapshot?.invitations.length ?? 0) + 1}`,
+      maxUses: 1,
+      expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+      active: true,
+    });
+  }
+
+  function openInvitation(invitation: Invitation) {
+    setEditingId(invitation.id);
+    setMessage("");
+    setForm({
+      label: invitation.label,
+      maxUses: invitation.maxUses,
+      expiresAt: invitation.expiresAt,
+      active: !invitation.revokedAt,
+    });
+  }
+
+  async function saveInvitation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingId) return;
+    setBusyId(editingId);
+    setMessage("");
+    try {
+      if (editingId === "new") {
+        await createInvitation(form);
+        setMessage("Enlace creado y listo para compartir.");
+      } else {
+        await updateInvitation(editingId, form);
+        setMessage("Invitación actualizada.");
+      }
+      setEditingId(null);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar la invitación.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function copyInvitation(invitation: Invitation) {
+    setBusyId(invitation.id);
+    setMessage("");
+    try {
+      const token = await getInvitationToken(invitation.id);
+      const url = `${window.location.origin}${window.location.pathname}#/join/${token}`;
+      await navigator.clipboard.writeText(url);
+      setCopied(invitation.id);
+      window.setTimeout(() => setCopied(null), 1800);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudo copiar el enlace al portapapeles.",
+      );
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -1917,39 +2005,180 @@ function InvitationsManager() {
           <p className="eyebrow">ACCESO AL CURSO</p>
           <h2 id="invitations-title">Invitaciones</h2>
         </div>
-        <button className="button primary" type="button" onClick={() => createInvitations(1)}>
+        <button className="button primary" type="button" onClick={openNewInvitation}>
           <MailPlus aria-hidden="true" />
-          Generar invitación
+          Nuevo enlace
         </button>
       </div>
       <div className="invitation-note">
         <ShieldCheck aria-hidden="true" />
         <p>
-          Cada enlace es individual, vence en siete días y solo puede usarse una vez.
-          El estudiante podrá entrar con GitHub o mediante un enlace por correo.
+          Cada enlace admite un cupo y vencimiento propios. Los estudiantes se
+          inscriben con GitHub y cada uso queda registrado de forma individual.
         </p>
       </div>
-      <div className="admin-list">
-        {snapshot.invitations.map((invitation) => (
-          <article className="admin-row invitation-row" key={invitation.id}>
-            <span className="invitation-icon"><Link2 aria-hidden="true" /></span>
-            <div className="admin-row-main">
-              <span>{invitation.usedAt ? "UTILIZADA" : "DISPONIBLE"}</span>
-              <strong>{invitation.label}</strong>
-              <small>Vence {formatDate(invitation.expiresAt, true)}</small>
+      {editingId ? (
+        <form className="invitation-editor" onSubmit={saveInvitation}>
+          <label className="field" htmlFor="invitation-label">
+            <span>Nombre del enlace</span>
+            <input
+              id="invitation-label"
+              required
+              minLength={1}
+              maxLength={80}
+              value={form.label}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  label: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="field" htmlFor="invitation-capacity">
+            <span>Cupos</span>
+            <input
+              id="invitation-capacity"
+              type="number"
+              min={
+                editingId === "new"
+                  ? 1
+                  : snapshot.invitations.find(
+                      (entry) => entry.id === editingId,
+                    )?.useCount ?? 1
+              }
+              max={100}
+              required
+              value={form.maxUses}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  maxUses: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+          <label className="field" htmlFor="invitation-expiration">
+            <span>Vence</span>
+            <input
+              id="invitation-expiration"
+              type="datetime-local"
+              required
+              value={toLocalInput(form.expiresAt)}
+              onChange={(event) => {
+                if (!event.target.value) return;
+                setForm((current) => ({
+                  ...current,
+                  expiresAt: fromLocalInput(event.target.value),
+                }));
+              }}
+            />
+          </label>
+          {editingId !== "new" ? (
+            <label className="invitation-active-toggle">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    active: event.target.checked,
+                  }))
+                }
+              />
+              <span>
+                <strong>Enlace activo</strong>
+                <small>Desactívalo para impedir nuevas inscripciones.</small>
+              </span>
+            </label>
+          ) : (
+            <div className="invitation-active-placeholder">
+              El enlace quedará activo al crearlo.
             </div>
-            <code>{invitation.token.slice(0, 8)}••••</code>
+          )}
+          <div className="invitation-editor-actions">
             <button
               className="button secondary"
               type="button"
-              disabled={Boolean(invitation.usedAt)}
-              onClick={() => void copyInvitation(invitation.token)}
+              onClick={() => setEditingId(null)}
             >
-              {copied === invitation.token ? <Check /> : <Clipboard />}
-              {copied === invitation.token ? "Copiado" : "Copiar enlace"}
+              Cancelar
             </button>
-          </article>
-        ))}
+            <button
+              className="button primary"
+              type="submit"
+              disabled={busyId === editingId}
+            >
+              {busyId === editingId ? (
+                <LoaderCircle className="spin" aria-hidden="true" />
+              ) : (
+                <Save aria-hidden="true" />
+              )}
+              {editingId === "new" ? "Crear enlace" : "Guardar cambios"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+      <p className="editor-message invitation-message" role="status">
+        {message}
+      </p>
+      <div className="admin-list">
+        {snapshot.invitations.map((invitation) => {
+          const expired =
+            new Date(invitation.expiresAt).getTime() <= Date.now();
+          const full = invitation.useCount >= invitation.maxUses;
+          const active = !invitation.revokedAt && !expired && !full;
+          const status = invitation.revokedAt
+            ? "REVOCADA"
+            : expired
+              ? "VENCIDA"
+              : full
+                ? "COMPLETA"
+                : "ACTIVA";
+          return (
+            <article className="admin-row invitation-row" key={invitation.id}>
+              <span className="invitation-icon"><Link2 aria-hidden="true" /></span>
+              <div className="admin-row-main">
+                <span className={active ? "is-active" : ""}>{status}</span>
+                <strong>{invitation.label}</strong>
+                <small>Vence {formatDate(invitation.expiresAt, true)}</small>
+              </div>
+              <div className="invitation-capacity">
+                <span>Cupos usados</span>
+                <strong>
+                  {invitation.useCount}/{invitation.maxUses}
+                </strong>
+              </div>
+              <code>••••{invitation.tokenPreview}</code>
+              <div className="invitation-actions">
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={`Editar ${invitation.label}`}
+                  title="Editar invitación"
+                  onClick={() => openInvitation(invitation)}
+                >
+                  <Pencil aria-hidden="true" />
+                </button>
+                <button
+                  className="button secondary"
+                  type="button"
+                  disabled={!active || busyId === invitation.id}
+                  onClick={() => void copyInvitation(invitation)}
+                >
+                  {busyId === invitation.id ? (
+                    <LoaderCircle className="spin" aria-hidden="true" />
+                  ) : copied === invitation.id ? (
+                    <Check aria-hidden="true" />
+                  ) : (
+                    <Clipboard aria-hidden="true" />
+                  )}
+                  {copied === invitation.id ? "Copiado" : "Copiar"}
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

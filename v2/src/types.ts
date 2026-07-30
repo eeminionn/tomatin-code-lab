@@ -289,9 +289,20 @@ export interface AppNotification {
 export interface Invitation {
   id: string;
   label: string;
-  token: string;
+  token?: string;
+  tokenPreview: string;
   expiresAt: string;
   usedAt?: string;
+  maxUses: number;
+  useCount: number;
+  revokedAt?: string;
+}
+
+export interface InvitationInput {
+  label: string;
+  maxUses: number;
+  expiresAt: string;
+  active: boolean;
 }
 
 export interface ClassroomSnapshot {

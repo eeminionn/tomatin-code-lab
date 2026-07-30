@@ -30,12 +30,30 @@ test("mentor reviews a pending submission and awards XP once", async ({ page }) 
   await expect(camila.locator(".ranking-xp")).toHaveText("200");
 });
 
-test("mentor can create a one-use invitation in demo mode", async ({ page }) => {
+test("mentor creates and edits a configurable invitation", async ({ page }) => {
   await loginAsMentor(page);
   await page.getByRole("link", { name: "Invitaciones", exact: true }).click();
   const before = await page.locator(".invitation-row").count();
-  await page.getByRole("button", { name: "Generar invitación" }).click();
+  await page.getByRole("button", { name: "Nuevo enlace" }).click();
+  await page.getByLabel("Nombre del enlace").fill("Grupo de ayudantía");
+  await page.getByLabel("Cupos").fill("3");
+  await page.getByRole("button", { name: "Crear enlace" }).click();
   await expect(page.locator(".invitation-row")).toHaveCount(before + 1);
+
+  const invitation = page
+    .locator(".invitation-row")
+    .filter({ hasText: "Grupo de ayudantía" });
+  await expect(invitation).toContainText("0/3");
+  await invitation
+    .getByRole("button", { name: "Editar Grupo de ayudantía" })
+    .click();
+  await page.getByLabel("Cupos").fill("5");
+  await page.getByLabel("Enlace activo").uncheck();
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+
+  await expect(invitation).toContainText("0/5");
+  await expect(invitation).toContainText("REVOCADA");
+  await expect(invitation.getByRole("button", { name: "Copiar" })).toBeDisabled();
 });
 
 test("mentor creates an assignment for selected students", async ({ page }) => {

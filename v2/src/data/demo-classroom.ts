@@ -166,12 +166,20 @@ const notifications: AppNotification[] = [
   },
 ];
 
-const invitations: Invitation[] = Array.from({ length: 3 }, (_, index) => ({
-  id: `invite-${index + 1}`,
-  label: `Estudiante ${index + 8}`,
-  token: `demo-${crypto.randomUUID().slice(0, 8)}`,
-  expiresAt: dateFromNow(7),
-}));
+const invitations: Invitation[] = Array.from({ length: 3 }, (_, index) => {
+  const token = `${crypto.randomUUID().replaceAll("-", "")}${String(
+    index + 1,
+  ).padStart(4, "0")}`;
+  return {
+    id: `invite-${index + 1}`,
+    label: `Estudiante ${index + 8}`,
+    token,
+    tokenPreview: token.slice(-8),
+    expiresAt: dateFromNow(7),
+    maxUses: 1,
+    useCount: 0,
+  };
+});
 
 const onceMission = getMissionById("p1-01-la-once");
 const seededAttempts = onceMission

@@ -4909,8 +4909,83 @@ fieldset legend {
   line-height: 1.5;
 }
 
+.invitation-editor {
+  display: grid;
+  align-items: end;
+  gap: 13px;
+  margin-bottom: 8px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  grid-template-columns:
+    minmax(180px, 1.4fr)
+    minmax(90px, 0.45fr)
+    minmax(190px, 0.8fr)
+    minmax(190px, 0.9fr);
+}
+
+.invitation-active-toggle {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.016);
+}
+
+.invitation-active-toggle input {
+  width: 16px;
+  min-height: 16px;
+  flex: 0 0 auto;
+}
+
+.invitation-active-toggle > span {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+}
+
+.invitation-active-toggle strong {
+  color: var(--muted-strong);
+  font-size: 9px;
+}
+
+.invitation-active-toggle small,
+.invitation-active-placeholder {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.invitation-active-placeholder {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 5px;
+}
+
+.invitation-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.invitation-message {
+  margin-bottom: 8px;
+}
+
 .invitation-row {
-  grid-template-columns: 38px minmax(220px, 1fr) 150px 140px;
+  grid-template-columns:
+    38px
+    minmax(180px, 1fr)
+    82px
+    110px
+    150px;
 }
 
 .invitation-icon {
@@ -4933,6 +5008,30 @@ fieldset legend {
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.invitation-row .admin-row-main > span.is-active {
+  color: var(--green);
+}
+
+.invitation-capacity {
+  display: grid;
+  gap: 3px;
+}
+
+.invitation-capacity strong {
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.invitation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.invitation-actions .button {
+  min-width: 96px;
 }
 
 .sidebar-backdrop {
@@ -5006,6 +5105,10 @@ fieldset legend {
 
   .profile-controls {
     padding: 20px 0 0;
+  }
+
+  .invitation-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .metrics-strip {
@@ -5261,6 +5364,14 @@ fieldset legend {
 
   .profile-menu {
     padding: 0 3px;
+  }
+
+  .invitation-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .invitation-editor-actions {
+    grid-column: auto;
   }
 
   .page {

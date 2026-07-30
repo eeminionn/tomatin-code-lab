@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(35);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -27,6 +27,24 @@ values
     '00000000-0000-0000-0000-000000000000',
     'authenticated', 'authenticated', 'two@test.local', '',
     now(), '{}', '{"name":"Student Two"}', now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000104',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated', 'invite-one@test.local', '',
+    now(), '{"provider":"github"}', '{"name":"Invite One"}', now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000105',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated', 'invite-two@test.local', '',
+    now(), '{"provider":"github"}', '{"name":"Invite Two"}', now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000106',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated', 'invite-three@test.local', '',
+    now(), '{"provider":"github"}', '{"name":"Invite Three"}', now(), now()
   );
 
 insert into public.classes (id, name, owner_id)
@@ -284,6 +302,37 @@ select is(
   'students only read their own notifications'
 );
 
+select is(
+  (select count(*) from public.invitations),
+  0::bigint,
+  'students cannot list classroom invitation links'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.create_class_invitation(
+      'Forged invitation',
+      10,
+      now() + interval '7 days'
+    )
+  $$,
+  'P0001',
+  'Mentor membership required.',
+  'students cannot create classroom invitations'
+);
+
+select throws_ok(
+  $$
+    select public.get_invitation_token(
+      '00000000-0000-0000-0000-000000000000'
+    )
+  $$,
+  'P0001',
+  'Invitation not found or staff access required.',
+  'students cannot retrieve invitation tokens'
+);
+
 select lives_ok(
   $$
     update public.profiles
@@ -430,6 +479,166 @@ select is(
   ),
   1::bigint,
   'the owner can review student attempts'
+);
+
+select lives_ok(
+  $$
+    select *
+    from public.create_class_invitation(
+      'Three student link',
+      3,
+      now() + interval '10 days'
+    )
+  $$,
+  'staff can create a multi-use invitation'
+);
+
+select is(
+  (
+    select invitation.max_uses
+    from public.invitations invitation
+    where invitation.label = 'Three student link'
+  ),
+  3,
+  'the invitation stores its configured capacity'
+);
+
+select lives_ok(
+  $$
+    select public.update_class_invitation(
+      (
+        select invitation.id
+        from public.invitations invitation
+        where invitation.label = 'Three student link'
+      ),
+      'Updated group link',
+      5,
+      now() + interval '20 days',
+      false
+    )
+  $$,
+  'staff can edit capacity, expiration, label, and active state'
+);
+
+select matches(
+  public.get_invitation_token(
+    (
+      select invitation.id
+      from public.invitations invitation
+      where invitation.label = 'Updated group link'
+    )
+  ),
+  '^[a-f0-9]{36}$',
+  'staff can retrieve the complete token from the private store'
+);
+
+create temporary table invitation_acceptance_test
+on commit drop
+as
+select created.id, created.token
+from public.create_class_invitation(
+  'Capacity test',
+  2,
+  now() + interval '10 days'
+) created;
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000104',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000104","role":"authenticated","app_metadata":{"provider":"github"}}',
+  true
+);
+
+select lives_ok(
+  $$
+    select public.accept_invitation(
+      (select token from invitation_acceptance_test)
+    )
+  $$,
+  'the first GitHub student can redeem a multi-use invitation'
+);
+
+set local role service_role;
+
+select is(
+  (
+    select invitation.use_count
+    from public.invitations invitation
+    where invitation.id = (select id from invitation_acceptance_test)
+  ),
+  1,
+  'the first redemption consumes one seat'
+);
+
+set local role authenticated;
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000105',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000105","role":"authenticated","app_metadata":{"provider":"github"}}',
+  true
+);
+
+select lives_ok(
+  $$
+    select public.accept_invitation(
+      (select token from invitation_acceptance_test)
+    )
+  $$,
+  'the second GitHub student can redeem the same invitation'
+);
+
+set local role service_role;
+
+select is(
+  (
+    select invitation.use_count
+    from public.invitations invitation
+    where invitation.id = (select id from invitation_acceptance_test)
+  ),
+  2,
+  'the second redemption consumes the final seat'
+);
+
+select ok(
+  (
+    select invitation.used_at is not null
+    from public.invitations invitation
+    where invitation.id = (select id from invitation_acceptance_test)
+  ),
+  'the invitation is marked complete when its capacity is reached'
+);
+
+set local role authenticated;
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000106',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000106","role":"authenticated","app_metadata":{"provider":"github"}}',
+  true
+);
+
+select throws_ok(
+  $$
+    select public.accept_invitation(
+      (select token from invitation_acceptance_test)
+    )
+  $$,
+  'P0001',
+  'Invitation has no remaining seats.',
+  'a third student cannot exceed the invitation capacity'
 );
 
 select * from finish();
