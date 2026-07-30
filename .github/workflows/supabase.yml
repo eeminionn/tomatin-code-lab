@@ -29,23 +29,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Verify production configuration
+        run: |
+          test -n "$PROJECT_ID" || {
+            echo "::error::Missing secret SUPABASE_PROJECT_ID."
+            exit 1
+          }
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo "::error::Missing secret SUPABASE_ACCESS_TOKEN."
+            exit 1
+          }
+          test -n "$SUPABASE_DB_PASSWORD" || {
+            echo "::error::Missing secret SUPABASE_DB_PASSWORD."
+            exit 1
+          }
+          test -n "$SUBMISSION_REPOSITORY_TOKEN" || {
+            echo "::error::Missing secret SUBMISSION_REPOSITORY_TOKEN."
+            exit 1
+          }
+
       - name: Install Supabase CLI
-        if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_DB_PASSWORD != ''
         uses: supabase/setup-cli@v2
         with:
           version: latest
           github-token: ${{ github.token }}
 
       - name: Link project
-        if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_DB_PASSWORD != ''
         run: supabase link --project-ref "$PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
 
       - name: Apply database migrations
-        if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_DB_PASSWORD != ''
         run: supabase db push
 
       - name: Configure repository sync
-        if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.SUBMISSION_REPOSITORY_TOKEN != ''
         run: |
           owner="${SUBMISSION_REPOSITORY_OWNER:-eeminionn}"
           supabase secrets set \
@@ -54,9 +69,4 @@ jobs:
             GITHUB_REPOSITORY_OWNER="$owner"
 
       - name: Deploy Edge Functions
-        if: env.PROJECT_ID != '' && env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_DB_PASSWORD != ''
         run: supabase functions deploy --project-ref "$PROJECT_ID"
-
-      - name: Backend not configured
-        if: env.PROJECT_ID == '' || env.SUPABASE_ACCESS_TOKEN == '' || env.SUPABASE_DB_PASSWORD == ''
-        run: echo "Supabase deployment skipped until repository secrets are configured."

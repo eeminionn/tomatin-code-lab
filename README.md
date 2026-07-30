@@ -113,6 +113,9 @@ C++20. Playwright cubre en serie los recorridos de estudiante y mentor; pgTAP
 comprueba las políticas RLS contra una base temporal. El catálogo y la migración SQL se
 regeneran desde una única fuente para evitar que se desalineen.
 
+El procedimiento y los criterios para ampliar el piloto están en
+[`docs/BETA_ROLLOUT.md`](docs/BETA_ROLLOUT.md).
+
 ## Estructura
 
 - `v2/`: aplicación React de la beta 3.0.
