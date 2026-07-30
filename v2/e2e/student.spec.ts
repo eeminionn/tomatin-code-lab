@@ -26,11 +26,48 @@ test("opens an assigned mission in two actions and runs visible tests", async ({
   await expect
     .poll(() => page.evaluate(() => window.__TOMATIN_EDITOR__?.getValue()))
     .toContain("const preciosEjemplo = [1200, 850]");
+  await expect(page.getByRole("button", { name: "Entregar" })).toBeDisabled();
 
   await page.getByRole("button", { name: "Ejecutar" }).click();
   await expect(
     page.getByText("El código corre, pero aún no pasa todos los tests"),
   ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Entregar" })).toBeEnabled();
+});
+
+test("resizes results and keeps long editor lines on one line", async ({
+  page,
+}) => {
+  await page.getByRole("link", { name: "Continuar" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => window.__TOMATIN_EDITOR__?.getRawOptions().wordWrap,
+      ),
+    )
+    .toBe("off");
+
+  const editor = page.locator(".code-pane");
+  const results = page.locator(".results-pane");
+  const resizer = page.getByRole("separator", {
+    name: "Ajustar ancho de Resultados",
+  });
+  const editorBefore = await editor.boundingBox();
+  const resultsBefore = await results.boundingBox();
+  const handle = await resizer.boundingBox();
+  expect(editorBefore).not.toBeNull();
+  expect(resultsBefore).not.toBeNull();
+  expect(handle).not.toBeNull();
+
+  await page.mouse.move(handle!.x + handle!.width / 2, handle!.y + 80);
+  await page.mouse.down();
+  await page.mouse.move(handle!.x - 70, handle!.y + 80);
+  await page.mouse.up();
+
+  const editorAfter = await editor.boundingBox();
+  const resultsAfter = await results.boundingBox();
+  expect(editorAfter!.width).toBeLessThan(editorBefore!.width);
+  expect(resultsAfter!.width).toBeGreaterThan(resultsBefore!.width);
 });
 
 test("keeps independent code when changing language", async ({ page }) => {

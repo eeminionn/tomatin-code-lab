@@ -2367,7 +2367,7 @@ fieldset legend {
   display: grid;
   height: calc(100% - 68px);
   min-height: 0;
-  grid-template-columns: minmax(280px, 32%) minmax(420px, 1fr) minmax(290px, 30%);
+  grid-template-columns: minmax(280px, 32%) minmax(0, 1fr);
 }
 
 .brief-pane,
@@ -2379,14 +2379,69 @@ fieldset legend {
   background: rgba(5, 12, 8, 0.88);
 }
 
-.brief-pane,
-.code-pane {
+.brief-pane {
   border-right: 1px solid var(--line);
 }
 
 .brief-pane {
   display: flex;
   flex-direction: column;
+}
+
+.workbench-panes {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns:
+    minmax(420px, 1fr)
+    7px
+    minmax(290px, var(--results-panel-width, 360px));
+}
+
+.workspace-resizer {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  width: 7px;
+  min-width: 7px;
+  height: 100%;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  color: transparent;
+  background: rgba(255, 255, 255, 0.018);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.workspace-resizer::before {
+  position: absolute;
+  width: 3px;
+  height: 44px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  content: "";
+  transition:
+    height 150ms ease,
+    background 150ms ease;
+}
+
+.workspace-resizer svg {
+  width: 13px;
+}
+
+.workspace-resizer:hover::before,
+.workspace-resizer:focus-visible::before {
+  height: 64px;
+  background: var(--green);
+}
+
+.workspace-resizer:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
 }
 
 .brief-tabs {
@@ -4523,10 +4578,18 @@ fieldset legend {
     grid-template-columns: minmax(260px, 30%) minmax(400px, 1fr);
   }
 
+  .workbench-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-resizer {
+    display: none;
+  }
+
   .results-pane {
     position: absolute;
     z-index: 15;
-    top: calc(var(--topbar) + 68px);
+    top: 0;
     right: 0;
     bottom: 0;
     width: min(390px, 40vw);
@@ -4706,15 +4769,24 @@ fieldset legend {
     height: calc(100% - 112px);
   }
 
+  .workbench-panes,
   .brief-pane,
   .code-pane,
   .results-pane {
     position: absolute;
     inset: 0;
-    display: flex;
     width: auto;
     border: 0;
     box-shadow: none;
+  }
+
+  .workbench-panes {
+    display: block;
+  }
+
+  .brief-pane,
+  .results-pane {
+    display: flex;
   }
 
   .code-pane {

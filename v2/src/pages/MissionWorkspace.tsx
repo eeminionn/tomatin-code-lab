@@ -5,6 +5,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   ArrowLeft,
@@ -19,6 +21,7 @@ import {
   ExternalLink,
   FileCode2,
   Github,
+  GripVertical,
   History,
   Lightbulb,
   LoaderCircle,
@@ -61,6 +64,28 @@ const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 type MobilePane = "brief" | "code" | "results";
 type BriefTab = "problem" | "hints" | "history" | "solution";
 type SaveState = "loading" | "saving" | "synced" | "local" | "error";
+
+const RESULTS_WIDTH_KEY = "tomatin.v3.workspace-results-width";
+const MIN_RESULTS_WIDTH = 290;
+const MIN_EDITOR_WIDTH = 420;
+const RESIZER_WIDTH = 7;
+const DEFAULT_RESULTS_WIDTH = 320;
+
+function readResultsWidth() {
+  const stored = Number(window.localStorage.getItem(RESULTS_WIDTH_KEY));
+  return Number.isFinite(stored) && stored >= MIN_RESULTS_WIDTH
+    ? stored
+    : DEFAULT_RESULTS_WIDTH;
+}
+
+function executionFingerprint(
+  missionId: string,
+  missionVersion: number,
+  language: Language,
+  code: string,
+) {
+  return `${missionId}:${missionVersion}:${language}:${code}`;
+}
 
 const configureMonaco: BeforeMount = (monaco) => {
   monaco.editor.defineTheme("tomatin-terminal", {
@@ -312,10 +337,15 @@ export function Component() {
   const [solution, setSolution] = useState<MissionSolution | null>(null);
   const [solutionError, setSolutionError] = useState("");
   const [solutionLoading, setSolutionLoading] = useState(false);
+  const [resultsWidth, setResultsWidth] = useState(readResultsWidth);
+  const [executedFingerprints, setExecutedFingerprints] = useState<Set<string>>(
+    new Set(),
+  );
   const saveTimer = useRef<number | undefined>(undefined);
   const lastEditingSignal = useRef(0);
   const openedActivityKey = useRef("");
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const workbenchRef = useRef<HTMLDivElement | null>(null);
   const isStaff = profile?.role === "owner" || profile?.role === "mentor";
   const canViewSolution = isStaff && !isStudentPreview;
 
@@ -552,6 +582,24 @@ export function Component() {
     }
   }, [briefTab, canViewSolution]);
 
+  useEffect(() => {
+    const workbench = workbenchRef.current;
+    if (!workbench || typeof ResizeObserver === "undefined") return;
+    const clampCurrentWidth = () => {
+      const maxWidth = Math.max(
+        MIN_RESULTS_WIDTH,
+        workbench.clientWidth - MIN_EDITOR_WIDTH - RESIZER_WIDTH,
+      );
+      setResultsWidth((current) =>
+        Math.min(Math.max(current, MIN_RESULTS_WIDTH), maxWidth),
+      );
+    };
+    const observer = new ResizeObserver(clampCurrentWidth);
+    observer.observe(workbench);
+    clampCurrentWidth();
+    return () => observer.disconnect();
+  }, []);
+
   if (!mission) return <Navigate to="/missions" replace />;
   if (!profile || !viewProfile || !snapshot) return null;
 
@@ -559,6 +607,22 @@ export function Component() {
   const activeProfile = viewProfile;
   const allowedLanguages = validAssignment?.allowedLanguages ?? [...LANGUAGES];
   const currentCode = codeByLanguage[language];
+  const currentExecutionFingerprint = executionFingerprint(
+    activeMission.id,
+    activeMission.version,
+    language,
+    currentCode,
+  );
+  const hasRunCurrentCode =
+    executedFingerprints.has(currentExecutionFingerprint) ||
+    history.some(
+      (attempt) =>
+        attempt.kind === "run" &&
+        attempt.missionVersion === activeMission.version &&
+        attempt.language === language &&
+        attempt.code === currentCode,
+    );
+  const submitNeedsRun = Boolean(validAssignment) && !hasRunCurrentCode;
   const testInputs = Object.fromEntries(
     activeMission.variants[language].publicTests.map((testCase) => [
       testCase.id,
@@ -567,7 +631,7 @@ export function Component() {
   );
 
   async function execute(kind: AttemptKind) {
-    if (isStudentPreview) return;
+    if (isStudentPreview || (kind === "submit" && submitNeedsRun)) return;
     setRunning(kind);
     setResult(null);
     setMobilePane("results");
@@ -586,6 +650,13 @@ export function Component() {
       })),
     };
     setResult(annotatedResult);
+    if (kind === "run") {
+      setExecutedFingerprints((current) => {
+        const next = new Set(current);
+        next.add(currentExecutionFingerprint);
+        return next;
+      });
+    }
     const attempt: Attempt = {
       id: annotatedResult.id,
       userId: activeProfile.id,
@@ -607,6 +678,46 @@ export function Component() {
       );
     }
     setRunning(null);
+  }
+
+  function clampResultsWidth(nextWidth: number) {
+    const workbenchWidth = workbenchRef.current?.clientWidth ?? 0;
+    const maxWidth = Math.max(
+      MIN_RESULTS_WIDTH,
+      workbenchWidth - MIN_EDITOR_WIDTH - RESIZER_WIDTH,
+    );
+    return Math.min(Math.max(nextWidth, MIN_RESULTS_WIDTH), maxWidth);
+  }
+
+  function resizeResults(event: ReactPointerEvent<HTMLButtonElement>) {
+    const workbench = workbenchRef.current;
+    if (!workbench) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setResultsWidth(
+      clampResultsWidth(workbench.getBoundingClientRect().right - event.clientX),
+    );
+  }
+
+  function finishResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    const workbench = workbenchRef.current;
+    const next = workbench
+      ? clampResultsWidth(
+          workbench.getBoundingClientRect().right - event.clientX,
+        )
+      : resultsWidth;
+    setResultsWidth(next);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    window.localStorage.setItem(RESULTS_WIDTH_KEY, String(next));
+  }
+
+  function resizeResultsWithKeyboard(direction: -1 | 1) {
+    setResultsWidth((current) => {
+      const next = clampResultsWidth(current + direction * 24);
+      window.localStorage.setItem(RESULTS_WIDTH_KEY, String(next));
+      return next;
+    });
   }
 
   function resetStarter() {
@@ -1000,7 +1111,16 @@ export function Component() {
           </div>
         </aside>
 
-        <section className={`code-pane mobile-${mobilePane === "code" ? "visible" : "hidden"}`}>
+        <div
+          className="workbench-panes"
+          ref={workbenchRef}
+          style={
+            {
+              "--results-panel-width": `${resultsWidth}px`,
+            } as CSSProperties
+          }
+        >
+          <section className={`code-pane mobile-${mobilePane === "code" ? "visible" : "hidden"}`}>
           <div className="code-toolbar">
             <div className="language-switcher" role="group" aria-label="Lenguaje">
               {allowedLanguages.map((entry) => (
@@ -1083,7 +1203,13 @@ export function Component() {
                   scrollBeyondLastLine: false,
                   smoothScrolling: true,
                   tabSize: language === "python" ? 4 : 2,
-                  wordWrap: "on",
+                  wordWrap: "off",
+                  scrollBeyondLastColumn: 5,
+                  scrollbar: {
+                    horizontal: "auto",
+                    vertical: "auto",
+                    alwaysConsumeMouseWheel: false,
+                  },
                   stickyScroll: { enabled: false },
                 }}
               />
@@ -1115,7 +1241,12 @@ export function Component() {
             <button
               className="button primary"
               type="button"
-              disabled={Boolean(running) || isStudentPreview}
+              disabled={Boolean(running) || isStudentPreview || submitNeedsRun}
+              title={
+                submitNeedsRun
+                  ? "Ejecuta este código antes de entregarlo"
+                  : undefined
+              }
               onClick={() => void execute("submit")}
             >
               {running === "submit" ? (
@@ -1126,12 +1257,42 @@ export function Component() {
               {validAssignment ? "Entregar" : "Comprobar"}
             </button>
           </div>
-        </section>
+          </section>
 
-        <section
-          className={`results-pane mobile-${mobilePane === "results" ? "visible" : "hidden"}`}
-          aria-live="polite"
-        >
+          <button
+            className="workspace-resizer"
+            type="button"
+            role="separator"
+            aria-label="Ajustar ancho de Resultados"
+            aria-orientation="vertical"
+            aria-valuemin={MIN_RESULTS_WIDTH}
+            aria-valuenow={Math.round(resultsWidth)}
+            title="Arrastra para ajustar Resultados"
+            onPointerDown={resizeResults}
+            onPointerMove={(event) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                resizeResults(event);
+              }
+            }}
+            onPointerUp={finishResize}
+            onPointerCancel={finishResize}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                resizeResultsWithKeyboard(1);
+              } else if (event.key === "ArrowRight") {
+                event.preventDefault();
+                resizeResultsWithKeyboard(-1);
+              }
+            }}
+          >
+            <GripVertical aria-hidden="true" />
+          </button>
+
+          <section
+            className={`results-pane mobile-${mobilePane === "results" ? "visible" : "hidden"}`}
+            aria-live="polite"
+          >
           <div className="results-titlebar">
             <span>
               <TestTube2 aria-hidden="true" />
@@ -1176,7 +1337,8 @@ export function Component() {
               }}
             />
           )}
-        </section>
+          </section>
+        </div>
       </div>
     </main>
   );
