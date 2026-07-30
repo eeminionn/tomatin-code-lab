@@ -1,6 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { executeJudge0 } from "../_shared/judge0.ts";
+import {
+  getSecureVariant,
+  upsertSecureVariant,
+} from "../_shared/secure-variants.ts";
 import type {
   Language,
   MissionExample,
@@ -122,12 +126,7 @@ Deno.serve(async (request) => {
       (data ?? []).map(async (version) => {
         const variants = await Promise.all(
           (version.mission_variants ?? []).map(async (variant) => {
-            const { data: secure } = await admin
-              .schema("private")
-              .from("mission_variants_secure")
-              .select("reference_solution, hidden_tests")
-              .eq("variant_id", variant.id)
-              .single();
+            const secure = await getSecureVariant(admin, variant.id);
             return {
               id: variant.id,
               language: variant.language,
@@ -136,8 +135,8 @@ Deno.serve(async (request) => {
               examples: variant.examples ?? [],
               publicTests: variant.public_tests,
               hiddenTestCount: variant.hidden_test_count,
-              referenceSolution: secure?.reference_solution ?? "",
-              hiddenTests: secure?.hidden_tests ?? [],
+              referenceSolution: secure?.referenceSolution ?? "",
+              hiddenTests: secure?.hiddenTests ?? [],
             };
           }),
         );
@@ -179,13 +178,8 @@ Deno.serve(async (request) => {
     }
     const completeVariants = await Promise.all(
       variants.map(async (variant) => {
-        const { data: secure, error } = await admin
-          .schema("private")
-          .from("mission_variants_secure")
-          .select("reference_solution, hidden_tests")
-          .eq("variant_id", variant.id)
-          .single();
-        if (error || !secure) throw new Error("Datos privados incompletos.");
+        const secure = await getSecureVariant(admin, variant.id);
+        if (!secure) throw new Error("Datos privados incompletos.");
         return { ...variant, secure };
       }),
     );
@@ -211,15 +205,12 @@ Deno.serve(async (request) => {
         .select("id")
         .single();
       if (error || !inserted) throw error ?? new Error("No se pudo copiar la variante.");
-      const { error: secureError } = await admin
-        .schema("private")
-        .from("mission_variants_secure")
-        .insert({
-          variant_id: inserted.id,
-          reference_solution: variant.secure.reference_solution,
-          hidden_tests: variant.secure.hidden_tests,
-        });
-      if (secureError) throw secureError;
+      await upsertSecureVariant(
+        admin,
+        inserted.id,
+        variant.secure.referenceSolution,
+        variant.secure.hiddenTests,
+      );
     }
   }
 
@@ -254,13 +245,8 @@ Deno.serve(async (request) => {
       if (variantError || !variant) {
         return jsonResponse(request, { error: "Solución no encontrada." }, 404);
       }
-      const { data: secure, error: secureError } = await admin
-        .schema("private")
-        .from("mission_variants_secure")
-        .select("reference_solution")
-        .eq("variant_id", variant.id)
-        .single();
-      if (secureError || !secure) {
+      const secure = await getSecureVariant(admin, variant.id);
+      if (!secure) {
         return jsonResponse(
           request,
           { error: "Solución privada no disponible." },
@@ -273,7 +259,7 @@ Deno.serve(async (request) => {
           missionVersion: body.missionVersion,
           language: body.language,
           expectedSignature: variant.expected_signature ?? "",
-          referenceSolution: secure.reference_solution,
+          referenceSolution: secure.referenceSolution,
           explanation:
             "Esta implementación de referencia cumple el contrato y pasa los tests públicos y privados de la versión seleccionada.",
         },
@@ -410,16 +396,12 @@ Deno.serve(async (request) => {
         .select("id")
         .single();
       if (error || !variant) throw error;
-      const { error: secureError } = await admin
-        .schema("private")
-        .from("mission_variants_secure")
-        .upsert({
-          variant_id: variant.id,
-          reference_solution: body.referenceSolution,
-          hidden_tests: body.hiddenTests,
-          updated_at: new Date().toISOString(),
-        });
-      if (secureError) throw secureError;
+      await upsertSecureVariant(
+        admin,
+        variant.id,
+        body.referenceSolution,
+        body.hiddenTests,
+      );
       return jsonResponse(request, { drafts: await loadDrafts() });
     }
 

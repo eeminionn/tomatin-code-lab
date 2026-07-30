@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(18);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -213,6 +213,39 @@ select is(
   'requesting changes migrates the student to the current mission version'
 );
 
+set local role service_role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+
+select is(
+  (
+    select count(*)
+    from public.get_mission_variant_secure(
+      (
+        select variant.id
+        from public.mission_variants variant
+        join public.mission_versions version
+          on version.id = variant.mission_version_id
+        where version.mission_id = 'p1-01-la-once'
+        order by version.version desc
+        limit 1
+      )
+    )
+  ),
+  1::bigint,
+  'service role reads one secure variant through the narrow RPC'
+);
+
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.upsert_mission_variant_secure(uuid,text,jsonb)',
+    'EXECUTE'
+  ),
+  'service role can maintain secure variants through the write RPC'
+);
+
+reset role;
+
 set local role authenticated;
 select set_config(
   'request.jwt.claim.sub',
@@ -277,6 +310,18 @@ select throws_ok(
   '42501',
   'permission denied for schema private',
   'students cannot access private tests or solutions'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.get_mission_variant_secure(
+      '00000000-0000-0000-0000-000000000000'
+    )
+  $$,
+  '42501',
+  'permission denied for function get_mission_variant_secure',
+  'students cannot call the secure variant RPC'
 );
 
 select throws_ok(

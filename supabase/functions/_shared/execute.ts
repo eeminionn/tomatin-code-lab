@@ -2,6 +2,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "./cors.ts";
 import { executeJudge0 } from "./judge0.ts";
 import { syncSubmissionToGitHub } from "./github-submissions.ts";
+import { getSecureVariant } from "./secure-variants.ts";
+import type { SecureVariantData } from "./secure-variants.ts";
 import type { Language, MissionTest } from "./types.ts";
 
 interface ExecuteBody {
@@ -219,16 +221,16 @@ export function createExecutionHandler(kind: "run" | "submit") {
     const variant = variantData as unknown as VariantRow;
     let hiddenTests: MissionTest[] = [];
     if (kind === "submit") {
-      const { data: secure, error: secureError } = await admin
-        .schema("private")
-        .from("mission_variants_secure")
-        .select("hidden_tests")
-        .eq("variant_id", variant.id)
-        .single();
-      if (secureError || !secure) {
+      let secure: SecureVariantData | null = null;
+      try {
+        secure = await getSecureVariant(admin, variant.id);
+      } catch {
+        // The secure helper logs the database error without exposing it to students.
+      }
+      if (!secure) {
         return jsonResponse(request, { error: "Tests privados no disponibles." }, 503);
       }
-      hiddenTests = secure.hidden_tests as MissionTest[];
+      hiddenTests = secure.hiddenTests;
     }
 
     const result = await executeJudge0(

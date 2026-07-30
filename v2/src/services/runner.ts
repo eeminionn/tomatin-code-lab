@@ -16,6 +16,38 @@ interface WorkerResponse {
   stack?: string;
 }
 
+export async function edgeFunctionErrorMessage(
+  error: unknown,
+): Promise<string> {
+  const fallback =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "El ejecutor remoto no respondió.";
+  const context =
+    typeof error === "object" && error !== null && "context" in error
+      ? error.context
+      : null;
+  if (!(context instanceof Response)) return fallback;
+
+  try {
+    const payload = (await context.clone().json()) as {
+      error?: unknown;
+      message?: unknown;
+    };
+    if (typeof payload.error === "string" && payload.error.trim()) {
+      return payload.error;
+    }
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      return payload.message;
+    }
+  } catch {
+    // Keep the SDK message when the function did not return JSON.
+  }
+  return fallback;
+}
+
 function localRunStatus(response: WorkerResponse): RunStatus {
   if (!response.ok) return "runtime_error";
   return response.tests.length > 0 && response.tests.every((entry) => entry.passed)
@@ -120,7 +152,7 @@ export async function runMissionCode(request: RunnerRequest): Promise<RunResult>
         id: crypto.randomUUID(),
         status: "provider_error",
         stdout: "",
-        stderr: error?.message ?? "El ejecutor remoto no respondió.",
+        stderr: await edgeFunctionErrorMessage(error),
         diagnostics: [],
         tests: [],
         createdAt: new Date().toISOString(),

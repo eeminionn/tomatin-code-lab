@@ -47,6 +47,20 @@ describe("security contracts", () => {
       resolve("supabase/functions/mission-admin/index.ts"),
       "utf8",
     );
+    const execute = readFileSync(
+      resolve("supabase/functions/_shared/execute.ts"),
+      "utf8",
+    );
+    const secureVariants = readFileSync(
+      resolve("supabase/functions/_shared/secure-variants.ts"),
+      "utf8",
+    );
+    const secureRpc = readFileSync(
+      resolve(
+        "supabase/migrations/202607300004_secure_variant_rpc.sql",
+      ),
+      "utf8",
+    );
     const judge0 = readFileSync(
       resolve("supabase/functions/_shared/judge0.ts"),
       "utf8",
@@ -58,7 +72,18 @@ describe("security contracts", () => {
     expect(contracts).toContain("inline_comments");
     expect(missionAdmin).toContain('.in("role", ["owner", "mentor"])');
     expect(missionAdmin).toContain('body.action === "get-solution"');
-    expect(missionAdmin).toContain('.schema("private")');
+    expect(missionAdmin).not.toContain('.schema("private")');
+    expect(execute).not.toContain('.schema("private")');
+    expect(secureVariants).toContain(
+      'admin.rpc("get_mission_variant_secure"',
+    );
+    expect(secureVariants).toContain(
+      'admin.rpc("upsert_mission_variant_secure"',
+    );
+    expect(secureRpc).toContain("security definer");
+    expect(secureRpc).toContain("set search_path = ''");
+    expect(secureRpc).toContain("from public, anon, authenticated");
+    expect(secureRpc).toContain("to service_role");
     expect(judge0).toContain(
       "Revisa los casos límite y el contrato de la misión.",
     );
