@@ -51,7 +51,7 @@ const assignments: Assignment[] = [
   {
     id: "assignment-once",
     missionId: "p1-01-la-once",
-    missionVersion: 2,
+    missionVersion: 3,
     title: "Variables y acumuladores",
     instructions: "Resuelve la misión en cualquiera de los tres lenguajes.",
     dueAt: dateFromNow(2),
@@ -63,7 +63,7 @@ const assignments: Assignment[] = [
   {
     id: "assignment-var",
     missionId: "p1-02-var-limache",
-    missionVersion: 2,
+    missionVersion: 3,
     title: "Condiciones booleanas",
     instructions: "Incluye los cuatro casos posibles en tus pruebas.",
     dueAt: dateFromNow(4),
@@ -75,7 +75,7 @@ const assignments: Assignment[] = [
   {
     id: "assignment-pins",
     missionId: "p1-03-semaforo-led",
-    missionVersion: 2,
+    missionVersion: 3,
     title: "Recorridos seguros",
     instructions: "Prioriza claridad y no accedas fuera de rango.",
     dueAt: dateFromNow(7),
@@ -87,7 +87,7 @@ const assignments: Assignment[] = [
   {
     id: "assignment-factorial",
     missionId: "p2-01-factorial-recursivo",
-    missionVersion: 2,
+    missionVersion: 3,
     title: "Recursión y caso base",
     instructions: "La entrega debe manejar números negativos.",
     dueAt: dateFromNow(10),

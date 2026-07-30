@@ -4,7 +4,7 @@ const onceExamples = [
   {
     id: "once-total",
     label: "Dos productos",
-    input: "1200 × 2 + 850 × 3",
+    input: "precios = [1200, 850], cantidades = [2, 3]",
     output: "4950",
     explanation:
       "1200 × 2 + 850 × 3 = 4950. Cada precio se multiplica por la cantidad de su misma posición antes de sumar ambos subtotales.",
@@ -45,6 +45,7 @@ export const programmingOneMissions = [
     constraints: [
       "No cambies el nombre ni los parámetros de totalOnce.",
       "Precios y cantidades tendrán el mismo largo.",
+      "Usa los parámetros recibidos; las listas declaradas al final del starter son solo un ejemplo.",
       "Una compra vacía debe retornar cero.",
       "Devuelve un número; no formatees el resultado como texto.",
     ],
@@ -95,7 +96,7 @@ export const programmingOneMissions = [
             "Suma dos productos",
             "totalOnce([1200, 850], [2, 3]) === 4950",
             "4950",
-            "Multiplica cada precio por su cantidad antes de sumar.",
+            "Actualiza total dentro del bucle; si lo haces después, solo sumarás el último producto.",
             "totalOnce([1200, 850], [2, 3])",
           ),
           test(
@@ -115,8 +116,18 @@ export const programmingOneMissions = [
             "3996",
             "Revisa el producto único.",
           ),
+          test(
+            "once-three",
+            "Acumula tres productos",
+            "totalOnce([100, 250, 80], [3, 2, 5]) === 1200",
+            "1200",
+            "Suma todos los subtotales, no solamente el último.",
+          ),
         ],
         onceExamples,
+        `const preciosEjemplo = [1200, 850];
+const cantidadesEjemplo = [2, 3];
+// totalOnce(preciosEjemplo, cantidadesEjemplo) debe retornar 4950.`,
       ),
       python: variant(
         "python",
@@ -140,7 +151,7 @@ export const programmingOneMissions = [
             "Suma dos productos",
             "total_once([1200, 850], [2, 3]) == 4950",
             "4950",
-            "Multiplica cada precio por su cantidad antes de sumar.",
+            "Actualiza total dentro del bucle; si lo haces después, solo sumarás el último producto.",
             "total_once([1200, 850], [2, 3])",
           ),
           test(
@@ -160,8 +171,18 @@ export const programmingOneMissions = [
             "3996",
             "Revisa el producto único.",
           ),
+          test(
+            "once-three",
+            "Acumula tres productos",
+            "total_once([100, 250, 80], [3, 2, 5]) == 1200",
+            "1200",
+            "Suma todos los subtotales, no solamente el último.",
+          ),
         ],
         onceExamples,
+        `precios_ejemplo = [1200, 850]
+cantidades_ejemplo = [2, 3]
+# total_once(precios_ejemplo, cantidades_ejemplo) debe retornar 4950.`,
       ),
       cpp: variant(
         "cpp",
@@ -190,7 +211,7 @@ export const programmingOneMissions = [
             "Suma dos productos",
             "abs(totalOnce({1200, 850}, {2, 3}) - 4950) < 0.001",
             "4950",
-            "Multiplica cada precio por su cantidad antes de sumar.",
+            "Actualiza total dentro del bucle; si lo haces después, solo sumarás el último producto.",
           ),
           test(
             "once-empty",
@@ -208,8 +229,18 @@ export const programmingOneMissions = [
             "3996",
             "Revisa el producto único.",
           ),
+          test(
+            "once-three",
+            "Acumula tres productos",
+            "abs(totalOnce({100, 250, 80}, {3, 2, 5}) - 1200) < 0.001",
+            "1200",
+            "Suma todos los subtotales, no solamente el último.",
+          ),
         ],
         onceExamples,
+        `const vector<double> preciosEjemplo = {1200, 850};
+const vector<int> cantidadesEjemplo = {2, 3};
+// totalOnce(preciosEjemplo, cantidadesEjemplo) debe retornar 4950.`,
       ),
     },
   }),

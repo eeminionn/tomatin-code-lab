@@ -111,7 +111,7 @@ function ResultSummary({
     queued: "En cola",
     running: "Ejecutando",
     passed: "Todos los tests pasaron",
-    failed: "Hay tests por corregir",
+    failed: "El código corre, pero aún no pasa todos los tests",
     compile_error: "Error de compilación",
     runtime_error: "Error de ejecución",
     timeout: "Tiempo agotado",

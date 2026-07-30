@@ -140,7 +140,7 @@ commit;
 
 const destination = resolve("supabase/seed.sql");
 const migrationDestination = resolve(
-  "supabase/migrations/202607300002_mission_catalog_v2.sql",
+  "supabase/migrations/202607300003_mission_catalog_v3_visible_inputs.sql",
 );
 const publicDestination = resolve(
   "v2/src/data/missions-public.generated.ts",

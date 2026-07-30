@@ -19,15 +19,18 @@ test("opens an assigned mission in two actions and runs visible tests", async ({
   await expect(page.getByText("TU MISIÓN")).toBeVisible();
   await expect(page.getByText("IDEA CLAVE")).toBeVisible();
   await expect(page.getByText("PASOS SUGERIDOS")).toBeVisible();
+  await expect(
+    page.getByText("precios = [1200, 850], cantidades = [2, 3]"),
+  ).toBeVisible();
   await expect(page.getByText(/1200 × 2 \+ 850 × 3 = 4950/)).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => window.__TOMATIN_EDITOR__?.getValue()))
-    .toContain("let total = 0");
+    .toContain("const preciosEjemplo = [1200, 850]");
 
   await page.getByRole("button", { name: "Ejecutar" }).click();
-  await expect(page.getByText(/tests|Error de ejecución|Hay tests por corregir/).first()).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(
+    page.getByText("El código corre, pero aún no pasa todos los tests"),
+  ).toBeVisible({ timeout: 15_000 });
 });
 
 test("keeps independent code when changing language", async ({ page }) => {

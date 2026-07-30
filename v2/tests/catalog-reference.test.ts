@@ -83,7 +83,7 @@ describe("mission catalog", () => {
     expect(new Set(missions.map((mission) => mission.slug)).size).toBe(20);
 
     for (const mission of missions) {
-      expect(mission.version).toBe(2);
+      expect(mission.version).toBe(3);
       expect(mission.goal.length).toBeGreaterThan(30);
       expect(mission.conceptIntro.length).toBeGreaterThan(60);
       expect(mission.steps.length).toBeGreaterThanOrEqual(3);
@@ -94,6 +94,7 @@ describe("mission catalog", () => {
         const variant = mission.variants[language];
         expect(variant.language).toBe(language);
         expect(variant.starterCode.length).toBeGreaterThan(40);
+        expect(variant.starterCode).toContain("DATOS DE EJEMPLO");
         expect(variant.expectedSignature.length).toBeGreaterThan(5);
         expect(variant.examples.length).toBeGreaterThanOrEqual(2);
         expect(variant.referenceSolution?.length).toBeGreaterThan(60);
@@ -133,6 +134,27 @@ describe("mission catalog", () => {
         ),
       ).not.toThrow();
     }
+  });
+
+  it("rejects a Python solution that only adds the final subtotal", () => {
+    const mission = missions.find((entry) => entry.id === "p1-01-la-once");
+    const variant = mission!.variants.python;
+    const lastSubtotalOnly = `def total_once(precios, cantidades):
+    total = 0
+    producto = 0
+    for i in range(len(precios)):
+        producto = precios[i] * cantidades[i]
+    total = total + producto
+    return total
+`;
+
+    expect(() =>
+      verifyPython(
+        lastSubtotalOnly,
+        allTests(variant.publicTests, variant.hiddenTests!),
+        "p1-01-last-subtotal-only",
+      ),
+    ).toThrow();
   });
 
   it("compiles and passes every C++ reference solution", () => {

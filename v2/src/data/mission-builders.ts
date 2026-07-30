@@ -26,10 +26,16 @@ export function variant(
   publicTests: MissionTest[],
   hiddenTests: MissionTest[],
   examples?: MissionExample[],
+  starterExampleCode?: string,
 ): MissionVariant {
   return {
     language,
-    starterCode,
+    starterCode: appendStarterExample(
+      language,
+      starterCode,
+      publicTests[0],
+      starterExampleCode,
+    ),
     expectedSignature: inferSignature(language, starterCode),
     examples:
       examples ??
@@ -40,6 +46,30 @@ export function variant(
     publicTests,
     hiddenTests,
   };
+}
+
+function appendStarterExample(
+  language: Language,
+  starterCode: string,
+  publicTest: MissionTest | undefined,
+  starterExampleCode?: string,
+): string {
+  if (!publicTest) return starterCode;
+  const comment = language === "python" ? "#" : "//";
+  const header = `${comment} DATOS DE EJEMPLO (el evaluador usará también otros valores):`;
+  const example = starterExampleCode?.trim()
+    ? starterExampleCode.trim()
+    : [
+        ...(publicTest.actualExpression ?? publicTest.expression)
+          .split("\n")
+          .map((line) => `${comment} ${line}`),
+        `${comment} Resultado esperado: ${publicTest.expected}`,
+      ].join("\n");
+  return `${starterCode.trimEnd()}
+
+${header}
+${example}
+`;
 }
 
 function inferSignature(language: Language, starterCode: string): string {
@@ -599,6 +629,6 @@ export function mission(input: MissionInput): Mission {
     hints,
     courseLabel:
       input.course === "programming-1" ? "Programación I" : "Programación II",
-    version: 2,
+    version: 3,
   };
 }

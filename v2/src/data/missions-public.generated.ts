@@ -33,13 +33,13 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function totalOnce(precios, cantidades) {\n  let total = 0;\n\n  for (let i = 0; i < precios.length; i += 1) {\n    const precio = precios[i];\n    const cantidad = cantidades[i];\n\n    // TODO: calcula el subtotal y súmalo a total.\n  }\n\n  return total;\n}\n",
+        "starterCode": "function totalOnce(precios, cantidades) {\n  let total = 0;\n\n  for (let i = 0; i < precios.length; i += 1) {\n    const precio = precios[i];\n    const cantidad = cantidades[i];\n\n    // TODO: calcula el subtotal y súmalo a total.\n  }\n\n  return total;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\nconst preciosEjemplo = [1200, 850];\nconst cantidadesEjemplo = [2, 3];\n// totalOnce(preciosEjemplo, cantidadesEjemplo) debe retornar 4950.\n",
         "expectedSignature": "function totalOnce(precios, cantidades)",
         "examples": [
           {
             "id": "once-total",
             "label": "Dos productos",
-            "input": "1200 × 2 + 850 × 3",
+            "input": "precios = [1200, 850], cantidades = [2, 3]",
             "output": "4950",
             "explanation": "1200 × 2 + 850 × 3 = 4950. Cada precio se multiplica por la cantidad de su misma posición antes de sumar ambos subtotales."
           },
@@ -57,7 +57,7 @@ export const publicMissions = [
             "label": "Suma dos productos",
             "expression": "totalOnce([1200, 850], [2, 3]) === 4950",
             "expected": "4950",
-            "feedback": "Multiplica cada precio por su cantidad antes de sumar.",
+            "feedback": "Actualiza total dentro del bucle; si lo haces después, solo sumarás el último producto.",
             "actualExpression": "totalOnce([1200, 850], [2, 3])"
           },
           {
@@ -69,17 +69,17 @@ export const publicMissions = [
             "actualExpression": "totalOnce([], [])"
           }
         ],
-        "hiddenTestCount": 1
+        "hiddenTestCount": 2
       },
       "python": {
         "language": "python",
-        "starterCode": "def total_once(precios, cantidades):\n    total = 0\n\n    for i in range(len(precios)):\n        precio = precios[i]\n        cantidad = cantidades[i]\n\n        # TODO: calcula el subtotal y súmalo a total.\n\n    return total\n",
+        "starterCode": "def total_once(precios, cantidades):\n    total = 0\n\n    for i in range(len(precios)):\n        precio = precios[i]\n        cantidad = cantidades[i]\n\n        # TODO: calcula el subtotal y súmalo a total.\n\n    return total\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\nprecios_ejemplo = [1200, 850]\ncantidades_ejemplo = [2, 3]\n# total_once(precios_ejemplo, cantidades_ejemplo) debe retornar 4950.\n",
         "expectedSignature": "def total_once(precios, cantidades)",
         "examples": [
           {
             "id": "once-total",
             "label": "Dos productos",
-            "input": "1200 × 2 + 850 × 3",
+            "input": "precios = [1200, 850], cantidades = [2, 3]",
             "output": "4950",
             "explanation": "1200 × 2 + 850 × 3 = 4950. Cada precio se multiplica por la cantidad de su misma posición antes de sumar ambos subtotales."
           },
@@ -97,7 +97,7 @@ export const publicMissions = [
             "label": "Suma dos productos",
             "expression": "total_once([1200, 850], [2, 3]) == 4950",
             "expected": "4950",
-            "feedback": "Multiplica cada precio por su cantidad antes de sumar.",
+            "feedback": "Actualiza total dentro del bucle; si lo haces después, solo sumarás el último producto.",
             "actualExpression": "total_once([1200, 850], [2, 3])"
           },
           {
@@ -109,17 +109,17 @@ export const publicMissions = [
             "actualExpression": "total_once([], [])"
           }
         ],
-        "hiddenTestCount": 1
+        "hiddenTestCount": 2
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\ndouble totalOnce(const vector<double>& precios, const vector<int>& cantidades) {\n  double total = 0;\n\n  for (size_t i = 0; i < precios.size(); ++i) {\n    double precio = precios[i];\n    int cantidad = cantidades[i];\n\n    // TODO: calcula el subtotal y súmalo a total.\n  }\n\n  return total;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\ndouble totalOnce(const vector<double>& precios, const vector<int>& cantidades) {\n  double total = 0;\n\n  for (size_t i = 0; i < precios.size(); ++i) {\n    double precio = precios[i];\n    int cantidad = cantidades[i];\n\n    // TODO: calcula el subtotal y súmalo a total.\n  }\n\n  return total;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\nconst vector<double> preciosEjemplo = {1200, 850};\nconst vector<int> cantidadesEjemplo = {2, 3};\n// totalOnce(preciosEjemplo, cantidadesEjemplo) debe retornar 4950.\n",
         "expectedSignature": "double totalOnce(const vector<double>& precios, const vector<int>& cantidades)",
         "examples": [
           {
             "id": "once-total",
             "label": "Dos productos",
-            "input": "1200 × 2 + 850 × 3",
+            "input": "precios = [1200, 850], cantidades = [2, 3]",
             "output": "4950",
             "explanation": "1200 × 2 + 850 × 3 = 4950. Cada precio se multiplica por la cantidad de su misma posición antes de sumar ambos subtotales."
           },
@@ -137,7 +137,7 @@ export const publicMissions = [
             "label": "Suma dos productos",
             "expression": "abs(totalOnce({1200, 850}, {2, 3}) - 4950) < 0.001",
             "expected": "4950",
-            "feedback": "Multiplica cada precio por su cantidad antes de sumar."
+            "feedback": "Actualiza total dentro del bucle; si lo haces después, solo sumarás el último producto."
           },
           {
             "id": "once-empty",
@@ -147,7 +147,7 @@ export const publicMissions = [
             "feedback": "Inicializa el acumulador en cero."
           }
         ],
-        "hiddenTestCount": 1
+        "hiddenTestCount": 2
       }
     },
     "goal": "Obtén un único total numérico a partir de dos listas relacionadas: precios y cantidades.",
@@ -161,6 +161,7 @@ export const publicMissions = [
     "constraints": [
       "No cambies el nombre ni los parámetros de totalOnce.",
       "Precios y cantidades tendrán el mismo largo.",
+      "Usa los parámetros recibidos; las listas declaradas al final del starter son solo un ejemplo.",
       "Una compra vacía debe retornar cero.",
       "Devuelve un número; no formatees el resultado como texto."
     ],
@@ -172,7 +173,7 @@ export const publicMissions = [
     ],
     "prerequisites": [],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-02-var-limache",
@@ -203,7 +204,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function revisarGol(fueraDeJuego, falta) {\n  const jugadaLimpia = false; // TODO: combina ambas infracciones.\n  return jugadaLimpia ? \"GOL\" : \"ANULADO\";\n}\n",
+        "starterCode": "function revisarGol(fueraDeJuego, falta) {\n  const jugadaLimpia = false; // TODO: combina ambas infracciones.\n  return jugadaLimpia ? \"GOL\" : \"ANULADO\";\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// revisarGol(false, false)\n// Resultado esperado: GOL\n",
         "expectedSignature": "function revisarGol(fueraDeJuego, falta)",
         "examples": [
           {
@@ -243,7 +244,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def revisar_gol(fuera_de_juego, falta):\n    jugada_limpia = False  # TODO: combina ambas infracciones.\n    return \"GOL\" if jugada_limpia else \"ANULADO\"\n",
+        "starterCode": "def revisar_gol(fuera_de_juego, falta):\n    jugada_limpia = False  # TODO: combina ambas infracciones.\n    return \"GOL\" if jugada_limpia else \"ANULADO\"\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# revisar_gol(False, False)\n# Resultado esperado: GOL\n",
         "expectedSignature": "def revisar_gol(fuera_de_juego, falta)",
         "examples": [
           {
@@ -283,7 +284,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring revisarGol(bool fueraDeJuego, bool falta) {\n  bool jugadaLimpia = false;  // TODO: combina ambas infracciones.\n  return jugadaLimpia ? \"GOL\" : \"ANULADO\";\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring revisarGol(bool fueraDeJuego, bool falta) {\n  bool jugadaLimpia = false;  // TODO: combina ambas infracciones.\n  return jugadaLimpia ? \"GOL\" : \"ANULADO\";\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// revisarGol(false, false) == \"GOL\"\n// Resultado esperado: GOL\n",
         "expectedSignature": "string revisarGol(bool fueraDeJuego, bool falta)",
         "examples": [
           {
@@ -339,7 +340,7 @@ export const publicMissions = [
       "p1-01-la-once"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-03-semaforo-led",
@@ -372,7 +373,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function secuenciaPines(pines) {\n  const salida = [];\n  for (let i = 0; i < pines.length; i += 1) {\n    const pin = pines[i];\n    // TODO: agrega el mensaje de este pin a salida.\n  }\n  return salida;\n}\n",
+        "starterCode": "function secuenciaPines(pines) {\n  const salida = [];\n  for (let i = 0; i < pines.length; i += 1) {\n    const pin = pines[i];\n    // TODO: agrega el mensaje de este pin a salida.\n  }\n  return salida;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// secuenciaPines([2, 4, 7])\n// Resultado esperado: [\"PIN 2: ON\",\"PIN 4: ON\",\"PIN 7: ON\"]\n",
         "expectedSignature": "function secuenciaPines(pines)",
         "examples": [
           {
@@ -412,7 +413,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def secuencia_pines(pines):\n    salida = []\n    for pin in pines:\n        # TODO: agrega el mensaje de este pin a salida.\n        pass\n    return salida\n",
+        "starterCode": "def secuencia_pines(pines):\n    salida = []\n    for pin in pines:\n        # TODO: agrega el mensaje de este pin a salida.\n        pass\n    return salida\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# secuencia_pines([2, 4, 7])\n# Resultado esperado: [\"PIN 2: ON\",\"PIN 4: ON\",\"PIN 7: ON\"]\n",
         "expectedSignature": "def secuencia_pines(pines)",
         "examples": [
           {
@@ -452,7 +453,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<string> secuenciaPines(const vector<int>& pines) {\n  vector<string> salida;\n  for (int pin : pines) {\n    // TODO: agrega el mensaje de este pin a salida.\n  }\n  return salida;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<string> secuenciaPines(const vector<int>& pines) {\n  vector<string> salida;\n  for (int pin : pines) {\n    // TODO: agrega el mensaje de este pin a salida.\n  }\n  return salida;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// secuenciaPines({2, 4, 7}) == vector<string>({\"PIN 2: ON\", \"PIN 4: ON\", \"PIN 7: ON\"})\n// Resultado esperado: [\"PIN 2: ON\",\"PIN 4: ON\",\"PIN 7: ON\"]\n",
         "expectedSignature": "vector<string> secuenciaPines(const vector<int>& pines)",
         "examples": [
           {
@@ -508,7 +509,7 @@ export const publicMissions = [
       "p1-02-var-limache"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-04-conversor-hallulla",
@@ -540,7 +541,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function bolsasNecesarias(gramos) {\n  if (gramos <= 0) return 0;\n  const gramosPorBolsa = 500;\n  const bolsasCompletas = Math.floor(gramos / gramosPorBolsa);\n  // TODO: considera si sobran gramos.\n  return bolsasCompletas;\n}\n",
+        "starterCode": "function bolsasNecesarias(gramos) {\n  if (gramos <= 0) return 0;\n  const gramosPorBolsa = 500;\n  const bolsasCompletas = Math.floor(gramos / gramosPorBolsa);\n  // TODO: considera si sobran gramos.\n  return bolsasCompletas;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// bolsasNecesarias(1000)\n// Resultado esperado: 2\n",
         "expectedSignature": "function bolsasNecesarias(gramos)",
         "examples": [
           {
@@ -580,7 +581,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def bolsas_necesarias(gramos):\n    if gramos <= 0:\n        return 0\n    gramos_por_bolsa = 500\n    bolsas_completas = gramos // gramos_por_bolsa\n    # TODO: considera si sobran gramos.\n    return bolsas_completas\n",
+        "starterCode": "def bolsas_necesarias(gramos):\n    if gramos <= 0:\n        return 0\n    gramos_por_bolsa = 500\n    bolsas_completas = gramos // gramos_por_bolsa\n    # TODO: considera si sobran gramos.\n    return bolsas_completas\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# bolsas_necesarias(1000)\n# Resultado esperado: 2\n",
         "expectedSignature": "def bolsas_necesarias(gramos)",
         "examples": [
           {
@@ -620,7 +621,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint bolsasNecesarias(int gramos) {\n  if (gramos <= 0) return 0;\n  const int gramosPorBolsa = 500;\n  int bolsasCompletas = gramos / gramosPorBolsa;\n  // TODO: considera si sobran gramos.\n  return bolsasCompletas;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint bolsasNecesarias(int gramos) {\n  if (gramos <= 0) return 0;\n  const int gramosPorBolsa = 500;\n  int bolsasCompletas = gramos / gramosPorBolsa;\n  // TODO: considera si sobran gramos.\n  return bolsasCompletas;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// bolsasNecesarias(1000) == 2\n// Resultado esperado: 2\n",
         "expectedSignature": "int bolsasNecesarias(int gramos)",
         "examples": [
           {
@@ -676,7 +677,7 @@ export const publicMissions = [
       "p1-03-semaforo-led"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-05-esp-con-fiebre",
@@ -708,7 +709,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function detectarAnomalias(lecturas) {\n  if (lecturas.length === 0) return [];\n  let suma = 0;\n  for (const lectura of lecturas) suma += lectura;\n  const promedio = suma / lecturas.length;\n  const anomalias = [];\n  // TODO: recorre las lecturas y agrega las que superen el umbral.\n  return anomalias;\n}\n",
+        "starterCode": "function detectarAnomalias(lecturas) {\n  if (lecturas.length === 0) return [];\n  let suma = 0;\n  for (const lectura of lecturas) suma += lectura;\n  const promedio = suma / lecturas.length;\n  const anomalias = [];\n  // TODO: recorre las lecturas y agrega las que superen el umbral.\n  return anomalias;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// detectarAnomalias([20, 21, 22, 45])\n// Resultado esperado: [45]\n",
         "expectedSignature": "function detectarAnomalias(lecturas)",
         "examples": [
           {
@@ -748,7 +749,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def detectar_anomalias(lecturas):\n    if not lecturas:\n        return []\n    suma = 0\n    for lectura in lecturas:\n        suma += lectura\n    promedio = suma / len(lecturas)\n    anomalias = []\n    # TODO: agrega las lecturas que superen el umbral.\n    return anomalias\n",
+        "starterCode": "def detectar_anomalias(lecturas):\n    if not lecturas:\n        return []\n    suma = 0\n    for lectura in lecturas:\n        suma += lectura\n    promedio = suma / len(lecturas)\n    anomalias = []\n    # TODO: agrega las lecturas que superen el umbral.\n    return anomalias\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# detectar_anomalias([20, 21, 22, 45])\n# Resultado esperado: [45]\n",
         "expectedSignature": "def detectar_anomalias(lecturas)",
         "examples": [
           {
@@ -788,7 +789,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<double> detectarAnomalias(const vector<double>& lecturas) {\n  if (lecturas.empty()) return {};\n  double suma = 0;\n  for (double lectura : lecturas) suma += lectura;\n  double promedio = suma / lecturas.size();\n  vector<double> anomalias;\n  // TODO: agrega las lecturas que superen el umbral.\n  return anomalias;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<double> detectarAnomalias(const vector<double>& lecturas) {\n  if (lecturas.empty()) return {};\n  double suma = 0;\n  for (double lectura : lecturas) suma += lectura;\n  double promedio = suma / lecturas.size();\n  vector<double> anomalias;\n  // TODO: agrega las lecturas que superen el umbral.\n  return anomalias;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// detectarAnomalias({20, 21, 22, 45}) == vector<double>({45})\n// Resultado esperado: [45]\n",
         "expectedSignature": "vector<double> detectarAnomalias(const vector<double>& lecturas)",
         "examples": [
           {
@@ -844,7 +845,7 @@ export const publicMissions = [
       "p1-04-conversor-hallulla"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-06-clave-del-profe",
@@ -876,7 +877,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function claveValida(entrada) {\n  const normalizada = entrada.trim().toLowerCase();\n  const patron = /TODO/; // TODO: reemplaza por el formato completo.\n  return patron.test(normalizada);\n}\n",
+        "starterCode": "function claveValida(entrada) {\n  const normalizada = entrada.trim().toLowerCase();\n  const patron = /TODO/; // TODO: reemplaza por el formato completo.\n  return patron.test(normalizada);\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// claveValida(\"  ToMaTiN-42 \")\n// Resultado esperado: true\n",
         "expectedSignature": "function claveValida(entrada)",
         "examples": [
           {
@@ -916,7 +917,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "import re\n\ndef clave_valida(entrada):\n    normalizada = entrada.strip().lower()\n    patron = r\"TODO\"  # TODO: reemplaza por el formato completo.\n    return re.fullmatch(patron, normalizada) is not None\n",
+        "starterCode": "import re\n\ndef clave_valida(entrada):\n    normalizada = entrada.strip().lower()\n    patron = r\"TODO\"  # TODO: reemplaza por el formato completo.\n    return re.fullmatch(patron, normalizada) is not None\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# clave_valida(\"  ToMaTiN-42 \")\n# Resultado esperado: True\n",
         "expectedSignature": "def clave_valida(entrada)",
         "examples": [
           {
@@ -956,7 +957,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool claveValida(string entrada) {\n  auto inicio = entrada.find_first_not_of(\" \\t\\n\\r\");\n  if (inicio == string::npos) return false;\n  auto fin = entrada.find_last_not_of(\" \\t\\n\\r\");\n  string normalizada = entrada.substr(inicio, fin - inicio + 1);\n  transform(normalizada.begin(), normalizada.end(), normalizada.begin(),\n            [](unsigned char c) { return tolower(c); });\n  regex patron(\"TODO\");  // TODO: reemplaza por el formato completo.\n  return regex_match(normalizada, patron);\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool claveValida(string entrada) {\n  auto inicio = entrada.find_first_not_of(\" \\t\\n\\r\");\n  if (inicio == string::npos) return false;\n  auto fin = entrada.find_last_not_of(\" \\t\\n\\r\");\n  string normalizada = entrada.substr(inicio, fin - inicio + 1);\n  transform(normalizada.begin(), normalizada.end(), normalizada.begin(),\n            [](unsigned char c) { return tolower(c); });\n  regex patron(\"TODO\");  // TODO: reemplaza por el formato completo.\n  return regex_match(normalizada, patron);\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// claveValida(\"  ToMaTiN-42 \")\n// Resultado esperado: true\n",
         "expectedSignature": "bool claveValida(string entrada)",
         "examples": [
           {
@@ -1012,7 +1013,7 @@ export const publicMissions = [
       "p1-05-esp-con-fiebre"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-07-inventario-maker",
@@ -1044,7 +1045,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function stockSeguro(stock, retiro) {\n  const retiroInvalido = false; // TODO: valida ambos casos inválidos.\n  if (retiroInvalido) return -1;\n  return stock; // TODO: aplica el retiro.\n}\n\nfunction necesitaReposicion(stock, minimo) {\n  return false; // TODO: compara el stock con el mínimo.\n}\n",
+        "starterCode": "function stockSeguro(stock, retiro) {\n  const retiroInvalido = false; // TODO: valida ambos casos inválidos.\n  if (retiroInvalido) return -1;\n  return stock; // TODO: aplica el retiro.\n}\n\nfunction necesitaReposicion(stock, minimo) {\n  return false; // TODO: compara el stock con el mínimo.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// stockSeguro(12, 5)\n// Resultado esperado: 7\n",
         "expectedSignature": "function stockSeguro(stock, retiro)",
         "examples": [
           {
@@ -1084,7 +1085,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def stock_seguro(stock, retiro):\n    retiro_invalido = False  # TODO: valida ambos casos inválidos.\n    if retiro_invalido:\n        return -1\n    return stock  # TODO: aplica el retiro.\n\ndef necesita_reposicion(stock, minimo):\n    return False  # TODO: compara el stock con el mínimo.\n",
+        "starterCode": "def stock_seguro(stock, retiro):\n    retiro_invalido = False  # TODO: valida ambos casos inválidos.\n    if retiro_invalido:\n        return -1\n    return stock  # TODO: aplica el retiro.\n\ndef necesita_reposicion(stock, minimo):\n    return False  # TODO: compara el stock con el mínimo.\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# stock_seguro(12, 5)\n# Resultado esperado: 7\n",
         "expectedSignature": "def stock_seguro(stock, retiro)",
         "examples": [
           {
@@ -1124,7 +1125,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint stockSeguro(int stock, int retiro) {\n  bool retiroInvalido = false;  // TODO: valida ambos casos inválidos.\n  if (retiroInvalido) return -1;\n  return stock;  // TODO: aplica el retiro.\n}\n\nbool necesitaReposicion(int stock, int minimo) {\n  return false;  // TODO: compara el stock con el mínimo.\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint stockSeguro(int stock, int retiro) {\n  bool retiroInvalido = false;  // TODO: valida ambos casos inválidos.\n  if (retiroInvalido) return -1;\n  return stock;  // TODO: aplica el retiro.\n}\n\nbool necesitaReposicion(int stock, int minimo) {\n  return false;  // TODO: compara el stock con el mínimo.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// stockSeguro(12, 5) == 7\n// Resultado esperado: 7\n",
         "expectedSignature": "int stockSeguro(int stock, int retiro)",
         "examples": [
           {
@@ -1180,7 +1181,7 @@ export const publicMissions = [
       "p1-06-clave-del-profe"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-08-loop-viernes",
@@ -1212,7 +1213,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function contarHasta(limite) {\n  if (limite < 1 || limite > 100) return [];\n  const salida = [];\n  for (let i = 1; i <= limite; i += 1) {\n    // TODO: agrega el valor actual.\n  }\n  return salida;\n}\n",
+        "starterCode": "function contarHasta(limite) {\n  if (limite < 1 || limite > 100) return [];\n  const salida = [];\n  for (let i = 1; i <= limite; i += 1) {\n    // TODO: agrega el valor actual.\n  }\n  return salida;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// contarHasta(5)\n// Resultado esperado: [1,2,3,4,5]\n",
         "expectedSignature": "function contarHasta(limite)",
         "examples": [
           {
@@ -1252,7 +1253,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def contar_hasta(limite):\n    if limite < 1 or limite > 100:\n        return []\n    salida = []\n    for valor in range(1, limite + 1):\n        # TODO: agrega el valor actual.\n        pass\n    return salida\n",
+        "starterCode": "def contar_hasta(limite):\n    if limite < 1 or limite > 100:\n        return []\n    salida = []\n    for valor in range(1, limite + 1):\n        # TODO: agrega el valor actual.\n        pass\n    return salida\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# contar_hasta(5)\n# Resultado esperado: [1,2,3,4,5]\n",
         "expectedSignature": "def contar_hasta(limite)",
         "examples": [
           {
@@ -1292,7 +1293,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<int> contarHasta(int limite) {\n  if (limite < 1 || limite > 100) return {};\n  vector<int> salida;\n  for (int valor = 1; valor <= limite; ++valor) {\n    // TODO: agrega el valor actual.\n  }\n  return salida;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<int> contarHasta(int limite) {\n  if (limite < 1 || limite > 100) return {};\n  vector<int> salida;\n  for (int valor = 1; valor <= limite; ++valor) {\n    // TODO: agrega el valor actual.\n  }\n  return salida;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// contarHasta(5) == vector<int>({1, 2, 3, 4, 5})\n// Resultado esperado: [1,2,3,4,5]\n",
         "expectedSignature": "vector<int> contarHasta(int limite)",
         "examples": [
           {
@@ -1348,7 +1349,7 @@ export const publicMissions = [
       "p1-07-inventario-maker"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-09-paltas-qa",
@@ -1380,7 +1381,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function esApta(peso, madurez) {\n  const pesoValido = false; // TODO: comprueba ambos límites.\n  const madurezValida = false; // TODO: comprueba ambos límites.\n  return pesoValido && madurezValida;\n}\n",
+        "starterCode": "function esApta(peso, madurez) {\n  const pesoValido = false; // TODO: comprueba ambos límites.\n  const madurezValida = false; // TODO: comprueba ambos límites.\n  return pesoValido && madurezValida;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// esApta(220, 4)\n// Resultado esperado: true\n",
         "expectedSignature": "function esApta(peso, madurez)",
         "examples": [
           {
@@ -1420,7 +1421,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def es_apta(peso, madurez):\n    peso_valido = False  # TODO: comprueba ambos límites.\n    madurez_valida = False  # TODO: comprueba ambos límites.\n    return peso_valido and madurez_valida\n",
+        "starterCode": "def es_apta(peso, madurez):\n    peso_valido = False  # TODO: comprueba ambos límites.\n    madurez_valida = False  # TODO: comprueba ambos límites.\n    return peso_valido and madurez_valida\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# es_apta(220, 4)\n# Resultado esperado: True\n",
         "expectedSignature": "def es_apta(peso, madurez)",
         "examples": [
           {
@@ -1460,7 +1461,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool esApta(int peso, int madurez) {\n  bool pesoValido = false;  // TODO: comprueba ambos límites.\n  bool madurezValida = false;  // TODO: comprueba ambos límites.\n  return pesoValido && madurezValida;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool esApta(int peso, int madurez) {\n  bool pesoValido = false;  // TODO: comprueba ambos límites.\n  bool madurezValida = false;  // TODO: comprueba ambos límites.\n  return pesoValido && madurezValida;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// esApta(220, 4)\n// Resultado esperado: true\n",
         "expectedSignature": "bool esApta(int peso, int madurez)",
         "examples": [
           {
@@ -1516,7 +1517,7 @@ export const publicMissions = [
       "p1-08-loop-viernes"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p1-10-marcador-naranja",
@@ -1548,7 +1549,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function resumenMarcador(goles, tarjetas, minuto) {\n  const datosInvalidos = false; // TODO: valida los tres valores.\n  if (datosInvalidos) return \"ERROR\";\n  // TODO: construye el resumen con separadores verticales.\n  return \"\";\n}\n",
+        "starterCode": "function resumenMarcador(goles, tarjetas, minuto) {\n  const datosInvalidos = false; // TODO: valida los tres valores.\n  if (datosInvalidos) return \"ERROR\";\n  // TODO: construye el resumen con separadores verticales.\n  return \"\";\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// resumenMarcador(2, 3, 75)\n// Resultado esperado: 2|3|75\n",
         "expectedSignature": "function resumenMarcador(goles, tarjetas, minuto)",
         "examples": [
           {
@@ -1588,7 +1589,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def resumen_marcador(goles, tarjetas, minuto):\n    datos_invalidos = False  # TODO: valida los tres valores.\n    if datos_invalidos:\n        return \"ERROR\"\n    # TODO: construye el resumen con separadores verticales.\n    return \"\"\n",
+        "starterCode": "def resumen_marcador(goles, tarjetas, minuto):\n    datos_invalidos = False  # TODO: valida los tres valores.\n    if datos_invalidos:\n        return \"ERROR\"\n    # TODO: construye el resumen con separadores verticales.\n    return \"\"\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# resumen_marcador(2, 3, 75)\n# Resultado esperado: 2|3|75\n",
         "expectedSignature": "def resumen_marcador(goles, tarjetas, minuto)",
         "examples": [
           {
@@ -1628,7 +1629,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring resumenMarcador(int goles, int tarjetas, int minuto) {\n  bool datosInvalidos = false;  // TODO: valida los tres valores.\n  if (datosInvalidos) return \"ERROR\";\n  // TODO: construye el resumen con separadores verticales.\n  return \"\";\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring resumenMarcador(int goles, int tarjetas, int minuto) {\n  bool datosInvalidos = false;  // TODO: valida los tres valores.\n  if (datosInvalidos) return \"ERROR\";\n  // TODO: construye el resumen con separadores verticales.\n  return \"\";\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// resumenMarcador(2, 3, 75) == \"2|3|75\"\n// Resultado esperado: 2|3|75\n",
         "expectedSignature": "string resumenMarcador(int goles, int tarjetas, int minuto)",
         "examples": [
           {
@@ -1684,7 +1685,7 @@ export const publicMissions = [
       "p1-09-paltas-qa"
     ],
     "courseLabel": "Programación I",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-01-factorial-recursivo",
@@ -1715,7 +1716,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function factorial(n) {\n  // Usa recursión. Retorna -1 para negativos.\n}\n",
+        "starterCode": "function factorial(n) {\n  // Usa recursión. Retorna -1 para negativos.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// factorial(5)\n// Resultado esperado: 120\n",
         "expectedSignature": "function factorial(n)",
         "examples": [
           {
@@ -1755,7 +1756,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def factorial(n):\n    # Usa recursión. Retorna -1 para negativos.\n    pass\n",
+        "starterCode": "def factorial(n):\n    # Usa recursión. Retorna -1 para negativos.\n    pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# factorial(5)\n# Resultado esperado: 120\n",
         "expectedSignature": "def factorial(n)",
         "examples": [
           {
@@ -1795,7 +1796,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nlong long factorial(int n) {\n  // Usa recursión. Retorna -1 para negativos.\n  return 0;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nlong long factorial(int n) {\n  // Usa recursión. Retorna -1 para negativos.\n  return 0;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// factorial(5) == 120\n// Resultado esperado: 120\n",
         "expectedSignature": "long long factorial(int n)",
         "examples": [
           {
@@ -1849,7 +1850,7 @@ export const publicMissions = [
     ],
     "prerequisites": [],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-02-duplicados-lineales",
@@ -1881,7 +1882,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function tieneDuplicados(valores) {\n  // Usa un Set y evita bucles anidados.\n}\n",
+        "starterCode": "function tieneDuplicados(valores) {\n  // Usa un Set y evita bucles anidados.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// tieneDuplicados([4, 8, 2, 8])\n// Resultado esperado: true\n",
         "expectedSignature": "function tieneDuplicados(valores)",
         "examples": [
           {
@@ -1921,7 +1922,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def tiene_duplicados(valores):\n    # Usa un set y evita bucles anidados.\n    pass\n",
+        "starterCode": "def tiene_duplicados(valores):\n    # Usa un set y evita bucles anidados.\n    pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# tiene_duplicados([4, 8, 2, 8])\n# Resultado esperado: True\n",
         "expectedSignature": "def tiene_duplicados(valores)",
         "examples": [
           {
@@ -1961,7 +1962,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool tieneDuplicados(const vector<int>& valores) {\n  // Usa unordered_set y evita bucles anidados.\n  return false;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool tieneDuplicados(const vector<int>& valores) {\n  // Usa unordered_set y evita bucles anidados.\n  return false;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// tieneDuplicados({4, 8, 2, 8})\n// Resultado esperado: true\n",
         "expectedSignature": "bool tieneDuplicados(const vector<int>& valores)",
         "examples": [
           {
@@ -2017,7 +2018,7 @@ export const publicMissions = [
       "p2-01-factorial-recursivo"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-03-busqueda-bodega",
@@ -2049,7 +2050,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function busquedaBinaria(valores, objetivo) {\n  // Retorna el índice o -1.\n}\n",
+        "starterCode": "function busquedaBinaria(valores, objetivo) {\n  // Retorna el índice o -1.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// busquedaBinaria([2, 5, 8, 12, 20], 12)\n// Resultado esperado: 3\n",
         "expectedSignature": "function busquedaBinaria(valores, objetivo)",
         "examples": [
           {
@@ -2089,7 +2090,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def busqueda_binaria(valores, objetivo):\n    # Retorna el índice o -1.\n    pass\n",
+        "starterCode": "def busqueda_binaria(valores, objetivo):\n    # Retorna el índice o -1.\n    pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# busqueda_binaria([2, 5, 8, 12, 20], 12)\n# Resultado esperado: 3\n",
         "expectedSignature": "def busqueda_binaria(valores, objetivo)",
         "examples": [
           {
@@ -2129,7 +2130,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint busquedaBinaria(const vector<int>& valores, int objetivo) {\n  // Retorna el índice o -1.\n  return -1;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint busquedaBinaria(const vector<int>& valores, int objetivo) {\n  // Retorna el índice o -1.\n  return -1;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// busquedaBinaria({2, 5, 8, 12, 20}, 12) == 3\n// Resultado esperado: 3\n",
         "expectedSignature": "int busquedaBinaria(const vector<int>& valores, int objetivo)",
         "examples": [
           {
@@ -2185,7 +2186,7 @@ export const publicMissions = [
       "p2-02-duplicados-lineales"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-04-merge-sensores",
@@ -2218,7 +2219,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function mergeSort(valores) {\n  // No uses Array.prototype.sort.\n}\n",
+        "starterCode": "function mergeSort(valores) {\n  // No uses Array.prototype.sort.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// mergeSort([8, 3, 6, 1])\n// Resultado esperado: [1,3,6,8]\n",
         "expectedSignature": "function mergeSort(valores)",
         "examples": [
           {
@@ -2257,7 +2258,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def merge_sort(valores):\n    # No uses sorted ni list.sort.\n    pass\n",
+        "starterCode": "def merge_sort(valores):\n    # No uses sorted ni list.sort.\n    pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# merge_sort([8, 3, 6, 1])\n# Resultado esperado: [1,3,6,8]\n",
         "expectedSignature": "def merge_sort(valores)",
         "examples": [
           {
@@ -2296,7 +2297,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<int> mergeSort(const vector<int>& valores) {\n  // No uses std::sort.\n  return {};\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<int> mergeSort(const vector<int>& valores) {\n  // No uses std::sort.\n  return {};\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// mergeSort({8, 3, 6, 1}) == vector<int>({1, 3, 6, 8})\n// Resultado esperado: [1,3,6,8]\n",
         "expectedSignature": "vector<int> mergeSort(const vector<int>& valores)",
         "examples": [
           {
@@ -2352,7 +2353,7 @@ export const publicMissions = [
       "p2-03-busqueda-bodega"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-05-lista-jumpers",
@@ -2384,7 +2385,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "class ListaEnlazada {\n  constructor() {\n    this.cabeza = null;\n    this.largo = 0;\n  }\n\n  agregar(valor) {}\n  eliminar(valor) {}\n  contiene(valor) {}\n}\n",
+        "starterCode": "class ListaEnlazada {\n  constructor() {\n    this.cabeza = null;\n    this.largo = 0;\n  }\n\n  agregar(valor) {}\n  eliminar(valor) {}\n  contiene(valor) {}\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// (() => { const l = new ListaEnlazada(); l.agregar(3); l.agregar(5); return l.contiene(5) && l.largo === 2; })()\n// Resultado esperado: true\n",
         "expectedSignature": "constructor()",
         "examples": [
           {
@@ -2422,7 +2423,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "class ListaEnlazada:\n    def __init__(self):\n        self.cabeza = None\n        self.largo = 0\n\n    def agregar(self, valor):\n        pass\n\n    def eliminar(self, valor):\n        pass\n\n    def contiene(self, valor):\n        pass\n",
+        "starterCode": "class ListaEnlazada:\n    def __init__(self):\n        self.cabeza = None\n        self.largo = 0\n\n    def agregar(self, valor):\n        pass\n\n    def eliminar(self, valor):\n        pass\n\n    def contiene(self, valor):\n        pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# (lambda l: (l.agregar(3), l.agregar(5), l.contiene(5) and l.largo == 2)[-1])(ListaEnlazada())\n# Resultado esperado: True\n",
         "expectedSignature": "def __init__(self)",
         "examples": [
           {
@@ -2460,7 +2461,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass ListaEnlazada {\n  struct Nodo {\n    int valor;\n    Nodo* siguiente;\n  };\n  Nodo* cabeza = nullptr;\n  int largo_ = 0;\n\n public:\n  ~ListaEnlazada() {\n    // Libera los nodos.\n  }\n  void agregar(int valor) {}\n  bool eliminar(int valor) { return false; }\n  bool contiene(int valor) const { return false; }\n  int largo() const { return largo_; }\n};\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass ListaEnlazada {\n  struct Nodo {\n    int valor;\n    Nodo* siguiente;\n  };\n  Nodo* cabeza = nullptr;\n  int largo_ = 0;\n\n public:\n  ~ListaEnlazada() {\n    // Libera los nodos.\n  }\n  void agregar(int valor) {}\n  bool eliminar(int valor) { return false; }\n  bool contiene(int valor) const { return false; }\n  int largo() const { return largo_; }\n};\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// [](){ ListaEnlazada l; l.agregar(3); l.agregar(5); return l.contiene(5) && l.largo() == 2; }()\n// Resultado esperado: true\n",
         "expectedSignature": "~ListaEnlazada()",
         "examples": [
           {
@@ -2516,7 +2517,7 @@ export const publicMissions = [
       "p2-04-merge-sensores"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-06-cola-taller",
@@ -2548,7 +2549,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "class Cola {\n  constructor() {\n    this.datos = [];\n    this.inicio = 0;\n  }\n  encolar(valor) {}\n  desencolar() {}\n  frente() {}\n  estaVacia() {}\n}\n",
+        "starterCode": "class Cola {\n  constructor() {\n    this.datos = [];\n    this.inicio = 0;\n  }\n  encolar(valor) {}\n  desencolar() {}\n  frente() {}\n  estaVacia() {}\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// (() => { const q = new Cola(); q.encolar(4); q.encolar(8); return q.desencolar() === 4 && q.frente() === 8; })()\n// Resultado esperado: true\n",
         "expectedSignature": "constructor()",
         "examples": [
           {
@@ -2586,7 +2587,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "class Cola:\n    def __init__(self):\n        self.datos = []\n        self.inicio = 0\n\n    def encolar(self, valor):\n        pass\n\n    def desencolar(self):\n        pass\n\n    def frente(self):\n        pass\n\n    def esta_vacia(self):\n        pass\n",
+        "starterCode": "class Cola:\n    def __init__(self):\n        self.datos = []\n        self.inicio = 0\n\n    def encolar(self, valor):\n        pass\n\n    def desencolar(self):\n        pass\n\n    def frente(self):\n        pass\n\n    def esta_vacia(self):\n        pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# (lambda q: (q.encolar(4), q.encolar(8), q.desencolar() == 4 and q.frente() == 8)[-1])(Cola())\n# Resultado esperado: True\n",
         "expectedSignature": "def __init__(self)",
         "examples": [
           {
@@ -2624,7 +2625,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass Cola {\n  deque<int> datos;\n\n public:\n  void encolar(int valor) {}\n  optional<int> desencolar() { return nullopt; }\n  optional<int> frente() const { return nullopt; }\n  bool estaVacia() const { return true; }\n};\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass Cola {\n  deque<int> datos;\n\n public:\n  void encolar(int valor) {}\n  optional<int> desencolar() { return nullopt; }\n  optional<int> frente() const { return nullopt; }\n  bool estaVacia() const { return true; }\n};\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// [](){ Cola q; q.encolar(4); q.encolar(8); return q.desencolar() == optional<int>(4) && q.frente() == optional<int>(8); }()\n// Resultado esperado: true\n",
         "expectedSignature": "#include <algorithm>",
         "examples": [
           {
@@ -2680,7 +2681,7 @@ export const publicMissions = [
       "p2-05-lista-jumpers"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-07-arbol-decisiones",
@@ -2712,7 +2713,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "class ArbolBusqueda {\n  constructor() {\n    this.raiz = null;\n  }\n  insertar(valor) {}\n  contiene(valor) {}\n}\n",
+        "starterCode": "class ArbolBusqueda {\n  constructor() {\n    this.raiz = null;\n  }\n  insertar(valor) {}\n  contiene(valor) {}\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// (() => { const a = new ArbolBusqueda(); [8, 3, 10, 6].forEach((x) => a.insertar(x)); return a.contiene(6) && !a.contiene(9); })()\n// Resultado esperado: true\n",
         "expectedSignature": "constructor()",
         "examples": [
           {
@@ -2750,7 +2751,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "class ArbolBusqueda:\n    def __init__(self):\n        self.raiz = None\n\n    def insertar(self, valor):\n        pass\n\n    def contiene(self, valor):\n        pass\n",
+        "starterCode": "class ArbolBusqueda:\n    def __init__(self):\n        self.raiz = None\n\n    def insertar(self, valor):\n        pass\n\n    def contiene(self, valor):\n        pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# (lambda a: ([a.insertar(x) for x in [8, 3, 10, 6]], a.contiene(6) and not a.contiene(9))[-1])(ArbolBusqueda())\n# Resultado esperado: True\n",
         "expectedSignature": "def __init__(self)",
         "examples": [
           {
@@ -2788,7 +2789,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass ArbolBusqueda {\n  struct Nodo {\n    int valor;\n    unique_ptr<Nodo> izquierda;\n    unique_ptr<Nodo> derecha;\n  };\n  unique_ptr<Nodo> raiz;\n\n public:\n  bool insertar(int valor) { return false; }\n  bool contiene(int valor) const { return false; }\n};\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass ArbolBusqueda {\n  struct Nodo {\n    int valor;\n    unique_ptr<Nodo> izquierda;\n    unique_ptr<Nodo> derecha;\n  };\n  unique_ptr<Nodo> raiz;\n\n public:\n  bool insertar(int valor) { return false; }\n  bool contiene(int valor) const { return false; }\n};\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// [](){ ArbolBusqueda a; for (int x : {8,3,10,6}) a.insertar(x); return a.contiene(6) && !a.contiene(9); }()\n// Resultado esperado: true\n",
         "expectedSignature": "#include <algorithm>",
         "examples": [
           {
@@ -2844,7 +2845,7 @@ export const publicMissions = [
       "p2-06-cola-taller"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-08-ruta-maker",
@@ -2876,7 +2877,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function distanciaMinima(grafo, origen, destino) {\n  // grafo es un arreglo de listas de vecinos.\n}\n",
+        "starterCode": "function distanciaMinima(grafo, origen, destino) {\n  // grafo es un arreglo de listas de vecinos.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// distanciaMinima([[1,2],[0,3],[0,3],[1,2,4],[3]], 0, 4)\n// Resultado esperado: 3\n",
         "expectedSignature": "function distanciaMinima(grafo, origen, destino)",
         "examples": [
           {
@@ -2916,7 +2917,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def distancia_minima(grafo, origen, destino):\n    # grafo es una lista de listas de vecinos.\n    pass\n",
+        "starterCode": "def distancia_minima(grafo, origen, destino):\n    # grafo es una lista de listas de vecinos.\n    pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# distancia_minima([[1,2],[0,3],[0,3],[1,2,4],[3]], 0, 4)\n# Resultado esperado: 3\n",
         "expectedSignature": "def distancia_minima(grafo, origen, destino)",
         "examples": [
           {
@@ -2956,7 +2957,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint distanciaMinima(const vector<vector<int>>& grafo, int origen, int destino) {\n  // Retorna la cantidad de aristas o -1.\n  return -1;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint distanciaMinima(const vector<vector<int>>& grafo, int origen, int destino) {\n  // Retorna la cantidad de aristas o -1.\n  return -1;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// distanciaMinima({{1,2},{0,3},{0,3},{1,2,4},{3}}, 0, 4) == 3\n// Resultado esperado: 3\n",
         "expectedSignature": "int distanciaMinima(const vector<vector<int>>& grafo, int origen, int destino)",
         "examples": [
           {
@@ -3012,7 +3013,7 @@ export const publicMissions = [
       "p2-07-arbol-decisiones"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-09-frecuencias-serial",
@@ -3044,7 +3045,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function masComun(valores) {\n  // Retorna el valor más frecuente.\n}\n",
+        "starterCode": "function masComun(valores) {\n  // Retorna el valor más frecuente.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// masComun([\"OK\", \"WARN\", \"OK\", \"ERROR\", \"OK\"])\n// Resultado esperado: OK\n",
         "expectedSignature": "function masComun(valores)",
         "examples": [
           {
@@ -3084,7 +3085,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def mas_comun(valores):\n    # Retorna el valor más frecuente.\n    pass\n",
+        "starterCode": "def mas_comun(valores):\n    # Retorna el valor más frecuente.\n    pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# mas_comun([\"OK\", \"WARN\", \"OK\", \"ERROR\", \"OK\"])\n# Resultado esperado: OK\n",
         "expectedSignature": "def mas_comun(valores)",
         "examples": [
           {
@@ -3124,7 +3125,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring masComun(const vector<string>& valores) {\n  // Retorna el valor más frecuente.\n  return \"\";\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring masComun(const vector<string>& valores) {\n  // Retorna el valor más frecuente.\n  return \"\";\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// masComun({\"OK\", \"WARN\", \"OK\", \"ERROR\", \"OK\"}) == \"OK\"\n// Resultado esperado: OK\n",
         "expectedSignature": "string masComun(const vector<string>& valores)",
         "examples": [
           {
@@ -3180,7 +3181,7 @@ export const publicMissions = [
       "p2-08-ruta-maker"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   },
   {
     "id": "p2-10-cambio-micro",
@@ -3211,7 +3212,7 @@ export const publicMissions = [
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function minMonedas(monedas, monto) {\n  // Retorna la cantidad mínima o -1.\n}\n",
+        "starterCode": "function minMonedas(monedas, monto) {\n  // Retorna la cantidad mínima o -1.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// minMonedas([1, 3, 4], 6)\n// Resultado esperado: 2\n",
         "expectedSignature": "function minMonedas(monedas, monto)",
         "examples": [
           {
@@ -3251,7 +3252,7 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def min_monedas(monedas, monto):\n    # Retorna la cantidad mínima o -1.\n    pass\n",
+        "starterCode": "def min_monedas(monedas, monto):\n    # Retorna la cantidad mínima o -1.\n    pass\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# min_monedas([1, 3, 4], 6)\n# Resultado esperado: 2\n",
         "expectedSignature": "def min_monedas(monedas, monto)",
         "examples": [
           {
@@ -3291,7 +3292,7 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint minMonedas(const vector<int>& monedas, int monto) {\n  // Retorna la cantidad mínima o -1.\n  return -1;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint minMonedas(const vector<int>& monedas, int monto) {\n  // Retorna la cantidad mínima o -1.\n  return -1;\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// minMonedas({1, 3, 4}, 6) == 2\n// Resultado esperado: 2\n",
         "expectedSignature": "int minMonedas(const vector<int>& monedas, int monto)",
         "examples": [
           {
@@ -3347,6 +3348,6 @@ export const publicMissions = [
       "p2-09-frecuencias-serial"
     ],
     "courseLabel": "Programación II",
-    "version": 2
+    "version": 3
   }
 ] satisfies Mission[];
