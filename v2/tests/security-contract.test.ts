@@ -83,6 +83,9 @@ describe("security contracts", () => {
     expect(secureRpc).toContain("security definer");
     expect(secureRpc).toContain("set search_path = ''");
     expect(secureRpc).toContain("from public, anon, authenticated");
+    expect(secureRpc).toContain(
+      "grant select, insert, update, delete on all tables in schema public",
+    );
     expect(secureRpc).toContain("to service_role");
     expect(judge0).toContain(
       "Revisa los casos límite y el contrato de la misión.",

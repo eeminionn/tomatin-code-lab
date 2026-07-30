@@ -72,6 +72,12 @@ from public, anon, authenticated;
 revoke all on function public.upsert_mission_variant_secure(uuid, text, jsonb)
 from public, anon, authenticated;
 
+grant usage on schema public to service_role;
+grant select, insert, update, delete on all tables in schema public
+to service_role;
+grant usage, select on all sequences in schema public
+to service_role;
+
 grant execute on function public.get_mission_variant_secure(uuid)
 to service_role;
 grant execute on function public.upsert_mission_variant_secure(uuid, text, jsonb)
