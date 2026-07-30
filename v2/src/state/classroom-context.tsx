@@ -31,6 +31,7 @@ import {
   progressAfterAttempt,
   progressAfterReview,
 } from "@/models/progress";
+import { sanitizeAvatarConfig } from "@/lib/avatar";
 
 const DEMO_SESSION_KEY = "tomatin.v2.demo-session";
 const DEMO_SNAPSHOT_KEY = "tomatin.v2.demo-classroom";
@@ -57,7 +58,12 @@ interface ClassroomContextValue {
   ) => Promise<void>;
   createAssignment: (input: CreateAssignmentInput) => void;
   createInvitations: (count: number) => void;
+  updateProfile: (input: {
+    displayName: string;
+    avatarConfig: Profile["avatarConfig"];
+  }) => Promise<void>;
   markNotificationRead: (id: string) => void;
+  dismissNotification: (id: string) => void;
   recordHint: (assignmentId: string, count: number) => void;
   recordActivity: (
     assignmentId: string,
@@ -100,12 +106,22 @@ function readDemoSnapshot(): ClassroomSnapshot {
 }
 
 function mapProfile(row: Record<string, unknown>): Profile {
+  const id = String(row.id);
+  const rawAvatarConfig = row.avatar_config;
+  const hasAvatarConfig =
+    rawAvatarConfig !== null &&
+    typeof rawAvatarConfig === "object" &&
+    !Array.isArray(rawAvatarConfig) &&
+    Object.keys(rawAvatarConfig as Record<string, unknown>).length > 0;
   return {
-    id: String(row.id),
+    id,
     displayName: String(row.display_name ?? "Estudiante"),
     email: String(row.email ?? ""),
     githubLogin: row.github_login ? String(row.github_login) : undefined,
     avatarUrl: row.avatar_url ? String(row.avatar_url) : undefined,
+    avatarConfig: hasAvatarConfig
+      ? sanitizeAvatarConfig(rawAvatarConfig, id)
+      : undefined,
     role: row.role as Profile["role"],
   };
 }
@@ -277,6 +293,7 @@ async function fetchSupabaseSnapshot(session: Session) {
         title: row.title,
         body: row.body,
         readAt: row.read_at ?? undefined,
+        dismissedAt: row.dismissed_at ?? undefined,
         createdAt: row.created_at,
       })),
       invitations: (invitations.data ?? []).map((row) => ({
@@ -424,6 +441,11 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "reviews" },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles" },
         scheduleRefresh,
       )
       .on(
@@ -723,6 +745,47 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     [persistDemo, previewStudentId, refresh, snapshot],
   );
 
+  const updateProfile = useCallback(
+    async (input: {
+      displayName: string;
+      avatarConfig: Profile["avatarConfig"];
+    }) => {
+      if (previewStudentId || !snapshot || !profile) return;
+      const displayName = input.displayName.trim();
+      if (!displayName || displayName.length > 80) {
+        throw new Error("El nombre visible debe tener entre 1 y 80 caracteres.");
+      }
+      if (supabase) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            display_name: displayName,
+            avatar_config: input.avatarConfig ?? null,
+          })
+          .eq("id", profile.id);
+        if (profileError) {
+          setError(profileError.message);
+          throw profileError;
+        }
+        await refresh();
+        return;
+      }
+      const nextProfile = {
+        ...profile,
+        displayName,
+        avatarConfig: input.avatarConfig,
+      };
+      setProfile(nextProfile);
+      persistDemo({
+        ...snapshot,
+        profiles: snapshot.profiles.map((entry) =>
+          entry.id === profile.id ? nextProfile : entry,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
   const markNotificationRead = useCallback(
     (id: string) => {
       if (previewStudentId || !snapshot) return;
@@ -746,6 +809,34 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
           entry.id === id
             ? { ...entry, readAt: new Date().toISOString() }
             : entry,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const dismissNotification = useCallback(
+    (id: string) => {
+      if (previewStudentId || !snapshot) return;
+      const dismissedAt = new Date().toISOString();
+      if (supabase) {
+        void supabase
+          .from("notifications")
+          .update({ dismissed_at: dismissedAt })
+          .eq("id", id)
+          .then(({ error: notificationError }) => {
+            if (notificationError) {
+              setError(notificationError.message);
+              return;
+            }
+            void refresh();
+          });
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        notifications: snapshot.notifications.map((entry) =>
+          entry.id === id ? { ...entry, dismissedAt } : entry,
         ),
       });
     },
@@ -860,7 +951,9 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       reviewAttempt,
       createAssignment,
       createInvitations,
+      updateProfile,
       markNotificationRead,
+      dismissNotification,
       recordHint,
       recordActivity,
       startStudentPreview,
@@ -871,6 +964,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       clearError,
       createAssignment,
       createInvitations,
+      dismissNotification,
       error,
       loading,
       loginDemo,
@@ -888,6 +982,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       snapshot,
       startStudentPreview,
       stopStudentPreview,
+      updateProfile,
     ],
   );
 

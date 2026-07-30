@@ -100,6 +100,54 @@ test("keeps independent code when changing language", async ({ page }) => {
     .toBe(pythonDraft);
 });
 
+test("student edits their avatar and visible name", async ({ page }) => {
+  await page.locator(".profile-menu-trigger").click();
+  await page.getByRole("menuitem", { name: "Editar perfil" }).click();
+  await expect(page.getByRole("heading", { name: "Tu perfil" })).toBeVisible();
+
+  await page.getByLabel("Nombre visible").fill("Cami Rojas");
+  await page.getByRole("tab", { name: "Accesorios" }).click();
+  await page.getByRole("button", { name: "Redondos" }).click();
+  await page.getByRole("button", { name: "Argolla" }).click();
+  await page.getByRole("button", { name: "Guardar perfil" }).click();
+  await expect(page.getByText("Perfil actualizado.")).toBeVisible();
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+
+  await page.getByRole("link", { name: "Ranking" }).click();
+  await expect(
+    page.locator(".ranking-row").filter({ hasText: "Cami Rojas" }),
+  ).toBeVisible();
+});
+
+test("feedback identifies its mission and can be dismissed", async ({ page }) => {
+  await page.getByRole("link", { name: "Feedback" }).click();
+  await expect(page.getByText("P1-01").first()).toBeVisible();
+  await expect(page.getByText("La once de Tomatin").first()).toBeVisible();
+  const before = await page.locator(".feedback-item").count();
+
+  await page
+    .getByRole("button", { name: /Eliminar feedback Comentario del mentor/ })
+    .click();
+  await expect(page.locator(".feedback-item")).toHaveCount(before - 1);
+});
+
+test("ranking places the winner above the other podium positions", async ({
+  page,
+}) => {
+  await page.getByRole("link", { name: "Ranking" }).click();
+  const first = await page.locator(".podium-entry.place-1").boundingBox();
+  const second = await page.locator(".podium-entry.place-2").boundingBox();
+  const third = await page.locator(".podium-entry.place-3").boundingBox();
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
+  expect(third).not.toBeNull();
+  expect(first!.y).toBeLessThan(second!.y);
+  expect(first!.y).toBeLessThan(third!.y);
+  expect(first!.x).toBeGreaterThan(second!.x);
+  expect(first!.x).toBeLessThan(third!.x);
+});
+
 test("dashboard has no serious automated accessibility violations", async ({
   page,
 }) => {

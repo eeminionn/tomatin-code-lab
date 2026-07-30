@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   TriangleAlert,
   Trophy,
+  UserRound,
   Users,
   X,
 } from "lucide-react";
@@ -24,7 +25,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { initials } from "@/lib/format";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useClassroom } from "@/state/classroom-context";
 
 const studentNavigation = [
@@ -64,7 +65,10 @@ export function AppShell() {
   const navigate = useNavigate();
   const unread =
     snapshot?.notifications.filter(
-      (entry) => entry.userId === viewProfile?.id && !entry.readAt,
+      (entry) =>
+        entry.userId === viewProfile?.id &&
+        !entry.readAt &&
+        !entry.dismissedAt,
     ).length ?? 0;
   const isActorStaff =
     profile?.role === "mentor" || profile?.role === "owner";
@@ -285,7 +289,9 @@ export function AppShell() {
                 aria-haspopup="menu"
                 onClick={() => setProfileOpen((current) => !current)}
               >
-                <span className="avatar">{initials(profile?.displayName ?? "?")}</span>
+                {profile ? (
+                  <ProfileAvatar profile={profile} size="medium" decorative />
+                ) : null}
                 <span className="profile-copy">
                   <strong>{profile?.displayName}</strong>
                   <small>
@@ -299,18 +305,29 @@ export function AppShell() {
                 <ChevronDown aria-hidden="true" />
               </button>
               {profileOpen ? (
-                <button
-                  className="profile-menu-action"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setProfileOpen(false);
-                    void logout();
-                  }}
-                >
-                  <LogOut aria-hidden="true" />
-                  Cerrar sesión
-                </button>
+                <div className="profile-menu-popover" role="menu">
+                  <NavLink
+                    className="profile-menu-action"
+                    role="menuitem"
+                    to="/profile"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <UserRound aria-hidden="true" />
+                    Editar perfil
+                  </NavLink>
+                  <button
+                    className="profile-menu-action"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      void logout();
+                    }}
+                  >
+                    <LogOut aria-hidden="true" />
+                    Cerrar sesión
+                  </button>
+                </div>
               ) : null}
             </div>
           </div>

@@ -1,4 +1,10 @@
-import { Check, CheckCircle2, CircleDot, MessageSquareText } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  CircleDot,
+  MessageSquareText,
+  Trash2,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate } from "@/lib/format";
 import { useCatalog } from "@/state/catalog";
@@ -10,12 +16,15 @@ export function Component() {
     isStudentPreview,
     snapshot,
     markNotificationRead,
+    dismissNotification,
   } = useClassroom();
   const { getMissionById } = useCatalog();
   if (!viewProfile || !snapshot) return null;
 
   const notifications = snapshot.notifications
-    .filter((entry) => entry.userId === viewProfile.id)
+    .filter(
+      (entry) => entry.userId === viewProfile.id && !entry.dismissedAt,
+    )
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -50,11 +59,17 @@ export function Component() {
           const attempt = snapshot.attempts.find(
             (item) => item.id === (entry.attemptId ?? review?.attemptId),
           );
-          const mission = assignment
+          const missionId = assignment?.missionId ?? attempt?.missionId;
+          const mission = missionId
             ? getMissionById(
-                assignment.missionId,
-                attempt?.missionVersion ?? assignment.missionVersion,
+                missionId,
+                attempt?.missionVersion ?? assignment?.missionVersion,
               )
+            : undefined;
+          const missionCode = mission
+            ? `${mission.course === "programming-1" ? "P1" : "P2"}-${String(
+                mission.order,
+              ).padStart(2, "0")}`
             : undefined;
           const destination =
             assignment && mission
@@ -76,6 +91,12 @@ export function Component() {
               </span>
               {destination ? (
                 <Link className="feedback-item-content" to={destination}>
+                  {mission && missionCode ? (
+                    <span className="feedback-mission-label">
+                      <code>{missionCode}</code>
+                      {mission.title}
+                    </span>
+                  ) : null}
                   <span className="feedback-item-heading">
                     <strong>{entry.title}</strong>
                     <time dateTime={entry.createdAt}>
@@ -114,6 +135,12 @@ export function Component() {
                 </Link>
               ) : (
                 <div>
+                  {mission && missionCode ? (
+                    <span className="feedback-mission-label">
+                      <code>{missionCode}</code>
+                      {mission.title}
+                    </span>
+                  ) : null}
                   <div className="feedback-item-heading">
                     <strong>{entry.title}</strong>
                     <time dateTime={entry.createdAt}>
@@ -123,15 +150,29 @@ export function Component() {
                   <p>{entry.body}</p>
                 </div>
               )}
-              {!entry.readAt && !isStudentPreview ? (
-                <button
-                  className="icon-button"
-                  type="button"
-                  aria-label={`Marcar ${entry.title} como leído`}
-                  onClick={() => markNotificationRead(entry.id)}
-                >
-                  <Check aria-hidden="true" />
-                </button>
+              {!isStudentPreview ? (
+                <div className="feedback-actions">
+                  {!entry.readAt ? (
+                    <button
+                      className="icon-button"
+                      type="button"
+                      title="Marcar como leído"
+                      aria-label={`Marcar ${entry.title} como leído`}
+                      onClick={() => markNotificationRead(entry.id)}
+                    >
+                      <Check aria-hidden="true" />
+                    </button>
+                  ) : null}
+                  <button
+                    className="icon-button feedback-delete"
+                    type="button"
+                    title="Eliminar de Feedback"
+                    aria-label={`Eliminar feedback ${entry.title}`}
+                    onClick={() => dismissNotification(entry.id)}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </button>
+                </div>
               ) : null}
             </article>
           );

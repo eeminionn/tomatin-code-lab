@@ -13,6 +13,7 @@ const MissionsPage = lazyPage(() => import("@/pages/MissionsPage"));
 const MissionWorkspace = lazyPage(() => import("@/pages/MissionWorkspace"));
 const RankingPage = lazyPage(() => import("@/pages/RankingPage"));
 const FeedbackPage = lazyPage(() => import("@/pages/FeedbackPage"));
+const ProfilePage = lazyPage(() => import("@/pages/ProfilePage"));
 const MentorPage = lazyPage(() => import("@/pages/MentorPage"));
 const AboutPage = lazyPage(() => import("@/pages/AboutPage"));
 
@@ -48,6 +49,7 @@ export function App() {
           <Route path="mission/:slug" element={<MissionWorkspace />} />
           <Route path="ranking" element={<RankingPage />} />
           <Route path="feedback" element={<FeedbackPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="admin/*" element={<MentorPage />} />
           <Route path="mentor" element={<Navigate to="/admin" replace />} />
           <Route path="about" element={<AboutPage />} />

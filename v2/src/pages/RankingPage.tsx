@@ -1,5 +1,5 @@
 import { Award, Medal, Trophy } from "lucide-react";
-import { initials } from "@/lib/format";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useClassroom } from "@/state/classroom-context";
 
 export function Component() {
@@ -61,7 +61,10 @@ export function Component() {
               {index === 0 ? <Trophy /> : index === 1 ? <Medal /> : <Award />}
               <span>{index + 1}</span>
             </div>
-            <span className="avatar large">{initials(row.student.displayName)}</span>
+            <ProfileAvatar
+              profile={row.student}
+              size={index === 0 ? "large" : "medium"}
+            />
             <strong>{row.student.displayName}</strong>
             <span>{row.xp} XP</span>
           </article>
@@ -85,7 +88,7 @@ export function Component() {
               {String(index + 1).padStart(2, "0")}
             </strong>
             <div className="ranking-student">
-              <span className="avatar">{initials(row.student.displayName)}</span>
+              <ProfileAvatar profile={row.student} size="small" />
               <span>
                 <strong>{row.student.displayName}</strong>
                 <small>{row.student.githubLogin ? `@${row.student.githubLogin}` : "estudiante"}</small>

@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(22);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -282,6 +282,48 @@ select is(
   (select count(*) from public.notifications),
   1::bigint,
   'students only read their own notifications'
+);
+
+select lives_ok(
+  $$
+    update public.profiles
+    set
+      display_name = 'Student Alias',
+      avatar_config = '{"top":"shortFlat"}'::jsonb
+    where id = '00000000-0000-0000-0000-000000000102'
+  $$,
+  'students can update their own display name and avatar configuration'
+);
+
+select throws_ok(
+  $$
+    update public.profiles
+    set github_login = 'forged-login'
+    where id = '00000000-0000-0000-0000-000000000102'
+  $$,
+  'P0001',
+  'Profile identity fields cannot be changed by the user.',
+  'students cannot change their GitHub identity'
+);
+
+select lives_ok(
+  $$
+    update public.notifications
+    set dismissed_at = now()
+    where title = 'Own feedback'
+  $$,
+  'students can dismiss their own feedback notification'
+);
+
+select throws_ok(
+  $$
+    update public.notifications
+    set title = 'Rewritten feedback'
+    where title = 'Own feedback'
+  $$,
+  '42501',
+  'permission denied for table notifications',
+  'students cannot rewrite mentor feedback'
 );
 
 select lives_ok(

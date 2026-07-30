@@ -85,7 +85,10 @@ export function Component() {
       )
     : undefined;
   const unread = snapshot.notifications.filter(
-    (entry) => entry.userId === subjectProfile.id && !entry.readAt,
+    (entry) =>
+      entry.userId === subjectProfile.id &&
+      !entry.readAt &&
+      !entry.dismissedAt,
   );
   const repository = snapshot.repositories?.find(
     (entry) => entry.userId === subjectProfile.id,

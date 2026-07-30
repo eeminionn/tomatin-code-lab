@@ -116,7 +116,24 @@ export interface Profile {
   email: string;
   githubLogin?: string;
   avatarUrl?: string;
+  avatarConfig?: AvatarConfig;
   role: Role;
+}
+
+export interface AvatarConfig {
+  seed: string;
+  top: string;
+  hairColor: string;
+  hatColor: string;
+  eyes: string;
+  eyebrows: string;
+  mouth: string;
+  skinColor: string;
+  accessories: string;
+  facialHair: string;
+  clothing: string;
+  clothesColor: string;
+  earrings: "none" | "stud" | "hoop";
 }
 
 export interface Classroom {
@@ -265,6 +282,7 @@ export interface AppNotification {
   title: string;
   body: string;
   readAt?: string;
+  dismissedAt?: string;
   createdAt: string;
 }
 
