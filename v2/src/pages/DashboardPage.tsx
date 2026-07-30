@@ -18,22 +18,31 @@ import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
 
 export function Component() {
-  const { profile, snapshot, backendMode } = useClassroom();
+  const {
+    profile,
+    viewProfile,
+    isStudentPreview,
+    snapshot,
+    backendMode,
+  } = useClassroom();
   const { getMissionById } = useCatalog();
-  if (!profile || !snapshot) return null;
+  if (!profile || !viewProfile || !snapshot) return null;
 
-  const isMentor = profile.role === "owner" || profile.role === "mentor";
+  const isMentor =
+    !isStudentPreview &&
+    (profile.role === "owner" || profile.role === "mentor");
+  const subjectProfile = isStudentPreview ? viewProfile : profile;
   const assignments = snapshot.assignments.filter(
     (assignment) =>
       assignment.status === "published" &&
-      (isMentor || assignment.studentIds.includes(profile.id)),
+      (isMentor || assignment.studentIds.includes(subjectProfile.id)),
   );
   const progress = snapshot.progress.filter((entry) =>
-    isMentor ? true : entry.userId === profile.id,
+    isMentor ? true : entry.userId === subjectProfile.id,
   );
   const ownProgress = new Map(
     progress
-      .filter((entry) => entry.userId === profile.id)
+      .filter((entry) => entry.userId === subjectProfile.id)
       .map((entry) => [entry.assignmentId, entry]),
   );
   const approved = isMentor
@@ -69,13 +78,17 @@ export function Component() {
       (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
     )[0];
   const nextMission = nextAssignment
-    ? getMissionById(nextAssignment.missionId)
+    ? getMissionById(
+        nextAssignment.missionId,
+        ownProgress.get(nextAssignment.id)?.missionVersion ??
+          nextAssignment.missionVersion,
+      )
     : undefined;
   const unread = snapshot.notifications.filter(
-    (entry) => entry.userId === profile.id && !entry.readAt,
+    (entry) => entry.userId === subjectProfile.id && !entry.readAt,
   );
   const repository = snapshot.repositories?.find(
-    (entry) => entry.userId === profile.id,
+    (entry) => entry.userId === subjectProfile.id,
   );
 
   return (
@@ -86,7 +99,9 @@ export function Component() {
             {isMentor ? "PULSO DEL CURSO" : "TU SEMANA"}
           </p>
           <h1>
-            {isMentor ? snapshot.classroom.name : `Hola, ${profile.displayName.split(" ")[0]}`}
+            {isMentor
+              ? snapshot.classroom.name
+              : `Hola, ${subjectProfile.displayName.split(" ")[0]}`}
           </h1>
           <p>
             {isMentor
@@ -165,8 +180,11 @@ export function Component() {
 
           <div className="assignment-list">
             {assignments.slice(0, 5).map((assignment) => {
-              const mission = getMissionById(assignment.missionId);
               const state = ownProgress.get(assignment.id);
+              const mission = getMissionById(
+                assignment.missionId,
+                state?.missionVersion ?? assignment.missionVersion,
+              );
               const status = state?.status ?? "not_started";
               const overdue = isOverdue(assignment.dueAt, status);
               return (
@@ -256,7 +274,7 @@ export function Component() {
                   <span className="system-dot supabase" aria-hidden="true" />
                   <span>
                     <strong>Preparando repositorio</strong>
-                    <small>@{profile.githubLogin}</small>
+                    <small>@{subjectProfile.githubLogin}</small>
                   </span>
                 </div>
               )}

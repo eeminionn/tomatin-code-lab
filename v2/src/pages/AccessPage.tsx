@@ -49,7 +49,7 @@ export function AccessPage() {
           <div className="access-heading">
             <TerminalSquare aria-hidden="true" />
             <div>
-              <p className="eyebrow">AULA 2.0</p>
+              <p className="eyebrow">AULA 3.0</p>
               <h2 id="access-title">Entrar al curso</h2>
             </div>
           </div>

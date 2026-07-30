@@ -10,8 +10,8 @@ export const publicMissions = [
     "order": 1,
     "title": "La once de Tomatin",
     "summary": "Calcula un total sin mezclar texto y números.",
-    "context": "Hay que cerrar la compra del taller antes de que llegue el pedido.",
-    "brief": "Implementa totalOnce. Recibe precios y cantidades en posiciones equivalentes y retorna la suma de precio por cantidad.",
+    "context": "Tomatin está cerrando una compra para el taller. Cada precio ocupa la misma posición que la cantidad correspondiente.",
+    "brief": "Completa totalOnce para calcular el subtotal de cada producto y devolver la suma total de la compra.",
     "difficulty": "Inicial",
     "points": 100,
     "duration": 12,
@@ -27,12 +27,30 @@ export const publicMissions = [
     ],
     "hints": [
       "El elemento en la posición i de precios corresponde a la posición i de cantidades.",
-      "Parte el acumulador en cero y actualízalo una vez por producto."
+      "Parte el acumulador en cero y actualízalo una vez por producto.",
+      "Pseudocódigo: para cada i, calcula precios[i] por cantidades[i], súmalo a total y devuelve total después del bucle."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function totalOnce(precios, cantidades) {\n  // Retorna el total numérico.\n}\n",
+        "starterCode": "function totalOnce(precios, cantidades) {\n  let total = 0;\n\n  for (let i = 0; i < precios.length; i += 1) {\n    const precio = precios[i];\n    const cantidad = cantidades[i];\n\n    // TODO: calcula el subtotal y súmalo a total.\n  }\n\n  return total;\n}\n",
+        "expectedSignature": "function totalOnce(precios, cantidades)",
+        "examples": [
+          {
+            "id": "once-total",
+            "label": "Dos productos",
+            "input": "1200 × 2 + 850 × 3",
+            "output": "4950",
+            "explanation": "1200 × 2 + 850 × 3 = 4950. Cada precio se multiplica por la cantidad de su misma posición antes de sumar ambos subtotales."
+          },
+          {
+            "id": "once-empty",
+            "label": "Compra vacía",
+            "input": "precios = [], cantidades = []",
+            "output": "0",
+            "explanation": "Sin productos, el acumulador conserva su valor inicial de cero."
+          }
+        ],
         "publicTests": [
           {
             "id": "once-total",
@@ -55,7 +73,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def total_once(precios, cantidades):\n    # Retorna el total numérico.\n    pass\n",
+        "starterCode": "def total_once(precios, cantidades):\n    total = 0\n\n    for i in range(len(precios)):\n        precio = precios[i]\n        cantidad = cantidades[i]\n\n        # TODO: calcula el subtotal y súmalo a total.\n\n    return total\n",
+        "expectedSignature": "def total_once(precios, cantidades)",
+        "examples": [
+          {
+            "id": "once-total",
+            "label": "Dos productos",
+            "input": "1200 × 2 + 850 × 3",
+            "output": "4950",
+            "explanation": "1200 × 2 + 850 × 3 = 4950. Cada precio se multiplica por la cantidad de su misma posición antes de sumar ambos subtotales."
+          },
+          {
+            "id": "once-empty",
+            "label": "Compra vacía",
+            "input": "precios = [], cantidades = []",
+            "output": "0",
+            "explanation": "Sin productos, el acumulador conserva su valor inicial de cero."
+          }
+        ],
         "publicTests": [
           {
             "id": "once-total",
@@ -78,7 +113,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\ndouble totalOnce(const vector<double>& precios, const vector<int>& cantidades) {\n  // Retorna el total numérico.\n  return 0;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\ndouble totalOnce(const vector<double>& precios, const vector<int>& cantidades) {\n  double total = 0;\n\n  for (size_t i = 0; i < precios.size(); ++i) {\n    double precio = precios[i];\n    int cantidad = cantidades[i];\n\n    // TODO: calcula el subtotal y súmalo a total.\n  }\n\n  return total;\n}\n",
+        "expectedSignature": "double totalOnce(const vector<double>& precios, const vector<int>& cantidades)",
+        "examples": [
+          {
+            "id": "once-total",
+            "label": "Dos productos",
+            "input": "1200 × 2 + 850 × 3",
+            "output": "4950",
+            "explanation": "1200 × 2 + 850 × 3 = 4950. Cada precio se multiplica por la cantidad de su misma posición antes de sumar ambos subtotales."
+          },
+          {
+            "id": "once-empty",
+            "label": "Compra vacía",
+            "input": "precios = [], cantidades = []",
+            "output": "0",
+            "explanation": "Sin productos, el acumulador conserva su valor inicial de cero."
+          }
+        ],
         "publicTests": [
           {
             "id": "once-total",
@@ -98,8 +150,29 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Obtén un único total numérico a partir de dos listas relacionadas: precios y cantidades.",
+    "conceptIntro": "Dos arreglos pueden describir una misma colección cuando comparten sus índices. En la posición i, precios[i] y cantidades[i] pertenecen al mismo producto. El acumulador total debe comenzar en cero y aumentar una vez por producto.",
+    "steps": [
+      "Inicializa el acumulador total en cero.",
+      "Recorre todas las posiciones válidas de precios.",
+      "Multiplica el precio por la cantidad de la misma posición.",
+      "Suma cada subtotal y devuelve total al terminar."
+    ],
+    "constraints": [
+      "No cambies el nombre ni los parámetros de totalOnce.",
+      "Precios y cantidades tendrán el mismo largo.",
+      "Una compra vacía debe retornar cero.",
+      "Devuelve un número; no formatees el resultado como texto."
+    ],
+    "successCriteria": [
+      "Relaciona correctamente los elementos que comparten índice.",
+      "Acumula todos los subtotales sin reiniciar total.",
+      "Retorna 4950 para precios [1200, 850] y cantidades [2, 3].",
+      "Retorna cero cuando ambas listas están vacías."
+    ],
+    "prerequisites": [],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-02-var-limache",
@@ -124,12 +197,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Para validar el gol, ambas infracciones deben ser falsas.",
-      "Puedes resolverlo con una sola condición compuesta."
+      "Puedes resolverlo con una sola condición compuesta.",
+      "SI no hay fuera de juego Y no hay falta, RETORNAR GOL; EN OTRO CASO, RETORNAR ANULADO."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function revisarGol(fueraDeJuego, falta) {\n  // Retorna \"GOL\" o \"ANULADO\".\n}\n",
+        "starterCode": "function revisarGol(fueraDeJuego, falta) {\n  const jugadaLimpia = false; // TODO: combina ambas infracciones.\n  return jugadaLimpia ? \"GOL\" : \"ANULADO\";\n}\n",
+        "expectedSignature": "function revisarGol(fueraDeJuego, falta)",
+        "examples": [
+          {
+            "id": "gol-valid",
+            "label": "Gol válido",
+            "input": "revisarGol(false, false)",
+            "output": "GOL",
+            "explanation": "Ambas infracciones deben ser falsas."
+          },
+          {
+            "id": "gol-offside",
+            "label": "Detecta fuera de juego",
+            "input": "revisarGol(true, false)",
+            "output": "ANULADO",
+            "explanation": "El fuera de juego anula la jugada."
+          }
+        ],
         "publicTests": [
           {
             "id": "gol-valid",
@@ -152,7 +243,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def revisar_gol(fuera_de_juego, falta):\n    # Retorna \"GOL\" o \"ANULADO\".\n    pass\n",
+        "starterCode": "def revisar_gol(fuera_de_juego, falta):\n    jugada_limpia = False  # TODO: combina ambas infracciones.\n    return \"GOL\" if jugada_limpia else \"ANULADO\"\n",
+        "expectedSignature": "def revisar_gol(fuera_de_juego, falta)",
+        "examples": [
+          {
+            "id": "gol-valid",
+            "label": "Gol válido",
+            "input": "revisar_gol(False, False)",
+            "output": "GOL",
+            "explanation": "Ambas infracciones deben ser falsas."
+          },
+          {
+            "id": "gol-offside",
+            "label": "Detecta fuera de juego",
+            "input": "revisar_gol(True, False)",
+            "output": "ANULADO",
+            "explanation": "El fuera de juego anula la jugada."
+          }
+        ],
         "publicTests": [
           {
             "id": "gol-valid",
@@ -175,7 +283,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring revisarGol(bool fueraDeJuego, bool falta) {\n  // Retorna \"GOL\" o \"ANULADO\".\n  return \"\";\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring revisarGol(bool fueraDeJuego, bool falta) {\n  bool jugadaLimpia = false;  // TODO: combina ambas infracciones.\n  return jugadaLimpia ? \"GOL\" : \"ANULADO\";\n}\n",
+        "expectedSignature": "string revisarGol(bool fueraDeJuego, bool falta)",
+        "examples": [
+          {
+            "id": "gol-valid",
+            "label": "Gol válido",
+            "input": "revisarGol(false, false) == \"GOL\"",
+            "output": "GOL",
+            "explanation": "Ambas infracciones deben ser falsas."
+          },
+          {
+            "id": "gol-offside",
+            "label": "Detecta fuera de juego",
+            "input": "revisarGol(true, false) == \"ANULADO\"",
+            "output": "ANULADO",
+            "explanation": "El fuera de juego anula la jugada."
+          }
+        ],
         "publicTests": [
           {
             "id": "gol-valid",
@@ -195,8 +320,26 @@ export const publicMissions = [
         "hiddenTestCount": 2
       }
     },
+    "goal": "Retornar \"GOL\" únicamente cuando fueraDeJuego y falta sean falsos; todos los demás casos deben retornar \"ANULADO\".",
+    "conceptIntro": "Una condición compuesta permite traducir una regla con varias señales a una decisión única. Aquí debes distinguir la jugada limpia de las tres combinaciones que contienen una infracción.",
+    "steps": [
+      "Identifica qué combinación representa una jugada válida.",
+      "Construye una expresión booleana que sea verdadera solo en ese caso.",
+      "Retorna una de las dos cadenas exactas según el resultado."
+    ],
+    "constraints": [
+      "Conserva la firma de la función y las mayúsculas de las cadenas.",
+      "No consideres válida una jugada si existe al menos una infracción."
+    ],
+    "successCriteria": [
+      "Aprueba las cuatro combinaciones posibles de las dos entradas.",
+      "Retorna siempre una cadena y no imprime el resultado."
+    ],
+    "prerequisites": [
+      "p1-01-la-once"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-03-semaforo-led",
@@ -223,12 +366,30 @@ export const publicMissions = [
     ],
     "hints": [
       "La condición del bucle debe detenerse antes del largo.",
-      "Agrega una cadena al resultado en cada iteración."
+      "Agrega una cadena al resultado en cada iteración.",
+      "CREAR salida vacía; PARA CADA pin, AGREGAR el mensaje formateado; RETORNAR salida."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function secuenciaPines(pines) {\n  // Retorna un arreglo de mensajes.\n}\n",
+        "starterCode": "function secuenciaPines(pines) {\n  const salida = [];\n  for (let i = 0; i < pines.length; i += 1) {\n    const pin = pines[i];\n    // TODO: agrega el mensaje de este pin a salida.\n  }\n  return salida;\n}\n",
+        "expectedSignature": "function secuenciaPines(pines)",
+        "examples": [
+          {
+            "id": "pins-three",
+            "label": "Procesa tres pines",
+            "input": "secuenciaPines([2, 4, 7])",
+            "output": "[\"PIN 2: ON\",\"PIN 4: ON\",\"PIN 7: ON\"]",
+            "explanation": "Recorre exactamente los pines recibidos."
+          },
+          {
+            "id": "pins-empty",
+            "label": "Acepta una lista vacía",
+            "input": "secuenciaPines([])",
+            "output": "[]",
+            "explanation": "No agregues elementos si no hay pines."
+          }
+        ],
         "publicTests": [
           {
             "id": "pins-three",
@@ -251,7 +412,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def secuencia_pines(pines):\n    # Retorna una lista de mensajes.\n    pass\n",
+        "starterCode": "def secuencia_pines(pines):\n    salida = []\n    for pin in pines:\n        # TODO: agrega el mensaje de este pin a salida.\n        pass\n    return salida\n",
+        "expectedSignature": "def secuencia_pines(pines)",
+        "examples": [
+          {
+            "id": "pins-three",
+            "label": "Procesa tres pines",
+            "input": "secuencia_pines([2, 4, 7])",
+            "output": "[\"PIN 2: ON\",\"PIN 4: ON\",\"PIN 7: ON\"]",
+            "explanation": "Recorre exactamente los pines recibidos."
+          },
+          {
+            "id": "pins-empty",
+            "label": "Acepta una lista vacía",
+            "input": "secuencia_pines([])",
+            "output": "[]",
+            "explanation": "No agregues elementos si no hay pines."
+          }
+        ],
         "publicTests": [
           {
             "id": "pins-three",
@@ -274,7 +452,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<string> secuenciaPines(const vector<int>& pines) {\n  // Retorna un mensaje por cada pin.\n  return {};\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<string> secuenciaPines(const vector<int>& pines) {\n  vector<string> salida;\n  for (int pin : pines) {\n    // TODO: agrega el mensaje de este pin a salida.\n  }\n  return salida;\n}\n",
+        "expectedSignature": "vector<string> secuenciaPines(const vector<int>& pines)",
+        "examples": [
+          {
+            "id": "pins-three",
+            "label": "Procesa tres pines",
+            "input": "secuenciaPines({2, 4, 7}) == vector<string>({\"PIN 2: ON\", \"PIN 4: ON\", \"PIN 7: ON\"})",
+            "output": "[\"PIN 2: ON\",\"PIN 4: ON\",\"PIN 7: ON\"]",
+            "explanation": "Recorre exactamente los pines recibidos."
+          },
+          {
+            "id": "pins-empty",
+            "label": "Acepta una lista vacía",
+            "input": "secuenciaPines({}).empty()",
+            "output": "[]",
+            "explanation": "No agregues elementos si no hay pines."
+          }
+        ],
         "publicTests": [
           {
             "id": "pins-three",
@@ -294,8 +489,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Transformar cada pin recibido en un mensaje \"PIN n: ON\", conservando el orden original.",
+    "conceptIntro": "Recorrer una colección significa visitar cada posición exactamente una vez. El índice debe mantenerse dentro del rango y la salida debe crecer al mismo ritmo que la entrada.",
+    "steps": [
+      "Crea una colección vacía para los mensajes.",
+      "Recorre los pines desde el primero hasta el último.",
+      "Construye un mensaje por pin, agrégalo a la salida y retorna la colección."
+    ],
+    "constraints": [
+      "No cambies el orden ni el valor de los pines.",
+      "Una entrada vacía debe producir una salida vacía."
+    ],
+    "successCriteria": [
+      "La salida tiene la misma cantidad de elementos que la entrada.",
+      "Cada mensaje respeta exactamente el formato solicitado."
+    ],
+    "prerequisites": [
+      "p1-02-var-limache"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-04-conversor-hallulla",
@@ -321,12 +534,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Divide los gramos por 500.",
-      "La cantidad de bolsas no puede ser fraccionaria."
+      "La cantidad de bolsas no puede ser fraccionaria.",
+      "SI gramos <= 0, RETORNAR 0; SI NO, RETORNAR TECHO(gramos / 500)."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function bolsasNecesarias(gramos) {\n  // Cada bolsa contiene 500 gramos.\n}\n",
+        "starterCode": "function bolsasNecesarias(gramos) {\n  if (gramos <= 0) return 0;\n  const gramosPorBolsa = 500;\n  const bolsasCompletas = Math.floor(gramos / gramosPorBolsa);\n  // TODO: considera si sobran gramos.\n  return bolsasCompletas;\n}\n",
+        "expectedSignature": "function bolsasNecesarias(gramos)",
+        "examples": [
+          {
+            "id": "bags-exact",
+            "label": "Cantidad exacta",
+            "input": "bolsasNecesarias(1000)",
+            "output": "2",
+            "explanation": "Una cantidad exacta no necesita una bolsa adicional."
+          },
+          {
+            "id": "bags-round",
+            "label": "Redondea hacia arriba",
+            "input": "bolsasNecesarias(1001)",
+            "output": "3",
+            "explanation": "Usa redondeo superior."
+          }
+        ],
         "publicTests": [
           {
             "id": "bags-exact",
@@ -349,7 +580,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def bolsas_necesarias(gramos):\n    # Cada bolsa contiene 500 gramos.\n    pass\n",
+        "starterCode": "def bolsas_necesarias(gramos):\n    if gramos <= 0:\n        return 0\n    gramos_por_bolsa = 500\n    bolsas_completas = gramos // gramos_por_bolsa\n    # TODO: considera si sobran gramos.\n    return bolsas_completas\n",
+        "expectedSignature": "def bolsas_necesarias(gramos)",
+        "examples": [
+          {
+            "id": "bags-exact",
+            "label": "Cantidad exacta",
+            "input": "bolsas_necesarias(1000)",
+            "output": "2",
+            "explanation": "Una cantidad exacta no necesita una bolsa adicional."
+          },
+          {
+            "id": "bags-round",
+            "label": "Redondea hacia arriba",
+            "input": "bolsas_necesarias(1001)",
+            "output": "3",
+            "explanation": "Usa redondeo superior."
+          }
+        ],
         "publicTests": [
           {
             "id": "bags-exact",
@@ -372,7 +620,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint bolsasNecesarias(int gramos) {\n  // Cada bolsa contiene 500 gramos.\n  return 0;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint bolsasNecesarias(int gramos) {\n  if (gramos <= 0) return 0;\n  const int gramosPorBolsa = 500;\n  int bolsasCompletas = gramos / gramosPorBolsa;\n  // TODO: considera si sobran gramos.\n  return bolsasCompletas;\n}\n",
+        "expectedSignature": "int bolsasNecesarias(int gramos)",
+        "examples": [
+          {
+            "id": "bags-exact",
+            "label": "Cantidad exacta",
+            "input": "bolsasNecesarias(1000) == 2",
+            "output": "2",
+            "explanation": "Una cantidad exacta no necesita una bolsa adicional."
+          },
+          {
+            "id": "bags-round",
+            "label": "Redondea hacia arriba",
+            "input": "bolsasNecesarias(1001) == 3",
+            "output": "3",
+            "explanation": "Ajusta la división entera para redondear hacia arriba."
+          }
+        ],
         "publicTests": [
           {
             "id": "bags-exact",
@@ -392,8 +657,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Calcular cuántas bolsas completas de 500 gramos se requieren, incluyendo una bolsa adicional cuando exista un resto.",
+    "conceptIntro": "Cuando una unidad no puede fraccionarse, una división debe redondearse hacia arriba. Antes de dividir conviene separar las entradas que no representan una cantidad válida.",
+    "steps": [
+      "Retorna cero si los gramos no son positivos.",
+      "Divide los gramos por la capacidad de una bolsa.",
+      "Redondea el cociente hacia arriba y retorna el entero."
+    ],
+    "constraints": [
+      "Cada bolsa representa exactamente 500 gramos.",
+      "El resultado nunca puede ser negativo ni fraccionario."
+    ],
+    "successCriteria": [
+      "Las cantidades exactas no agregan una bolsa extra.",
+      "Cualquier resto positivo agrega exactamente una bolsa."
+    ],
+    "prerequisites": [
+      "p1-03-semaforo-led"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-05-esp-con-fiebre",
@@ -419,12 +702,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Primero calcula el promedio de todas las lecturas.",
-      "Usa el valor absoluto de la diferencia."
+      "Usa el valor absoluto de la diferencia.",
+      "promedio = SUMA / CANTIDAD; PARA CADA lectura, SI ABS(lectura - promedio) > 8, AGREGARLA."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function detectarAnomalias(lecturas) {\n  // Retorna solo las lecturas anómalas.\n}\n",
+        "starterCode": "function detectarAnomalias(lecturas) {\n  if (lecturas.length === 0) return [];\n  let suma = 0;\n  for (const lectura of lecturas) suma += lectura;\n  const promedio = suma / lecturas.length;\n  const anomalias = [];\n  // TODO: recorre las lecturas y agrega las que superen el umbral.\n  return anomalias;\n}\n",
+        "expectedSignature": "function detectarAnomalias(lecturas)",
+        "examples": [
+          {
+            "id": "temp-outlier",
+            "label": "Detecta una lectura extrema",
+            "input": "detectarAnomalias([20, 21, 22, 45])",
+            "output": "[45]",
+            "explanation": "Calcula el promedio antes de filtrar."
+          },
+          {
+            "id": "temp-empty",
+            "label": "Acepta una lista vacía",
+            "input": "detectarAnomalias([])",
+            "output": "[]",
+            "explanation": "Resuelve el caso vacío antes de dividir."
+          }
+        ],
         "publicTests": [
           {
             "id": "temp-outlier",
@@ -447,7 +748,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def detectar_anomalias(lecturas):\n    # Retorna solo las lecturas anómalas.\n    pass\n",
+        "starterCode": "def detectar_anomalias(lecturas):\n    if not lecturas:\n        return []\n    suma = 0\n    for lectura in lecturas:\n        suma += lectura\n    promedio = suma / len(lecturas)\n    anomalias = []\n    # TODO: agrega las lecturas que superen el umbral.\n    return anomalias\n",
+        "expectedSignature": "def detectar_anomalias(lecturas)",
+        "examples": [
+          {
+            "id": "temp-outlier",
+            "label": "Detecta una lectura extrema",
+            "input": "detectar_anomalias([20, 21, 22, 45])",
+            "output": "[45]",
+            "explanation": "Calcula el promedio antes de filtrar."
+          },
+          {
+            "id": "temp-empty",
+            "label": "Acepta una lista vacía",
+            "input": "detectar_anomalias([])",
+            "output": "[]",
+            "explanation": "Resuelve el caso vacío antes de dividir."
+          }
+        ],
         "publicTests": [
           {
             "id": "temp-outlier",
@@ -470,7 +788,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<double> detectarAnomalias(const vector<double>& lecturas) {\n  // Retorna solo las lecturas anómalas.\n  return {};\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<double> detectarAnomalias(const vector<double>& lecturas) {\n  if (lecturas.empty()) return {};\n  double suma = 0;\n  for (double lectura : lecturas) suma += lectura;\n  double promedio = suma / lecturas.size();\n  vector<double> anomalias;\n  // TODO: agrega las lecturas que superen el umbral.\n  return anomalias;\n}\n",
+        "expectedSignature": "vector<double> detectarAnomalias(const vector<double>& lecturas)",
+        "examples": [
+          {
+            "id": "temp-outlier",
+            "label": "Detecta una lectura extrema",
+            "input": "detectarAnomalias({20, 21, 22, 45}) == vector<double>({45})",
+            "output": "[45]",
+            "explanation": "Calcula el promedio antes de filtrar."
+          },
+          {
+            "id": "temp-empty",
+            "label": "Acepta una lista vacía",
+            "input": "detectarAnomalias({}).empty()",
+            "output": "[]",
+            "explanation": "Resuelve el caso vacío antes de dividir."
+          }
+        ],
         "publicTests": [
           {
             "id": "temp-outlier",
@@ -490,8 +825,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Retornar, en su orden original, las lecturas cuya distancia absoluta al promedio sea mayor que 8.",
+    "conceptIntro": "Este problema requiere dos recorridos: uno para calcular el promedio y otro para decidir qué lecturas se alejan lo suficiente. La lista vacía debe resolverse antes de dividir.",
+    "steps": [
+      "Si no hay lecturas, retorna una colección vacía.",
+      "Suma las lecturas y calcula el promedio.",
+      "Filtra las lecturas usando la distancia absoluta al promedio."
+    ],
+    "constraints": [
+      "El umbral es estrictamente mayor que 8; una distancia igual a 8 no cuenta.",
+      "No reordenes ni redondees las lecturas."
+    ],
+    "successCriteria": [
+      "No ocurre una división por cero con la entrada vacía.",
+      "Solo aparecen valores que superan el umbral definido."
+    ],
+    "prerequisites": [
+      "p1-04-conversor-hallulla"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-06-clave-del-profe",
@@ -517,12 +870,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Normaliza antes de validar.",
-      "La expresión debe cubrir la cadena completa y terminar con exactamente dos dígitos."
+      "La expresión debe cubrir la cadena completa y terminar con exactamente dos dígitos.",
+      "normalizada = MINÚSCULAS(RECORTAR entrada); RETORNAR COINCIDE_COMPLETA(normalizada, patrón)."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function claveValida(entrada) {\n  // Retorna true si cumple letras-guion-dos dígitos.\n}\n",
+        "starterCode": "function claveValida(entrada) {\n  const normalizada = entrada.trim().toLowerCase();\n  const patron = /TODO/; // TODO: reemplaza por el formato completo.\n  return patron.test(normalizada);\n}\n",
+        "expectedSignature": "function claveValida(entrada)",
+        "examples": [
+          {
+            "id": "key-normalize",
+            "label": "Normaliza espacios y mayúsculas",
+            "input": "claveValida(\"  ToMaTiN-42 \")",
+            "output": "true",
+            "explanation": "Aplica trim y minúsculas antes de validar."
+          },
+          {
+            "id": "key-shape",
+            "label": "Rechaza un formato incompleto",
+            "input": "claveValida(\"tomatin-4\")",
+            "output": "false",
+            "explanation": "Deben existir exactamente dos dígitos al final."
+          }
+        ],
         "publicTests": [
           {
             "id": "key-normalize",
@@ -545,7 +916,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def clave_valida(entrada):\n    # Retorna True si cumple letras-guion-dos dígitos.\n    pass\n",
+        "starterCode": "import re\n\ndef clave_valida(entrada):\n    normalizada = entrada.strip().lower()\n    patron = r\"TODO\"  # TODO: reemplaza por el formato completo.\n    return re.fullmatch(patron, normalizada) is not None\n",
+        "expectedSignature": "def clave_valida(entrada)",
+        "examples": [
+          {
+            "id": "key-normalize",
+            "label": "Normaliza espacios y mayúsculas",
+            "input": "clave_valida(\"  ToMaTiN-42 \")",
+            "output": "True",
+            "explanation": "Aplica strip y minúsculas antes de validar."
+          },
+          {
+            "id": "key-shape",
+            "label": "Rechaza un formato incompleto",
+            "input": "clave_valida(\"tomatin-4\")",
+            "output": "False",
+            "explanation": "Deben existir exactamente dos dígitos al final."
+          }
+        ],
         "publicTests": [
           {
             "id": "key-normalize",
@@ -568,7 +956,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool claveValida(string entrada) {\n  // Retorna true si cumple letras-guion-dos dígitos.\n  return false;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool claveValida(string entrada) {\n  auto inicio = entrada.find_first_not_of(\" \\t\\n\\r\");\n  if (inicio == string::npos) return false;\n  auto fin = entrada.find_last_not_of(\" \\t\\n\\r\");\n  string normalizada = entrada.substr(inicio, fin - inicio + 1);\n  transform(normalizada.begin(), normalizada.end(), normalizada.begin(),\n            [](unsigned char c) { return tolower(c); });\n  regex patron(\"TODO\");  // TODO: reemplaza por el formato completo.\n  return regex_match(normalizada, patron);\n}\n",
+        "expectedSignature": "bool claveValida(string entrada)",
+        "examples": [
+          {
+            "id": "key-normalize",
+            "label": "Normaliza espacios y mayúsculas",
+            "input": "claveValida(\"  ToMaTiN-42 \")",
+            "output": "true",
+            "explanation": "Recorta y transforma antes de validar."
+          },
+          {
+            "id": "key-shape",
+            "label": "Rechaza un formato incompleto",
+            "input": "!claveValida(\"tomatin-4\")",
+            "output": "false",
+            "explanation": "Deben existir exactamente dos dígitos al final."
+          }
+        ],
         "publicTests": [
           {
             "id": "key-normalize",
@@ -588,8 +993,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Normalizar la entrada y validar que el resultado contenga letras, un guion y exactamente dos dígitos.",
+    "conceptIntro": "Normalizar antes de validar reduce variantes equivalentes. La validación debe cubrir la cadena completa para evitar aceptar texto adicional al inicio o al final.",
+    "steps": [
+      "Elimina los espacios exteriores y convierte la cadena a minúsculas.",
+      "Comprueba la estructura letras-guion-dos dígitos.",
+      "Retorna un booleano con el resultado de la validación."
+    ],
+    "constraints": [
+      "Solo se permiten letras de a a z antes del guion.",
+      "Debe existir exactamente un guion y dos dígitos finales."
+    ],
+    "successCriteria": [
+      "Acepta entradas equivalentes con espacios o mayúsculas.",
+      "Rechaza cadenas parciales, invertidas o con separadores distintos."
+    ],
+    "prerequisites": [
+      "p1-05-esp-con-fiebre"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-07-inventario-maker",
@@ -615,12 +1038,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Valida el retiro antes de restarlo.",
-      "La reposición se necesita cuando el stock queda por debajo del mínimo."
+      "La reposición se necesita cuando el stock queda por debajo del mínimo.",
+      "SI retiro < 0 O retiro > stock, RETORNAR -1; SI NO, RETORNAR stock - retiro."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function stockSeguro(stock, retiro) {\n  // Retorna el nuevo stock o -1.\n}\n\nfunction necesitaReposicion(stock, minimo) {\n  // Retorna true o false.\n}\n",
+        "starterCode": "function stockSeguro(stock, retiro) {\n  const retiroInvalido = false; // TODO: valida ambos casos inválidos.\n  if (retiroInvalido) return -1;\n  return stock; // TODO: aplica el retiro.\n}\n\nfunction necesitaReposicion(stock, minimo) {\n  return false; // TODO: compara el stock con el mínimo.\n}\n",
+        "expectedSignature": "function stockSeguro(stock, retiro)",
+        "examples": [
+          {
+            "id": "stock-update",
+            "label": "Descuenta un retiro válido",
+            "input": "stockSeguro(12, 5)",
+            "output": "7",
+            "explanation": "Resta solo después de validar."
+          },
+          {
+            "id": "stock-invalid",
+            "label": "Impide stock negativo",
+            "input": "stockSeguro(4, 8)",
+            "output": "-1",
+            "explanation": "Un retiro mayor al stock debe rechazarse."
+          }
+        ],
         "publicTests": [
           {
             "id": "stock-update",
@@ -643,7 +1084,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def stock_seguro(stock, retiro):\n    # Retorna el nuevo stock o -1.\n    pass\n\ndef necesita_reposicion(stock, minimo):\n    # Retorna True o False.\n    pass\n",
+        "starterCode": "def stock_seguro(stock, retiro):\n    retiro_invalido = False  # TODO: valida ambos casos inválidos.\n    if retiro_invalido:\n        return -1\n    return stock  # TODO: aplica el retiro.\n\ndef necesita_reposicion(stock, minimo):\n    return False  # TODO: compara el stock con el mínimo.\n",
+        "expectedSignature": "def stock_seguro(stock, retiro)",
+        "examples": [
+          {
+            "id": "stock-update",
+            "label": "Descuenta un retiro válido",
+            "input": "stock_seguro(12, 5)",
+            "output": "7",
+            "explanation": "Resta solo después de validar."
+          },
+          {
+            "id": "stock-invalid",
+            "label": "Impide stock negativo",
+            "input": "stock_seguro(4, 8)",
+            "output": "-1",
+            "explanation": "Un retiro mayor al stock debe rechazarse."
+          }
+        ],
         "publicTests": [
           {
             "id": "stock-update",
@@ -666,7 +1124,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint stockSeguro(int stock, int retiro) {\n  // Retorna el nuevo stock o -1.\n  return -1;\n}\n\nbool necesitaReposicion(int stock, int minimo) {\n  // Retorna true o false.\n  return false;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint stockSeguro(int stock, int retiro) {\n  bool retiroInvalido = false;  // TODO: valida ambos casos inválidos.\n  if (retiroInvalido) return -1;\n  return stock;  // TODO: aplica el retiro.\n}\n\nbool necesitaReposicion(int stock, int minimo) {\n  return false;  // TODO: compara el stock con el mínimo.\n}\n",
+        "expectedSignature": "int stockSeguro(int stock, int retiro)",
+        "examples": [
+          {
+            "id": "stock-update",
+            "label": "Descuenta un retiro válido",
+            "input": "stockSeguro(12, 5) == 7",
+            "output": "7",
+            "explanation": "Resta solo después de validar."
+          },
+          {
+            "id": "stock-invalid",
+            "label": "Impide stock negativo",
+            "input": "stockSeguro(4, 8) == -1",
+            "output": "-1",
+            "explanation": "Un retiro mayor al stock debe rechazarse."
+          }
+        ],
         "publicTests": [
           {
             "id": "stock-update",
@@ -686,8 +1161,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Validar un retiro, calcular el stock resultante y determinar por separado si hace falta reponer.",
+    "conceptIntro": "Una transición de estado solo debe aplicarse después de validar sus condiciones. Separar el descuento de la alerta de reposición mantiene cada función con una responsabilidad clara.",
+    "steps": [
+      "Rechaza retiros negativos o mayores al stock disponible.",
+      "Para un retiro válido, retorna stock menos retiro.",
+      "En la segunda función, compara el stock con el mínimo."
+    ],
+    "constraints": [
+      "stockSeguro retorna -1 para un retiro inválido.",
+      "La igualdad con el mínimo no requiere reposición."
+    ],
+    "successCriteria": [
+      "Nunca se devuelve un stock negativo válido.",
+      "Cada función cumple su contrato sin depender de estado externo."
+    ],
+    "prerequisites": [
+      "p1-06-clave-del-profe"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-08-loop-viernes",
@@ -713,12 +1206,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Valida el límite antes de iniciar el bucle.",
-      "La última posición debe contener exactamente el límite."
+      "La última posición debe contener exactamente el límite.",
+      "SI límite está fuera de 1..100, RETORNAR vacío; PARA i DESDE 1 HASTA límite, AGREGAR i."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function contarHasta(limite) {\n  // Retorna [1, 2, ..., limite] o [].\n}\n",
+        "starterCode": "function contarHasta(limite) {\n  if (limite < 1 || limite > 100) return [];\n  const salida = [];\n  for (let i = 1; i <= limite; i += 1) {\n    // TODO: agrega el valor actual.\n  }\n  return salida;\n}\n",
+        "expectedSignature": "function contarHasta(limite)",
+        "examples": [
+          {
+            "id": "loop-five",
+            "label": "Cuenta hasta cinco",
+            "input": "contarHasta(5)",
+            "output": "[1,2,3,4,5]",
+            "explanation": "Revisa inicio, condición y avance."
+          },
+          {
+            "id": "loop-cap",
+            "label": "Aplica la guarda superior",
+            "input": "contarHasta(101)",
+            "output": "[]",
+            "explanation": "Valida el máximo antes del bucle."
+          }
+        ],
         "publicTests": [
           {
             "id": "loop-five",
@@ -741,7 +1252,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def contar_hasta(limite):\n    # Retorna [1, 2, ..., limite] o [].\n    pass\n",
+        "starterCode": "def contar_hasta(limite):\n    if limite < 1 or limite > 100:\n        return []\n    salida = []\n    for valor in range(1, limite + 1):\n        # TODO: agrega el valor actual.\n        pass\n    return salida\n",
+        "expectedSignature": "def contar_hasta(limite)",
+        "examples": [
+          {
+            "id": "loop-five",
+            "label": "Cuenta hasta cinco",
+            "input": "contar_hasta(5)",
+            "output": "[1,2,3,4,5]",
+            "explanation": "Revisa inicio, condición y avance."
+          },
+          {
+            "id": "loop-cap",
+            "label": "Aplica la guarda superior",
+            "input": "contar_hasta(101)",
+            "output": "[]",
+            "explanation": "Valida el máximo antes del bucle."
+          }
+        ],
         "publicTests": [
           {
             "id": "loop-five",
@@ -764,7 +1292,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<int> contarHasta(int limite) {\n  // Retorna {1, 2, ..., limite} o {}.\n  return {};\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<int> contarHasta(int limite) {\n  if (limite < 1 || limite > 100) return {};\n  vector<int> salida;\n  for (int valor = 1; valor <= limite; ++valor) {\n    // TODO: agrega el valor actual.\n  }\n  return salida;\n}\n",
+        "expectedSignature": "vector<int> contarHasta(int limite)",
+        "examples": [
+          {
+            "id": "loop-five",
+            "label": "Cuenta hasta cinco",
+            "input": "contarHasta(5) == vector<int>({1, 2, 3, 4, 5})",
+            "output": "[1,2,3,4,5]",
+            "explanation": "Revisa inicio, condición y avance."
+          },
+          {
+            "id": "loop-cap",
+            "label": "Aplica la guarda superior",
+            "input": "contarHasta(101).empty()",
+            "output": "[]",
+            "explanation": "Valida el máximo antes del bucle."
+          }
+        ],
         "publicTests": [
           {
             "id": "loop-five",
@@ -784,8 +1329,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Construir la secuencia de enteros desde 1 hasta el límite, protegiendo el bucle con un rango válido.",
+    "conceptIntro": "Todo bucle necesita inicio, condición de término y avance. Una guarda previa evita ejecutar una cantidad inesperada de iteraciones.",
+    "steps": [
+      "Valida que el límite esté entre 1 y 100.",
+      "Crea una colección vacía y un contador que comience en 1.",
+      "Agrega cada contador hasta incluir el límite y retorna la colección."
+    ],
+    "constraints": [
+      "Los límites válidos son inclusivos.",
+      "Para entradas fuera de rango retorna una colección vacía."
+    ],
+    "successCriteria": [
+      "El primer elemento es 1 y el último es el límite.",
+      "El bucle siempre termina y no supera 100 iteraciones."
+    ],
+    "prerequisites": [
+      "p1-07-inventario-maker"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-09-paltas-qa",
@@ -811,12 +1374,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Comprueba ambos rangos.",
-      "Los límites 150, 300, 3 y 5 son válidos."
+      "Los límites 150, 300, 3 y 5 son válidos.",
+      "pesoValido = 150 <= peso <= 300; madurezValida = 3 <= madurez <= 5; RETORNAR ambos."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function esApta(peso, madurez) {\n  // Retorna true o false.\n}\n",
+        "starterCode": "function esApta(peso, madurez) {\n  const pesoValido = false; // TODO: comprueba ambos límites.\n  const madurezValida = false; // TODO: comprueba ambos límites.\n  return pesoValido && madurezValida;\n}\n",
+        "expectedSignature": "function esApta(peso, madurez)",
+        "examples": [
+          {
+            "id": "avocado-center",
+            "label": "Acepta un caso central",
+            "input": "esApta(220, 4)",
+            "output": "true",
+            "explanation": "Ambos valores deben estar en rango."
+          },
+          {
+            "id": "avocado-weight",
+            "label": "Rechaza peso inválido",
+            "input": "esApta(149, 4)",
+            "output": "false",
+            "explanation": "Incluye el límite inferior correcto."
+          }
+        ],
         "publicTests": [
           {
             "id": "avocado-center",
@@ -839,7 +1420,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def es_apta(peso, madurez):\n    # Retorna True o False.\n    pass\n",
+        "starterCode": "def es_apta(peso, madurez):\n    peso_valido = False  # TODO: comprueba ambos límites.\n    madurez_valida = False  # TODO: comprueba ambos límites.\n    return peso_valido and madurez_valida\n",
+        "expectedSignature": "def es_apta(peso, madurez)",
+        "examples": [
+          {
+            "id": "avocado-center",
+            "label": "Acepta un caso central",
+            "input": "es_apta(220, 4)",
+            "output": "True",
+            "explanation": "Ambos valores deben estar en rango."
+          },
+          {
+            "id": "avocado-weight",
+            "label": "Rechaza peso inválido",
+            "input": "es_apta(149, 4)",
+            "output": "False",
+            "explanation": "Incluye el límite inferior correcto."
+          }
+        ],
         "publicTests": [
           {
             "id": "avocado-center",
@@ -862,7 +1460,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool esApta(int peso, int madurez) {\n  // Retorna true o false.\n  return false;\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool esApta(int peso, int madurez) {\n  bool pesoValido = false;  // TODO: comprueba ambos límites.\n  bool madurezValida = false;  // TODO: comprueba ambos límites.\n  return pesoValido && madurezValida;\n}\n",
+        "expectedSignature": "bool esApta(int peso, int madurez)",
+        "examples": [
+          {
+            "id": "avocado-center",
+            "label": "Acepta un caso central",
+            "input": "esApta(220, 4)",
+            "output": "true",
+            "explanation": "Ambos valores deben estar en rango."
+          },
+          {
+            "id": "avocado-weight",
+            "label": "Rechaza peso inválido",
+            "input": "!esApta(149, 4)",
+            "output": "false",
+            "explanation": "Incluye el límite inferior correcto."
+          }
+        ],
         "publicTests": [
           {
             "id": "avocado-center",
@@ -882,8 +1497,26 @@ export const publicMissions = [
         "hiddenTestCount": 2
       }
     },
+    "goal": "Retornar verdadero solo cuando peso y madurez estén dentro de sus rangos inclusivos.",
+    "conceptIntro": "Una especificación con rangos se convierte en comparaciones de límites. La palabra 'incluyendo' determina que debes usar comparaciones inclusivas.",
+    "steps": [
+      "Comprueba que el peso esté entre 150 y 300.",
+      "Comprueba que la madurez esté entre 3 y 5.",
+      "Combina ambas condiciones y retorna el booleano."
+    ],
+    "constraints": [
+      "Los cuatro límites son válidos.",
+      "Ambos rangos deben cumplirse al mismo tiempo."
+    ],
+    "successCriteria": [
+      "Acepta casos centrales y los extremos exactos.",
+      "Rechaza un valor apenas fuera de cualquiera de los rangos."
+    ],
+    "prerequisites": [
+      "p1-08-loop-viernes"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p1-10-marcador-naranja",
@@ -909,12 +1542,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Valida antes de construir la cadena.",
-      "El minuto válido está entre 0 y 120, incluidos."
+      "El minuto válido está entre 0 y 120, incluidos.",
+      "SI algún valor es inválido, RETORNAR ERROR; SI NO, RETORNAR goles + | + tarjetas + | + minuto."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
-        "starterCode": "function resumenMarcador(goles, tarjetas, minuto) {\n  // Retorna \"goles|tarjetas|minuto\" o \"ERROR\".\n}\n",
+        "starterCode": "function resumenMarcador(goles, tarjetas, minuto) {\n  const datosInvalidos = false; // TODO: valida los tres valores.\n  if (datosInvalidos) return \"ERROR\";\n  // TODO: construye el resumen con separadores verticales.\n  return \"\";\n}\n",
+        "expectedSignature": "function resumenMarcador(goles, tarjetas, minuto)",
+        "examples": [
+          {
+            "id": "score-format",
+            "label": "Construye el resumen",
+            "input": "resumenMarcador(2, 3, 75)",
+            "output": "2|3|75",
+            "explanation": "Respeta el orden y los separadores."
+          },
+          {
+            "id": "score-minute",
+            "label": "Rechaza minuto fuera de rango",
+            "input": "resumenMarcador(1, 0, 121)",
+            "output": "ERROR",
+            "explanation": "El minuto máximo es 120."
+          }
+        ],
         "publicTests": [
           {
             "id": "score-format",
@@ -937,7 +1588,24 @@ export const publicMissions = [
       },
       "python": {
         "language": "python",
-        "starterCode": "def resumen_marcador(goles, tarjetas, minuto):\n    # Retorna \"goles|tarjetas|minuto\" o \"ERROR\".\n    pass\n",
+        "starterCode": "def resumen_marcador(goles, tarjetas, minuto):\n    datos_invalidos = False  # TODO: valida los tres valores.\n    if datos_invalidos:\n        return \"ERROR\"\n    # TODO: construye el resumen con separadores verticales.\n    return \"\"\n",
+        "expectedSignature": "def resumen_marcador(goles, tarjetas, minuto)",
+        "examples": [
+          {
+            "id": "score-format",
+            "label": "Construye el resumen",
+            "input": "resumen_marcador(2, 3, 75)",
+            "output": "2|3|75",
+            "explanation": "Respeta el orden y los separadores."
+          },
+          {
+            "id": "score-minute",
+            "label": "Rechaza minuto fuera de rango",
+            "input": "resumen_marcador(1, 0, 121)",
+            "output": "ERROR",
+            "explanation": "El minuto máximo es 120."
+          }
+        ],
         "publicTests": [
           {
             "id": "score-format",
@@ -960,7 +1628,24 @@ export const publicMissions = [
       },
       "cpp": {
         "language": "cpp",
-        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring resumenMarcador(int goles, int tarjetas, int minuto) {\n  // Retorna \"goles|tarjetas|minuto\" o \"ERROR\".\n  return \"\";\n}\n",
+        "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring resumenMarcador(int goles, int tarjetas, int minuto) {\n  bool datosInvalidos = false;  // TODO: valida los tres valores.\n  if (datosInvalidos) return \"ERROR\";\n  // TODO: construye el resumen con separadores verticales.\n  return \"\";\n}\n",
+        "expectedSignature": "string resumenMarcador(int goles, int tarjetas, int minuto)",
+        "examples": [
+          {
+            "id": "score-format",
+            "label": "Construye el resumen",
+            "input": "resumenMarcador(2, 3, 75) == \"2|3|75\"",
+            "output": "2|3|75",
+            "explanation": "Respeta el orden y los separadores."
+          },
+          {
+            "id": "score-minute",
+            "label": "Rechaza minuto fuera de rango",
+            "input": "resumenMarcador(1, 0, 121) == \"ERROR\"",
+            "output": "ERROR",
+            "explanation": "El minuto máximo es 120."
+          }
+        ],
         "publicTests": [
           {
             "id": "score-format",
@@ -980,8 +1665,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Validar tres números y retornar el formato exacto \"goles|tarjetas|minuto\" o \"ERROR\".",
+    "conceptIntro": "Validar primero evita construir resultados con datos imposibles. Una salida con formato estable debe respetar tanto el orden de los campos como sus separadores.",
+    "steps": [
+      "Comprueba que goles, tarjetas y minuto no sean negativos.",
+      "Comprueba que el minuto no supere 120.",
+      "Si todo es válido, une los tres valores con barras verticales."
+    ],
+    "constraints": [
+      "No agregues espacios al resumen.",
+      "Cualquier entrada inválida produce exactamente la cadena ERROR."
+    ],
+    "successCriteria": [
+      "El formato contiene tres valores en el orden indicado.",
+      "Los límites de minuto 0 y 120 son aceptados."
+    ],
+    "prerequisites": [
+      "p1-09-paltas-qa"
+    ],
     "courseLabel": "Programación I",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-01-factorial-recursivo",
@@ -1006,12 +1709,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Cero es un caso base.",
-      "Cada llamada válida reduce n en uno."
+      "Cada llamada válida reduce n en uno.",
+      "SI n <= 1, RETORNAR 1; SI NO, RETORNAR n * factorial(n - 1)."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "function factorial(n) {\n  // Usa recursión. Retorna -1 para negativos.\n}\n",
+        "expectedSignature": "function factorial(n)",
+        "examples": [
+          {
+            "id": "fact-five",
+            "label": "Calcula factorial de cinco",
+            "input": "factorial(5)",
+            "output": "120",
+            "explanation": "Multiplica n por el factorial del valor anterior."
+          },
+          {
+            "id": "fact-zero",
+            "label": "Resuelve el caso base",
+            "input": "factorial(0)",
+            "output": "1",
+            "explanation": "El factorial de cero es uno."
+          }
+        ],
         "publicTests": [
           {
             "id": "fact-five",
@@ -1035,6 +1756,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "def factorial(n):\n    # Usa recursión. Retorna -1 para negativos.\n    pass\n",
+        "expectedSignature": "def factorial(n)",
+        "examples": [
+          {
+            "id": "fact-five",
+            "label": "Calcula factorial de cinco",
+            "input": "factorial(5)",
+            "output": "120",
+            "explanation": "Multiplica n por el factorial del valor anterior."
+          },
+          {
+            "id": "fact-zero",
+            "label": "Resuelve el caso base",
+            "input": "factorial(0)",
+            "output": "1",
+            "explanation": "El factorial de cero es uno."
+          }
+        ],
         "publicTests": [
           {
             "id": "fact-five",
@@ -1058,6 +1796,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nlong long factorial(int n) {\n  // Usa recursión. Retorna -1 para negativos.\n  return 0;\n}\n",
+        "expectedSignature": "long long factorial(int n)",
+        "examples": [
+          {
+            "id": "fact-five",
+            "label": "Calcula factorial de cinco",
+            "input": "factorial(5) == 120",
+            "output": "120",
+            "explanation": "Multiplica n por el factorial del valor anterior."
+          },
+          {
+            "id": "fact-zero",
+            "label": "Resuelve el caso base",
+            "input": "factorial(0) == 1",
+            "output": "1",
+            "explanation": "El factorial de cero es uno."
+          }
+        ],
         "publicTests": [
           {
             "id": "fact-five",
@@ -1077,8 +1832,24 @@ export const publicMissions = [
         "hiddenTestCount": 2
       }
     },
+    "goal": "Calcular n factorial mediante recursión, con un caso base que detenga correctamente la cadena de llamadas.",
+    "conceptIntro": "Una función recursiva necesita un caso base y un paso que reduzca el problema. Cada llamada debe acercarse de forma estricta al caso base.",
+    "steps": [
+      "Define el resultado para 0 y 1.",
+      "Reduce n a n - 1 en la llamada recursiva.",
+      "Multiplica n por el resultado del subproblema."
+    ],
+    "constraints": [
+      "No uses bucles para reemplazar la recursión.",
+      "La entrada será un entero no negativo dentro del rango de pruebas."
+    ],
+    "successCriteria": [
+      "La función termina para 0 y para entradas positivas.",
+      "Cada nivel recursivo combina correctamente su valor con el siguiente."
+    ],
+    "prerequisites": [],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-02-duplicados-lineales",
@@ -1104,12 +1875,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Guarda cada elemento que ya viste.",
-      "Si un elemento ya está en el conjunto, puedes terminar."
+      "Si un elemento ya está en el conjunto, puedes terminar.",
+      "vistos = conjunto vacío; PARA CADA valor: SI está en vistos, RETORNAR verdadero; SI NO, AGREGARLO."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "function tieneDuplicados(valores) {\n  // Usa un Set y evita bucles anidados.\n}\n",
+        "expectedSignature": "function tieneDuplicados(valores)",
+        "examples": [
+          {
+            "id": "dupes-yes",
+            "label": "Encuentra una repetición",
+            "input": "tieneDuplicados([4, 8, 2, 8])",
+            "output": "true",
+            "explanation": "Comprueba pertenencia antes de agregar."
+          },
+          {
+            "id": "dupes-no",
+            "label": "Acepta valores únicos",
+            "input": "tieneDuplicados([4, 8, 2, 1])",
+            "output": "false",
+            "explanation": "Retorna falso solo después de recorrer todo."
+          }
+        ],
         "publicTests": [
           {
             "id": "dupes-yes",
@@ -1133,6 +1922,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "def tiene_duplicados(valores):\n    # Usa un set y evita bucles anidados.\n    pass\n",
+        "expectedSignature": "def tiene_duplicados(valores)",
+        "examples": [
+          {
+            "id": "dupes-yes",
+            "label": "Encuentra una repetición",
+            "input": "tiene_duplicados([4, 8, 2, 8])",
+            "output": "True",
+            "explanation": "Comprueba pertenencia antes de agregar."
+          },
+          {
+            "id": "dupes-no",
+            "label": "Acepta valores únicos",
+            "input": "tiene_duplicados([4, 8, 2, 1])",
+            "output": "False",
+            "explanation": "Retorna falso solo después de recorrer todo."
+          }
+        ],
         "publicTests": [
           {
             "id": "dupes-yes",
@@ -1156,6 +1962,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nbool tieneDuplicados(const vector<int>& valores) {\n  // Usa unordered_set y evita bucles anidados.\n  return false;\n}\n",
+        "expectedSignature": "bool tieneDuplicados(const vector<int>& valores)",
+        "examples": [
+          {
+            "id": "dupes-yes",
+            "label": "Encuentra una repetición",
+            "input": "tieneDuplicados({4, 8, 2, 8})",
+            "output": "true",
+            "explanation": "Comprueba pertenencia antes de agregar."
+          },
+          {
+            "id": "dupes-no",
+            "label": "Acepta valores únicos",
+            "input": "!tieneDuplicados({4, 8, 2, 1})",
+            "output": "false",
+            "explanation": "Retorna falso solo después de recorrer todo."
+          }
+        ],
         "publicTests": [
           {
             "id": "dupes-yes",
@@ -1175,8 +1998,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Detectar si aparece un valor repetido usando una sola pasada y memoria auxiliar.",
+    "conceptIntro": "Un conjunto permite comprobar pertenencia en tiempo constante esperado. Guardar cada valor visto evita comparar todos los pares.",
+    "steps": [
+      "Crea un conjunto vacío.",
+      "Para cada valor, comprueba si ya está en el conjunto.",
+      "Retorna verdadero al encontrar un repetido; si terminas, retorna falso."
+    ],
+    "constraints": [
+      "La complejidad temporal esperada debe ser O(n).",
+      "No ordenes ni modifiques la colección de entrada."
+    ],
+    "successCriteria": [
+      "Detecta repeticiones consecutivas y separadas.",
+      "Retorna falso para colecciones vacías o sin duplicados."
+    ],
+    "prerequisites": [
+      "p2-01-factorial-recursivo"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-03-busqueda-bodega",
@@ -1202,12 +2043,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Comienza con izquierda en cero y derecha en largo menos uno.",
-      "Actualiza el límite sin volver a incluir el punto medio."
+      "Actualiza el límite sin volver a incluir el punto medio.",
+      "MIENTRAS izquierda <= derecha: medio = ...; comparar; mover izquierda o derecha descartando medio."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "function busquedaBinaria(valores, objetivo) {\n  // Retorna el índice o -1.\n}\n",
+        "expectedSignature": "function busquedaBinaria(valores, objetivo)",
+        "examples": [
+          {
+            "id": "binary-found",
+            "label": "Encuentra un valor",
+            "input": "busquedaBinaria([2, 5, 8, 12, 20], 12)",
+            "output": "3",
+            "explanation": "Revisa cómo actualizas los límites."
+          },
+          {
+            "id": "binary-missing",
+            "label": "Retorna -1 si no existe",
+            "input": "busquedaBinaria([2, 5, 8, 12, 20], 7)",
+            "output": "-1",
+            "explanation": "El bucle termina cuando los límites se cruzan."
+          }
+        ],
         "publicTests": [
           {
             "id": "binary-found",
@@ -1231,6 +2090,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "def busqueda_binaria(valores, objetivo):\n    # Retorna el índice o -1.\n    pass\n",
+        "expectedSignature": "def busqueda_binaria(valores, objetivo)",
+        "examples": [
+          {
+            "id": "binary-found",
+            "label": "Encuentra un valor",
+            "input": "busqueda_binaria([2, 5, 8, 12, 20], 12)",
+            "output": "3",
+            "explanation": "Revisa cómo actualizas los límites."
+          },
+          {
+            "id": "binary-missing",
+            "label": "Retorna -1 si no existe",
+            "input": "busqueda_binaria([2, 5, 8, 12, 20], 7)",
+            "output": "-1",
+            "explanation": "El bucle termina cuando los límites se cruzan."
+          }
+        ],
         "publicTests": [
           {
             "id": "binary-found",
@@ -1254,6 +2130,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint busquedaBinaria(const vector<int>& valores, int objetivo) {\n  // Retorna el índice o -1.\n  return -1;\n}\n",
+        "expectedSignature": "int busquedaBinaria(const vector<int>& valores, int objetivo)",
+        "examples": [
+          {
+            "id": "binary-found",
+            "label": "Encuentra un valor",
+            "input": "busquedaBinaria({2, 5, 8, 12, 20}, 12) == 3",
+            "output": "3",
+            "explanation": "Revisa cómo actualizas los límites."
+          },
+          {
+            "id": "binary-missing",
+            "label": "Retorna -1 si no existe",
+            "input": "busquedaBinaria({2, 5, 8, 12, 20}, 7) == -1",
+            "output": "-1",
+            "explanation": "El bucle termina cuando los límites se cruzan."
+          }
+        ],
         "publicTests": [
           {
             "id": "binary-found",
@@ -1273,8 +2166,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Retornar el índice de un objetivo en una colección ordenada o -1 si no existe, reduciendo el intervalo a la mitad.",
+    "conceptIntro": "La búsqueda binaria mantiene un intervalo candidato. Comparar con su punto medio permite descartar la mitad que no puede contener el objetivo.",
+    "steps": [
+      "Inicializa los límites izquierdo y derecho.",
+      "Calcula el punto medio sin salir del intervalo.",
+      "Ajusta uno de los límites hasta encontrar el valor o vaciar el intervalo."
+    ],
+    "constraints": [
+      "No uses una búsqueda lineal ni una función de búsqueda incorporada.",
+      "La entrada se considera ordenada de menor a mayor."
+    ],
+    "successCriteria": [
+      "Encuentra elementos al inicio, centro y final.",
+      "Termina y retorna -1 cuando el objetivo no existe."
+    ],
+    "prerequisites": [
+      "p2-02-duplicados-lineales"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-04-merge-sensores",
@@ -1301,12 +2212,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Una colección de largo cero o uno ya está ordenada.",
-      "Combina comparando el primer elemento pendiente de cada mitad."
+      "Combina comparando el primer elemento pendiente de cada mitad.",
+      "SI largo <= 1, RETORNAR; dividir; ordenar izquierda y derecha; MEZCLAR tomando siempre el menor pendiente."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "function mergeSort(valores) {\n  // No uses Array.prototype.sort.\n}\n",
+        "expectedSignature": "function mergeSort(valores)",
+        "examples": [
+          {
+            "id": "merge-order",
+            "label": "Ordena valores",
+            "input": "mergeSort([8, 3, 6, 1])",
+            "output": "[1,3,6,8]",
+            "explanation": "Comprueba la combinación de las dos mitades."
+          },
+          {
+            "id": "merge-copy",
+            "label": "No modifica la entrada",
+            "input": "(() => { const x = [3, 1, 2]; mergeSort(x); return JSON.stringify(x) === JSON.stringify([3, 1, 2]); })()",
+            "output": "[3,1,2]",
+            "explanation": "Trabaja con copias o segmentos nuevos."
+          }
+        ],
         "publicTests": [
           {
             "id": "merge-order",
@@ -1329,6 +2258,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "def merge_sort(valores):\n    # No uses sorted ni list.sort.\n    pass\n",
+        "expectedSignature": "def merge_sort(valores)",
+        "examples": [
+          {
+            "id": "merge-order",
+            "label": "Ordena valores",
+            "input": "merge_sort([8, 3, 6, 1])",
+            "output": "[1,3,6,8]",
+            "explanation": "Comprueba la combinación de las dos mitades."
+          },
+          {
+            "id": "merge-copy",
+            "label": "No modifica la entrada",
+            "input": "(lambda x: (merge_sort(x), x == [3, 1, 2])[-1])([3, 1, 2])",
+            "output": "[3,1,2]",
+            "explanation": "Trabaja con copias o segmentos nuevos."
+          }
+        ],
         "publicTests": [
           {
             "id": "merge-order",
@@ -1351,6 +2297,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nvector<int> mergeSort(const vector<int>& valores) {\n  // No uses std::sort.\n  return {};\n}\n",
+        "expectedSignature": "vector<int> mergeSort(const vector<int>& valores)",
+        "examples": [
+          {
+            "id": "merge-order",
+            "label": "Ordena valores",
+            "input": "mergeSort({8, 3, 6, 1}) == vector<int>({1, 3, 6, 8})",
+            "output": "[1,3,6,8]",
+            "explanation": "Comprueba la combinación de las dos mitades."
+          },
+          {
+            "id": "merge-copy",
+            "label": "No modifica la entrada",
+            "input": "[](){ vector<int> x{3,1,2}; mergeSort(x); return x == vector<int>({3,1,2}); }()",
+            "output": "[3,1,2]",
+            "explanation": "Recibe la entrada como referencia constante."
+          }
+        ],
         "publicTests": [
           {
             "id": "merge-order",
@@ -1370,8 +2333,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Ordenar una colección mediante división recursiva y combinación estable de mitades ordenadas.",
+    "conceptIntro": "Merge sort separa hasta obtener casos triviales y luego combina resultados. La función de mezcla conserva el orden comparando los primeros elementos pendientes.",
+    "steps": [
+      "Retorna directamente las colecciones de largo cero o uno.",
+      "Divide la colección y ordena recursivamente ambas mitades.",
+      "Combina las mitades avanzando un índice en cada comparación."
+    ],
+    "constraints": [
+      "Implementa la división y la mezcla; no uses el ordenamiento incorporado.",
+      "Conserva los valores repetidos."
+    ],
+    "successCriteria": [
+      "Ordena entradas pares, impares, vacías y con duplicados.",
+      "La combinación no pierde ni agrega elementos."
+    ],
+    "prerequisites": [
+      "p2-03-busqueda-bodega"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-05-lista-jumpers",
@@ -1397,12 +2378,30 @@ export const publicMissions = [
     ],
     "hints": [
       "El caso de eliminar la cabeza es distinto.",
-      "Guarda una referencia al nodo anterior mientras recorres."
+      "Guarda una referencia al nodo anterior mientras recorres.",
+      "Para insertar: crear nodo, enlazarlo y ajustar extremos; para retirar: guardar valor, mover enlace y reducir tamaño."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "class ListaEnlazada {\n  constructor() {\n    this.cabeza = null;\n    this.largo = 0;\n  }\n\n  agregar(valor) {}\n  eliminar(valor) {}\n  contiene(valor) {}\n}\n",
+        "expectedSignature": "constructor()",
+        "examples": [
+          {
+            "id": "list-add",
+            "label": "Agrega y encuentra",
+            "input": "(() => { const l = new ListaEnlazada(); l.agregar(3); l.agregar(5); return l.contiene(5) && l.largo === 2; })()",
+            "output": "true",
+            "explanation": "Enlaza el nuevo nodo y actualiza el largo."
+          },
+          {
+            "id": "list-remove-head",
+            "label": "Elimina la cabeza",
+            "input": "(() => { const l = new ListaEnlazada(); l.agregar(3); l.agregar(5); return l.eliminar(3) && !l.contiene(3) && l.largo === 1; })()",
+            "output": "true",
+            "explanation": "Actualiza cabeza cuando eliminas el primer nodo."
+          }
+        ],
         "publicTests": [
           {
             "id": "list-add",
@@ -1424,6 +2423,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "class ListaEnlazada:\n    def __init__(self):\n        self.cabeza = None\n        self.largo = 0\n\n    def agregar(self, valor):\n        pass\n\n    def eliminar(self, valor):\n        pass\n\n    def contiene(self, valor):\n        pass\n",
+        "expectedSignature": "def __init__(self)",
+        "examples": [
+          {
+            "id": "list-add",
+            "label": "Agrega y encuentra",
+            "input": "(lambda l: (l.agregar(3), l.agregar(5), l.contiene(5) and l.largo == 2)[-1])(ListaEnlazada())",
+            "output": "True",
+            "explanation": "Enlaza el nuevo nodo y actualiza el largo."
+          },
+          {
+            "id": "list-remove-head",
+            "label": "Elimina la cabeza",
+            "input": "(lambda l: (l.agregar(3), l.agregar(5), l.eliminar(3) and not l.contiene(3) and l.largo == 1)[-1])(ListaEnlazada())",
+            "output": "True",
+            "explanation": "Actualiza cabeza cuando eliminas el primer nodo."
+          }
+        ],
         "publicTests": [
           {
             "id": "list-add",
@@ -1445,6 +2461,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass ListaEnlazada {\n  struct Nodo {\n    int valor;\n    Nodo* siguiente;\n  };\n  Nodo* cabeza = nullptr;\n  int largo_ = 0;\n\n public:\n  ~ListaEnlazada() {\n    // Libera los nodos.\n  }\n  void agregar(int valor) {}\n  bool eliminar(int valor) { return false; }\n  bool contiene(int valor) const { return false; }\n  int largo() const { return largo_; }\n};\n",
+        "expectedSignature": "~ListaEnlazada()",
+        "examples": [
+          {
+            "id": "list-add",
+            "label": "Agrega y encuentra",
+            "input": "[](){ ListaEnlazada l; l.agregar(3); l.agregar(5); return l.contiene(5) && l.largo() == 2; }()",
+            "output": "true",
+            "explanation": "Enlaza el nuevo nodo y actualiza el largo."
+          },
+          {
+            "id": "list-remove-head",
+            "label": "Elimina la cabeza",
+            "input": "[](){ ListaEnlazada l; l.agregar(3); l.agregar(5); return l.eliminar(3) && !l.contiene(3) && l.largo() == 1; }()",
+            "output": "true",
+            "explanation": "Actualiza cabeza cuando eliminas el primer nodo."
+          }
+        ],
         "publicTests": [
           {
             "id": "list-add",
@@ -1464,8 +2497,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Mantener una lista enlazada coherente al insertar, retirar y consultar sus elementos.",
+    "conceptIntro": "La lista depende de invariantes: la cabeza apunta al primer nodo, cada nodo enlaza al siguiente y el tamaño coincide con la cantidad recorrible.",
+    "steps": [
+      "Actualiza enlaces antes de perder la referencia al resto de la lista.",
+      "Ajusta cabeza y cola en los casos de borde.",
+      "Actualiza el tamaño una sola vez por operación exitosa."
+    ],
+    "constraints": [
+      "No reemplaces la estructura por un arreglo o colección equivalente.",
+      "Las operaciones sobre una lista vacía deben ser seguras."
+    ],
+    "successCriteria": [
+      "El recorrido devuelve los elementos en el orden esperado.",
+      "Cabeza, cola y tamaño permanecen coherentes tras varias operaciones."
+    ],
+    "prerequisites": [
+      "p2-04-merge-sensores"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-06-cola-taller",
@@ -1491,12 +2542,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Mantén un índice o estructura dedicada para el frente.",
-      "desencolar y frente deben manejar una cola vacía."
+      "desencolar y frente deben manejar una cola vacía.",
+      "ENQUEUE enlaza el nuevo nodo al final; DEQUEUE guarda el inicio, avanza la cabeza y limpia la cola si queda vacía."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "class Cola {\n  constructor() {\n    this.datos = [];\n    this.inicio = 0;\n  }\n  encolar(valor) {}\n  desencolar() {}\n  frente() {}\n  estaVacia() {}\n}\n",
+        "expectedSignature": "constructor()",
+        "examples": [
+          {
+            "id": "queue-order",
+            "label": "Respeta FIFO",
+            "input": "(() => { const q = new Cola(); q.encolar(4); q.encolar(8); return q.desencolar() === 4 && q.frente() === 8; })()",
+            "output": "true",
+            "explanation": "El primer valor que entra debe ser el primero que sale."
+          },
+          {
+            "id": "queue-empty",
+            "label": "Maneja una cola vacía",
+            "input": "(() => { const q = new Cola(); return q.estaVacia() && q.desencolar() === null && q.frente() === null; })()",
+            "output": "true",
+            "explanation": "Define una salida estable para la cola vacía."
+          }
+        ],
         "publicTests": [
           {
             "id": "queue-order",
@@ -1518,6 +2587,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "class Cola:\n    def __init__(self):\n        self.datos = []\n        self.inicio = 0\n\n    def encolar(self, valor):\n        pass\n\n    def desencolar(self):\n        pass\n\n    def frente(self):\n        pass\n\n    def esta_vacia(self):\n        pass\n",
+        "expectedSignature": "def __init__(self)",
+        "examples": [
+          {
+            "id": "queue-order",
+            "label": "Respeta FIFO",
+            "input": "(lambda q: (q.encolar(4), q.encolar(8), q.desencolar() == 4 and q.frente() == 8)[-1])(Cola())",
+            "output": "True",
+            "explanation": "El primer valor que entra debe ser el primero que sale."
+          },
+          {
+            "id": "queue-empty",
+            "label": "Maneja una cola vacía",
+            "input": "(lambda q: q.esta_vacia() and q.desencolar() is None and q.frente() is None)(Cola())",
+            "output": "True",
+            "explanation": "Define una salida estable para la cola vacía."
+          }
+        ],
         "publicTests": [
           {
             "id": "queue-order",
@@ -1539,6 +2625,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass Cola {\n  deque<int> datos;\n\n public:\n  void encolar(int valor) {}\n  optional<int> desencolar() { return nullopt; }\n  optional<int> frente() const { return nullopt; }\n  bool estaVacia() const { return true; }\n};\n",
+        "expectedSignature": "#include <algorithm>",
+        "examples": [
+          {
+            "id": "queue-order",
+            "label": "Respeta FIFO",
+            "input": "[](){ Cola q; q.encolar(4); q.encolar(8); return q.desencolar() == optional<int>(4) && q.frente() == optional<int>(8); }()",
+            "output": "true",
+            "explanation": "El primer valor que entra debe ser el primero que sale."
+          },
+          {
+            "id": "queue-empty",
+            "label": "Maneja una cola vacía",
+            "input": "[](){ Cola q; return q.estaVacia() && !q.desencolar().has_value() && !q.frente().has_value(); }()",
+            "output": "true",
+            "explanation": "Define una salida estable para la cola vacía."
+          }
+        ],
         "publicTests": [
           {
             "id": "queue-order",
@@ -1558,8 +2661,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Implementar una cola FIFO con inserción y retiro en tiempo constante.",
+    "conceptIntro": "Una cola atiende primero al elemento que llegó primero. Mantener referencias a ambos extremos evita recorrer la estructura para insertar.",
+    "steps": [
+      "Agrega nuevos elementos por el extremo final.",
+      "Retira elementos por el extremo inicial.",
+      "Ajusta ambos extremos cuando la cola queda vacía."
+    ],
+    "constraints": [
+      "enqueue y dequeue deben operar en O(1).",
+      "No uses operaciones que desplacen todos los elementos de una colección."
+    ],
+    "successCriteria": [
+      "El orden de salida coincide con el orden de llegada.",
+      "La cola puede vaciarse y volver a utilizarse correctamente."
+    ],
+    "prerequisites": [
+      "p2-05-lista-jumpers"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-07-arbol-decisiones",
@@ -1585,12 +2706,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Cada comparación elige una sola rama.",
-      "Si el valor es igual, no insertes otro nodo."
+      "Si el valor es igual, no insertes otro nodo.",
+      "SI nodo vacío, crear o fallar búsqueda; SI valor menor, ir a izquierda; SI mayor, ir a derecha; SI igual, encontrado."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "class ArbolBusqueda {\n  constructor() {\n    this.raiz = null;\n  }\n  insertar(valor) {}\n  contiene(valor) {}\n}\n",
+        "expectedSignature": "constructor()",
+        "examples": [
+          {
+            "id": "tree-find",
+            "label": "Inserta y encuentra",
+            "input": "(() => { const a = new ArbolBusqueda(); [8, 3, 10, 6].forEach((x) => a.insertar(x)); return a.contiene(6) && !a.contiene(9); })()",
+            "output": "true",
+            "explanation": "Compara y avanza por la rama correspondiente."
+          },
+          {
+            "id": "tree-order",
+            "label": "Mantiene el orden",
+            "input": "(() => { const a = new ArbolBusqueda(); [8, 3, 10].forEach((x) => a.insertar(x)); return a.raiz.izquierda.valor === 3 && a.raiz.derecha.valor === 10; })()",
+            "output": "true",
+            "explanation": "Menores van a la izquierda y mayores a la derecha."
+          }
+        ],
         "publicTests": [
           {
             "id": "tree-find",
@@ -1612,6 +2751,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "class ArbolBusqueda:\n    def __init__(self):\n        self.raiz = None\n\n    def insertar(self, valor):\n        pass\n\n    def contiene(self, valor):\n        pass\n",
+        "expectedSignature": "def __init__(self)",
+        "examples": [
+          {
+            "id": "tree-find",
+            "label": "Inserta y encuentra",
+            "input": "(lambda a: ([a.insertar(x) for x in [8, 3, 10, 6]], a.contiene(6) and not a.contiene(9))[-1])(ArbolBusqueda())",
+            "output": "True",
+            "explanation": "Compara y avanza por la rama correspondiente."
+          },
+          {
+            "id": "tree-order",
+            "label": "Mantiene el orden",
+            "input": "(lambda a: ([a.insertar(x) for x in [8, 3, 10]], a.raiz['izquierda']['valor'] == 3 and a.raiz['derecha']['valor'] == 10)[-1])(ArbolBusqueda())",
+            "output": "True",
+            "explanation": "Menores van a la izquierda y mayores a la derecha."
+          }
+        ],
         "publicTests": [
           {
             "id": "tree-find",
@@ -1633,6 +2789,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nclass ArbolBusqueda {\n  struct Nodo {\n    int valor;\n    unique_ptr<Nodo> izquierda;\n    unique_ptr<Nodo> derecha;\n  };\n  unique_ptr<Nodo> raiz;\n\n public:\n  bool insertar(int valor) { return false; }\n  bool contiene(int valor) const { return false; }\n};\n",
+        "expectedSignature": "#include <algorithm>",
+        "examples": [
+          {
+            "id": "tree-find",
+            "label": "Inserta y encuentra",
+            "input": "[](){ ArbolBusqueda a; for (int x : {8,3,10,6}) a.insertar(x); return a.contiene(6) && !a.contiene(9); }()",
+            "output": "true",
+            "explanation": "Compara y avanza por la rama correspondiente."
+          },
+          {
+            "id": "tree-order",
+            "label": "Encuentra ambos lados",
+            "input": "[](){ ArbolBusqueda a; for (int x : {8,3,10}) a.insertar(x); return a.contiene(3) && a.contiene(10); }()",
+            "output": "true",
+            "explanation": "Menores van a la izquierda y mayores a la derecha."
+          }
+        ],
         "publicTests": [
           {
             "id": "tree-find",
@@ -1652,8 +2825,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Insertar y buscar valores en un árbol binario conservando la relación de orden.",
+    "conceptIntro": "En un árbol binario de búsqueda, los valores menores avanzan a la izquierda y los mayores a la derecha. La misma regla guía inserción y consulta.",
+    "steps": [
+      "Resuelve el caso de un árbol o subárbol vacío.",
+      "Compara el valor con el nodo actual.",
+      "Continúa únicamente por la rama compatible con la comparación."
+    ],
+    "constraints": [
+      "Conserva la invariante de orden después de cada inserción.",
+      "Aplica de forma consistente la política definida para duplicados."
+    ],
+    "successCriteria": [
+      "Encuentra valores en distintas profundidades y rechaza ausentes.",
+      "Un recorrido ordenado del árbol produce valores no decrecientes."
+    ],
+    "prerequisites": [
+      "p2-06-cola-taller"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-08-ruta-maker",
@@ -1679,12 +2870,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Guarda nodo y distancia en la cola.",
-      "Marca cada nodo al encolarlo, no al retirarlo."
+      "Marca cada nodo al encolarlo, no al retirarlo.",
+      "cola = [(origen, 0)]; MIENTRAS haya elementos: sacar; PARA CADA vecino nuevo, encolar con distancia + 1."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "function distanciaMinima(grafo, origen, destino) {\n  // grafo es un arreglo de listas de vecinos.\n}\n",
+        "expectedSignature": "function distanciaMinima(grafo, origen, destino)",
+        "examples": [
+          {
+            "id": "graph-route",
+            "label": "Encuentra la ruta mínima",
+            "input": "distanciaMinima([[1,2],[0,3],[0,3],[1,2,4],[3]], 0, 4)",
+            "output": "3",
+            "explanation": "BFS encuentra primero la menor distancia."
+          },
+          {
+            "id": "graph-same",
+            "label": "Resuelve origen igual a destino",
+            "input": "distanciaMinima([[1],[0]], 1, 1)",
+            "output": "0",
+            "explanation": "Comprueba el nodo retirado antes de expandirlo."
+          }
+        ],
         "publicTests": [
           {
             "id": "graph-route",
@@ -1708,6 +2917,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "def distancia_minima(grafo, origen, destino):\n    # grafo es una lista de listas de vecinos.\n    pass\n",
+        "expectedSignature": "def distancia_minima(grafo, origen, destino)",
+        "examples": [
+          {
+            "id": "graph-route",
+            "label": "Encuentra la ruta mínima",
+            "input": "distancia_minima([[1,2],[0,3],[0,3],[1,2,4],[3]], 0, 4)",
+            "output": "3",
+            "explanation": "BFS encuentra primero la menor distancia."
+          },
+          {
+            "id": "graph-same",
+            "label": "Resuelve origen igual a destino",
+            "input": "distancia_minima([[1],[0]], 1, 1)",
+            "output": "0",
+            "explanation": "Comprueba el nodo retirado antes de expandirlo."
+          }
+        ],
         "publicTests": [
           {
             "id": "graph-route",
@@ -1731,6 +2957,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint distanciaMinima(const vector<vector<int>>& grafo, int origen, int destino) {\n  // Retorna la cantidad de aristas o -1.\n  return -1;\n}\n",
+        "expectedSignature": "int distanciaMinima(const vector<vector<int>>& grafo, int origen, int destino)",
+        "examples": [
+          {
+            "id": "graph-route",
+            "label": "Encuentra la ruta mínima",
+            "input": "distanciaMinima({{1,2},{0,3},{0,3},{1,2,4},{3}}, 0, 4) == 3",
+            "output": "3",
+            "explanation": "BFS encuentra primero la menor distancia."
+          },
+          {
+            "id": "graph-same",
+            "label": "Resuelve origen igual a destino",
+            "input": "distanciaMinima({{1},{0}}, 1, 1) == 0",
+            "output": "0",
+            "explanation": "Comprueba el nodo retirado antes de expandirlo."
+          }
+        ],
         "publicTests": [
           {
             "id": "graph-route",
@@ -1750,8 +2993,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Calcular la menor cantidad de saltos entre dos nodos de una red no ponderada usando BFS.",
+    "conceptIntro": "BFS explora la red por capas de distancia. La primera vez que alcanza un nodo ya corresponde al camino con menos aristas.",
+    "steps": [
+      "Inicializa una cola con el origen y marca ese nodo como visitado.",
+      "Extrae nodos y agrega sus vecinos todavía no visitados.",
+      "Retorna la distancia al alcanzar el destino o -1 si no existe ruta."
+    ],
+    "constraints": [
+      "Marca cada nodo al encolarlo para evitar duplicados.",
+      "No uses una búsqueda en profundidad para calcular la distancia mínima."
+    ],
+    "successCriteria": [
+      "Retorna cero cuando origen y destino coinciden.",
+      "Encuentra la distancia mínima y termina también en redes desconectadas."
+    ],
+    "prerequisites": [
+      "p2-07-arbol-decisiones"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-09-frecuencias-serial",
@@ -1777,12 +3038,30 @@ export const publicMissions = [
     ],
     "hints": [
       "Cuenta primero y luego recorre el orden original.",
-      "Solo reemplaza el ganador si la frecuencia es estrictamente mayor."
+      "Solo reemplaza el ganador si la frecuencia es estrictamente mayor.",
+      "CONTAR valores; mejor = primero; PARA CADA valor en orden, SI frecuencia(valor) > frecuencia(mejor), actualizar."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "function masComun(valores) {\n  // Retorna el valor más frecuente.\n}\n",
+        "expectedSignature": "function masComun(valores)",
+        "examples": [
+          {
+            "id": "freq-most",
+            "label": "Encuentra el más frecuente",
+            "input": "masComun([\"OK\", \"WARN\", \"OK\", \"ERROR\", \"OK\"])",
+            "output": "OK",
+            "explanation": "Cuenta cada valor antes de elegir."
+          },
+          {
+            "id": "freq-tie",
+            "label": "Conserva el primero en empate",
+            "input": "masComun([\"WARN\", \"OK\", \"OK\", \"WARN\"])",
+            "output": "WARN",
+            "explanation": "No reemplaces al ganador cuando las frecuencias sean iguales."
+          }
+        ],
         "publicTests": [
           {
             "id": "freq-most",
@@ -1806,6 +3085,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "def mas_comun(valores):\n    # Retorna el valor más frecuente.\n    pass\n",
+        "expectedSignature": "def mas_comun(valores)",
+        "examples": [
+          {
+            "id": "freq-most",
+            "label": "Encuentra el más frecuente",
+            "input": "mas_comun([\"OK\", \"WARN\", \"OK\", \"ERROR\", \"OK\"])",
+            "output": "OK",
+            "explanation": "Cuenta cada valor antes de elegir."
+          },
+          {
+            "id": "freq-tie",
+            "label": "Conserva el primero en empate",
+            "input": "mas_comun([\"WARN\", \"OK\", \"OK\", \"WARN\"])",
+            "output": "WARN",
+            "explanation": "No reemplaces al ganador cuando las frecuencias sean iguales."
+          }
+        ],
         "publicTests": [
           {
             "id": "freq-most",
@@ -1829,6 +3125,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nstring masComun(const vector<string>& valores) {\n  // Retorna el valor más frecuente.\n  return \"\";\n}\n",
+        "expectedSignature": "string masComun(const vector<string>& valores)",
+        "examples": [
+          {
+            "id": "freq-most",
+            "label": "Encuentra el más frecuente",
+            "input": "masComun({\"OK\", \"WARN\", \"OK\", \"ERROR\", \"OK\"}) == \"OK\"",
+            "output": "OK",
+            "explanation": "Cuenta cada valor antes de elegir."
+          },
+          {
+            "id": "freq-tie",
+            "label": "Conserva el primero en empate",
+            "input": "masComun({\"WARN\", \"OK\", \"OK\", \"WARN\"}) == \"WARN\"",
+            "output": "WARN",
+            "explanation": "No reemplaces al ganador cuando las frecuencias sean iguales."
+          }
+        ],
         "publicTests": [
           {
             "id": "freq-most",
@@ -1848,8 +3161,26 @@ export const publicMissions = [
         "hiddenTestCount": 1
       }
     },
+    "goal": "Encontrar el valor más frecuente y, en caso de empate, conservar el que apareció primero.",
+    "conceptIntro": "Un mapa de frecuencias resume cuántas veces aparece cada valor. El desempate exige además recordar el orden original de aparición.",
+    "steps": [
+      "Cuenta cada valor en un mapa.",
+      "Recorre la entrada en su orden original.",
+      "Actualiza el mejor solo cuando la frecuencia sea estrictamente mayor."
+    ],
+    "constraints": [
+      "No ordenes la entrada, porque perderías el criterio de desempate.",
+      "Aplica el contrato definido para la colección vacía."
+    ],
+    "successCriteria": [
+      "Retorna el valor con mayor frecuencia.",
+      "En un empate retorna exactamente el primero que apareció."
+    ],
+    "prerequisites": [
+      "p2-08-ruta-maker"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   },
   {
     "id": "p2-10-cambio-micro",
@@ -1874,12 +3205,30 @@ export const publicMissions = [
     ],
     "hints": [
       "dp[x] puede representar la mejor respuesta para el monto x.",
-      "Inicializa dp[0] en cero y los demás estados como inalcanzables."
+      "Inicializa dp[0] en cero y los demás estados como inalcanzables.",
+      "dp[0] = 0; PARA monto parcial: PARA CADA moneda válida, dp[monto] = mínimo(dp[monto], dp[monto-moneda] + 1)."
     ],
     "variants": {
       "javascript": {
         "language": "javascript",
         "starterCode": "function minMonedas(monedas, monto) {\n  // Retorna la cantidad mínima o -1.\n}\n",
+        "expectedSignature": "function minMonedas(monedas, monto)",
+        "examples": [
+          {
+            "id": "coins-nongreedy",
+            "label": "Supera el caso no codicioso",
+            "input": "minMonedas([1, 3, 4], 6)",
+            "output": "2",
+            "explanation": "Considera todas las denominaciones para cada monto."
+          },
+          {
+            "id": "coins-zero",
+            "label": "Resuelve monto cero",
+            "input": "minMonedas([2, 5], 0)",
+            "output": "0",
+            "explanation": "El estado base necesita cero monedas."
+          }
+        ],
         "publicTests": [
           {
             "id": "coins-nongreedy",
@@ -1903,6 +3252,23 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "def min_monedas(monedas, monto):\n    # Retorna la cantidad mínima o -1.\n    pass\n",
+        "expectedSignature": "def min_monedas(monedas, monto)",
+        "examples": [
+          {
+            "id": "coins-nongreedy",
+            "label": "Supera el caso no codicioso",
+            "input": "min_monedas([1, 3, 4], 6)",
+            "output": "2",
+            "explanation": "Considera todas las denominaciones para cada monto."
+          },
+          {
+            "id": "coins-zero",
+            "label": "Resuelve monto cero",
+            "input": "min_monedas([2, 5], 0)",
+            "output": "0",
+            "explanation": "El estado base necesita cero monedas."
+          }
+        ],
         "publicTests": [
           {
             "id": "coins-nongreedy",
@@ -1926,6 +3292,23 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint minMonedas(const vector<int>& monedas, int monto) {\n  // Retorna la cantidad mínima o -1.\n  return -1;\n}\n",
+        "expectedSignature": "int minMonedas(const vector<int>& monedas, int monto)",
+        "examples": [
+          {
+            "id": "coins-nongreedy",
+            "label": "Supera el caso no codicioso",
+            "input": "minMonedas({1, 3, 4}, 6) == 2",
+            "output": "2",
+            "explanation": "Considera todas las denominaciones para cada monto."
+          },
+          {
+            "id": "coins-zero",
+            "label": "Resuelve monto cero",
+            "input": "minMonedas({2, 5}, 0) == 0",
+            "output": "0",
+            "explanation": "El estado base necesita cero monedas."
+          }
+        ],
         "publicTests": [
           {
             "id": "coins-nongreedy",
@@ -1945,7 +3328,25 @@ export const publicMissions = [
         "hiddenTestCount": 2
       }
     },
+    "goal": "Calcular la cantidad mínima de monedas para un monto o indicar que el monto es imposible.",
+    "conceptIntro": "Como elegir siempre la moneda mayor puede fallar, debes resolver subproblemas de montos menores y reutilizar sus mejores resultados.",
+    "steps": [
+      "Inicializa el monto cero con costo cero y los demás como imposibles.",
+      "Para cada monto, prueba todas las monedas que no lo superen.",
+      "Conserva el mínimo resultado alcanzable y devuelve -1 si no existe."
+    ],
+    "constraints": [
+      "No asumas que el conjunto de monedas es canónico.",
+      "Ignora transiciones desde estados que todavía son imposibles."
+    ],
+    "successCriteria": [
+      "Encuentra un resultado óptimo incluso cuando la estrategia codiciosa falla.",
+      "Distingue correctamente monto cero, monto posible e imposible."
+    ],
+    "prerequisites": [
+      "p2-09-frecuencias-serial"
+    ],
     "courseLabel": "Programación II",
-    "version": 1
+    "version": 2
   }
 ] satisfies Mission[];

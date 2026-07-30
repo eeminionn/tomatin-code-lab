@@ -8,6 +8,7 @@ import type { Attempt, StudentProgress } from "@/types";
 const initial: StudentProgress = {
   userId: "student-1",
   assignmentId: "assignment-1",
+  missionVersion: 1,
   status: "not_started",
   attempts: 0,
   hintsUsed: 0,
@@ -41,6 +42,7 @@ describe("assignment progress", () => {
     expect(progressAfterAttempt(initial, attempt(true))).toMatchObject({
       status: "awaiting_review",
       language: "python",
+      lastEvent: "submitted",
       attempts: 1,
       submittedAt: "2026-07-25T12:00:00.000Z",
     });
@@ -49,6 +51,7 @@ describe("assignment progress", () => {
   it("keeps a failing submission in progress", () => {
     expect(progressAfterAttempt(initial, attempt(false))).toMatchObject({
       status: "in_progress",
+      lastEvent: "ran",
       attempts: 1,
       submittedAt: undefined,
     });

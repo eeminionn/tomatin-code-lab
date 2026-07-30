@@ -1,20 +1,29 @@
 import { useState } from "react";
 import {
   Bell,
+  BookCopy,
   BookOpen,
+  CalendarPlus,
   ChevronDown,
-  CircleHelp,
   ClipboardCheck,
+  Eye,
   Gauge,
   Info,
   LogOut,
+  MailPlus,
   Menu,
   MessageSquareText,
-  ShieldCheck,
+  TriangleAlert,
   Trophy,
+  Users,
   X,
 } from "lucide-react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { initials } from "@/lib/format";
 import { useClassroom } from "@/state/classroom-context";
 
@@ -25,16 +34,43 @@ const studentNavigation = [
   { to: "/feedback", label: "Feedback", icon: MessageSquareText },
 ];
 
+const adminNavigation = [
+  { to: "/admin", label: "Resumen", icon: Gauge, end: true },
+  { to: "/admin/reviews", label: "Revisiones", icon: ClipboardCheck },
+  { to: "/admin/students", label: "Estudiantes", icon: Users },
+  { to: "/admin/assignments", label: "Tareas", icon: CalendarPlus },
+  { to: "/admin/missions", label: "Misiones", icon: BookCopy },
+  { to: "/admin/invitations", label: "Invitaciones", icon: MailPlus },
+];
+
 export function AppShell() {
-  const { profile, snapshot, backendMode, logout } = useClassroom();
+  const {
+    profile,
+    viewProfile,
+    isStudentPreview,
+    snapshot,
+    error,
+    clearError,
+    backendMode,
+    logout,
+    startStudentPreview,
+    stopStudentPreview,
+  } = useClassroom();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
   const unread =
     snapshot?.notifications.filter(
-      (entry) => entry.userId === profile?.id && !entry.readAt,
+      (entry) => entry.userId === viewProfile?.id && !entry.readAt,
     ).length ?? 0;
-  const isMentor = profile?.role === "mentor" || profile?.role === "owner";
+  const isActorStaff =
+    profile?.role === "mentor" || profile?.role === "owner";
+  const isMentor = isActorStaff && !isStudentPreview;
+  const students =
+    snapshot?.profiles.filter((entry) => entry.role === "student") ?? [];
 
   return (
     <div className="app-shell">
@@ -47,7 +83,7 @@ export function AppShell() {
             <span className="brand-command">T_</span>
             <span>
               <strong>Tomatin</strong>
-              <small>CODE LAB 2.0</small>
+              <small>CODE LAB 3.0</small>
             </span>
           </NavLink>
           <button
@@ -61,45 +97,56 @@ export function AppShell() {
         </div>
 
         <nav className="sidebar-nav">
-          <p className="nav-label">CURSO</p>
-          {studentNavigation.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                `nav-link ${isActive ? "is-active" : ""}`
-              }
-              onClick={() => setSidebarOpen(false)}
-            >
-              <Icon aria-hidden="true" />
-              <span>{label}</span>
-              {label === "Feedback" && unread > 0 ? (
-                <span className="nav-count">{unread}</span>
-              ) : null}
-            </NavLink>
-          ))}
-
           {isMentor ? (
             <>
-              <p className="nav-label mentor-label">MENTOR</p>
-              <NavLink
-                to="/mentor"
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? "is-active" : ""}`
-                }
-                onClick={() => setSidebarOpen(false)}
-              >
-                <ShieldCheck aria-hidden="true" />
-                <span>Panel mentor</span>
-                <span className="nav-count">
-                  {snapshot?.progress.filter(
+              <p className="nav-label mentor-label">ADMINISTRACIÓN</p>
+              {adminNavigation.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    `nav-link ${isActive ? "is-active" : ""}`
+                  }
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{label}</span>
+                  {label === "Revisiones" &&
+                  (snapshot?.progress.filter(
                     (entry) => entry.status === "awaiting_review",
-                  ).length ?? 0}
-                </span>
-              </NavLink>
+                  ).length ?? 0) > 0 ? (
+                    <span className="nav-count">
+                      {snapshot?.progress.filter(
+                        (entry) => entry.status === "awaiting_review",
+                      ).length ?? 0}
+                    </span>
+                  ) : null}
+                </NavLink>
+              ))}
             </>
-          ) : null}
+          ) : (
+            <>
+              <p className="nav-label">CURSO</p>
+              {studentNavigation.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    `nav-link ${isActive ? "is-active" : ""}`
+                  }
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{label}</span>
+                  {label === "Feedback" && unread > 0 ? (
+                    <span className="nav-count">{unread}</span>
+                  ) : null}
+                </NavLink>
+              ))}
+            </>
+          )}
         </nav>
 
         <div className="sidebar-bottom">
@@ -153,6 +200,75 @@ export function AppShell() {
             </span>
           </div>
           <div className="topbar-actions">
+            {isStudentPreview ? (
+              <div className="preview-indicator" role="status">
+                <Eye aria-hidden="true" />
+                <span>
+                  Vista estudiante
+                  <strong>{viewProfile?.displayName}</strong>
+                </span>
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label="Volver al panel de administración"
+                  title="Volver al panel"
+                  onClick={() => {
+                    stopStudentPreview();
+                    navigate("/admin");
+                  }}
+                >
+                  <X aria-hidden="true" />
+                </button>
+              </div>
+            ) : isActorStaff ? (
+              <div className={`preview-picker ${previewOpen ? "is-open" : ""}`}>
+                <button
+                  className="button secondary preview-trigger"
+                  type="button"
+                  aria-expanded={previewOpen}
+                  onClick={() => setPreviewOpen((current) => !current)}
+                >
+                  <Eye aria-hidden="true" />
+                  Ver como estudiante
+                </button>
+                {previewOpen ? (
+                  <div className="preview-popover">
+                    <label htmlFor="student-preview-select">
+                      Perspectiva
+                    </label>
+                    <select
+                      id="student-preview-select"
+                      value={selectedStudentId || students[0]?.id || ""}
+                      onChange={(event) =>
+                        setSelectedStudentId(event.target.value)
+                      }
+                    >
+                      {students.map((student) => (
+                        <option key={student.id} value={student.id}>
+                          {student.displayName}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="button primary wide"
+                      type="button"
+                      disabled={students.length === 0}
+                      onClick={() => {
+                        const studentId =
+                          selectedStudentId || students[0]?.id;
+                        if (!studentId) return;
+                        startStudentPreview(studentId);
+                        setPreviewOpen(false);
+                        navigate("/");
+                      }}
+                    >
+                      <Eye aria-hidden="true" />
+                      Abrir vista
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <NavLink
               to="/feedback"
               className="icon-button notification-button"
@@ -172,7 +288,13 @@ export function AppShell() {
                 <span className="avatar">{initials(profile?.displayName ?? "?")}</span>
                 <span className="profile-copy">
                   <strong>{profile?.displayName}</strong>
-                  <small>{isMentor ? "mentor" : "estudiante"}</small>
+                  <small>
+                    {profile?.role === "owner"
+                      ? "propietario"
+                      : profile?.role === "mentor"
+                        ? "mentor"
+                        : "estudiante"}
+                  </small>
                 </span>
                 <ChevronDown aria-hidden="true" />
               </button>
@@ -193,6 +315,20 @@ export function AppShell() {
             </div>
           </div>
         </header>
+        {error ? (
+          <div className="app-error" role="alert">
+            <TriangleAlert aria-hidden="true" />
+            <span>{error}</span>
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="Cerrar error"
+              onClick={clearError}
+            >
+              <X aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
         <Outlet />
       </div>
     </div>

@@ -34,7 +34,7 @@ jobs:
       - name: Verify generated catalog
         run: |
           pnpm seed:generate
-          git diff --exit-code -- supabase/seed.sql supabase/migrations/202607250002_mission_catalog.sql v2/src/data/missions-public.generated.ts
+          git diff --exit-code -- supabase/seed.sql supabase/migrations/202607300002_mission_catalog_v2.sql v2/src/data/missions-public.generated.ts
 
       - name: Run checks
         run: pnpm check

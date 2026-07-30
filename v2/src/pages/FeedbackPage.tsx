@@ -1,13 +1,21 @@
 import { Check, CheckCircle2, CircleDot, MessageSquareText } from "lucide-react";
+import { Link } from "react-router-dom";
 import { formatDate } from "@/lib/format";
+import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
 
 export function Component() {
-  const { profile, snapshot, markNotificationRead } = useClassroom();
-  if (!profile || !snapshot) return null;
+  const {
+    viewProfile,
+    isStudentPreview,
+    snapshot,
+    markNotificationRead,
+  } = useClassroom();
+  const { getMissionById } = useCatalog();
+  if (!viewProfile || !snapshot) return null;
 
   const notifications = snapshot.notifications
-    .filter((entry) => entry.userId === profile.id)
+    .filter((entry) => entry.userId === viewProfile.id)
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -32,39 +40,102 @@ export function Component() {
       </header>
 
       <section className="feedback-list" aria-label="Notificaciones">
-        {notifications.map((entry) => (
-          <article
-            className={`feedback-item ${entry.readAt ? "is-read" : ""}`}
-            key={entry.id}
-          >
-            <span className="feedback-icon">
-              {entry.title.toLowerCase().includes("aprob") ? (
-                <CheckCircle2 aria-hidden="true" />
+        {notifications.map((entry) => {
+          const assignment = snapshot.assignments.find(
+            (item) => item.id === entry.assignmentId,
+          );
+          const review = snapshot.reviews.find(
+            (item) => item.id === entry.reviewId,
+          );
+          const attempt = snapshot.attempts.find(
+            (item) => item.id === (entry.attemptId ?? review?.attemptId),
+          );
+          const mission = assignment
+            ? getMissionById(
+                assignment.missionId,
+                attempt?.missionVersion ?? assignment.missionVersion,
+              )
+            : undefined;
+          const destination =
+            assignment && mission
+              ? `/mission/${mission.slug}?assignment=${assignment.id}${
+                  attempt ? `&attempt=${attempt.id}` : ""
+                }${review ? `&review=${review.id}` : ""}`
+              : undefined;
+          return (
+            <article
+              className={`feedback-item ${entry.readAt ? "is-read" : ""}`}
+              key={entry.id}
+            >
+              <span className="feedback-icon">
+                {entry.title.toLowerCase().includes("aprob") ? (
+                  <CheckCircle2 aria-hidden="true" />
+                ) : (
+                  <CircleDot aria-hidden="true" />
+                )}
+              </span>
+              {destination ? (
+                <Link className="feedback-item-content" to={destination}>
+                  <span className="feedback-item-heading">
+                    <strong>{entry.title}</strong>
+                    <time dateTime={entry.createdAt}>
+                      {formatDate(entry.createdAt, true)}
+                    </time>
+                  </span>
+                  <span className="feedback-body">{entry.body}</span>
+                  {review &&
+                  (review.inlineComments.length > 0 ||
+                    review.criteria.length > 0) ? (
+                    <span className="feedback-review-details">
+                      {review.criteria.length > 0 ? (
+                        <span className="feedback-criteria">
+                          {review.criteria.map((criterion) => (
+                            <span
+                              className={criterion.met ? "is-met" : ""}
+                              key={criterion.id}
+                            >
+                              {criterion.met ? "Cumple" : "Revisar"} ·{" "}
+                              {criterion.label}
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                      {review.inlineComments.map((comment, index) => (
+                        <span
+                          className="feedback-inline-comment"
+                          key={`${comment.line}-${index}`}
+                        >
+                          <strong>Línea {comment.line}</strong>
+                          {comment.body}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
+                </Link>
               ) : (
-                <CircleDot aria-hidden="true" />
+                <div>
+                  <div className="feedback-item-heading">
+                    <strong>{entry.title}</strong>
+                    <time dateTime={entry.createdAt}>
+                      {formatDate(entry.createdAt, true)}
+                    </time>
+                  </div>
+                  <p>{entry.body}</p>
+                </div>
               )}
-            </span>
-            <div>
-              <div className="feedback-item-heading">
-                <strong>{entry.title}</strong>
-                <time dateTime={entry.createdAt}>
-                  {formatDate(entry.createdAt, true)}
-                </time>
-              </div>
-              <p>{entry.body}</p>
-            </div>
-            {!entry.readAt ? (
-              <button
-                className="icon-button"
-                type="button"
-                aria-label={`Marcar ${entry.title} como leído`}
-                onClick={() => markNotificationRead(entry.id)}
-              >
-                <Check aria-hidden="true" />
-              </button>
-            ) : null}
-          </article>
-        ))}
+              {!entry.readAt && !isStudentPreview ? (
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={`Marcar ${entry.title} como leído`}
+                  onClick={() => markNotificationRead(entry.id)}
+                >
+                  <Check aria-hidden="true" />
+                </button>
+              ) : null}
+            </article>
+          );
+        })}
         {notifications.length === 0 ? (
           <div className="empty-state">
             <MessageSquareText aria-hidden="true" />

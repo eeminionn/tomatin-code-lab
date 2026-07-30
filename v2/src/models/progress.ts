@@ -17,6 +17,7 @@ export function progressAfterAttempt(
         ? "in_progress"
         : progress.status,
     language: attempt.language,
+    lastEvent: submitted ? "submitted" : "ran",
     attempts: progress.attempts + 1,
     lastActivityAt: attempt.createdAt,
     submittedAt: submitted ? attempt.createdAt : progress.submittedAt,

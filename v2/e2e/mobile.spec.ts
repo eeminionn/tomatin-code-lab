@@ -13,8 +13,7 @@ test("mobile navigation and workspace remain inside the viewport", async ({
   ).toBe(true);
 
   await page
-    .locator(".mission-card")
-    .filter({ hasText: "La once de Tomatin" })
+    .locator('.mission-card:has(h2:text-is("La once de Tomatin"))')
     .getByRole("link", { name: "Abrir workspace" })
     .click();
   await page.getByRole("tab", { name: "Código" }).click();

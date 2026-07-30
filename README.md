@@ -4,17 +4,20 @@ Aula multilenguaje, actualmente en desarrollo, para practicar Programación I y
 II con veinte misiones originales.
 
 - **Versión estable:** [eeminionn.github.io/tomatin-code-lab](https://eeminionn.github.io/tomatin-code-lab/)
-- **Aula 2.0 beta:** [eeminionn.github.io/tomatin-code-lab/beta](https://eeminionn.github.io/tomatin-code-lab/beta/)
+- **Aula 3.0 beta:** [eeminionn.github.io/tomatin-code-lab/beta](https://eeminionn.github.io/tomatin-code-lab/beta/)
 
 > Proyecto independiente. No está afiliado ni respaldado por MIT. El temario
 > toma como referencia conceptos habituales de cursos universitarios; los
 > enunciados y recursos de esta plataforma son originales.
 
-## Aula 2.0
+## Aula 3.0
 
 - React, TypeScript, Vite, rutas con hash y Monaco Editor cargado bajo demanda.
 - Veinte misiones con variantes reales de JavaScript, Python y C++.
-- Enunciado, editor, consola, tests, pistas e historial en un mismo workspace.
+- Misiones guiadas con contexto, meta, contrato, ejemplos explicados, pasos,
+  restricciones, criterios de éxito y tres pistas progresivas.
+- Enunciado, editor, consola, tests, feedback e historial versionado en un
+  mismo workspace.
 - Borradores separados por lenguaje, guardados en IndexedDB y sincronizados al
   backend cuando está disponible.
 - JavaScript en Web Worker, Python con Pyodide y ejecución remota con Judge0.
@@ -24,8 +27,13 @@ II con veinte misiones originales.
   basado únicamente en tareas aprobadas.
 - Un repositorio privado por estudiante bajo `eeminionn`, con una carpeta por
   misión y actualización automática al entregar.
-- Panel mentor con matriz del curso, atrasos, cola de revisión, asignaciones,
-  catálogo versionado e invitaciones.
+- Panel del mentor con métricas reales, matriz filtrable, actividad reciente,
+  detalle por estudiante, historial de código guardado y vista estudiante de
+  solo lectura.
+- Revisión con comentarios por línea, criterios reutilizables y enlaces
+  directos desde Feedback a la entrega y versión revisada.
+- Soluciones cargadas bajo demanda solo para `owner` y `mentor`; nunca se
+  incluyen en el catálogo público ni aparecen en vista estudiante.
 
 Las soluciones de referencia y los tests ocultos solo aparecen en
 `private.mission_variants_secure`. El catálogo que Vite entrega al navegador se
@@ -40,7 +48,7 @@ pnpm install
 pnpm dev
 ```
 
-La beta queda disponible en
+La beta 3.0 queda disponible en
 `http://127.0.0.1:4173/tomatin-code-lab/beta/`. Sin variables de entorno abre
 un aula demostrativa local para diez estudiantes.
 
@@ -101,13 +109,13 @@ supabase test db
 
 La verificación incluye la aplicación estable, tipos, build y las 60 soluciones
 de referencia: JavaScript se ejecuta, Python se interpreta y C++ se compila con
-C++20. Playwright cubre los recorridos de estudiante y mentor; pgTAP comprueba
-las políticas RLS contra una base temporal. El catálogo y la migración SQL se
+C++20. Playwright cubre en serie los recorridos de estudiante y mentor; pgTAP
+comprueba las políticas RLS contra una base temporal. El catálogo y la migración SQL se
 regeneran desde una única fuente para evitar que se desalineen.
 
 ## Estructura
 
-- `v2/`: aplicación React de la beta.
+- `v2/`: aplicación React de la beta 3.0.
 - `v2/src/data/programming-*.ts`: fuente privada del catálogo y soluciones.
 - `v2/src/data/missions-public.generated.ts`: catálogo apto para el navegador.
 - `supabase/migrations/`: esquema, RLS y catálogo inicial.

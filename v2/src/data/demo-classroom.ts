@@ -41,11 +41,17 @@ function dateFromNow(days: number, hour = 23) {
   return value.toISOString();
 }
 
+function dateAgo(days: number, hours = 0) {
+  return new Date(
+    Date.now() - days * 86_400_000 - hours * 3_600_000,
+  ).toISOString();
+}
+
 const assignments: Assignment[] = [
   {
     id: "assignment-once",
     missionId: "p1-01-la-once",
-    missionVersion: 1,
+    missionVersion: 2,
     title: "Variables y acumuladores",
     instructions: "Resuelve la misión en cualquiera de los tres lenguajes.",
     dueAt: dateFromNow(2),
@@ -57,7 +63,7 @@ const assignments: Assignment[] = [
   {
     id: "assignment-var",
     missionId: "p1-02-var-limache",
-    missionVersion: 1,
+    missionVersion: 2,
     title: "Condiciones booleanas",
     instructions: "Incluye los cuatro casos posibles en tus pruebas.",
     dueAt: dateFromNow(4),
@@ -69,7 +75,7 @@ const assignments: Assignment[] = [
   {
     id: "assignment-pins",
     missionId: "p1-03-semaforo-led",
-    missionVersion: 1,
+    missionVersion: 2,
     title: "Recorridos seguros",
     instructions: "Prioriza claridad y no accedas fuera de rango.",
     dueAt: dateFromNow(7),
@@ -81,7 +87,7 @@ const assignments: Assignment[] = [
   {
     id: "assignment-factorial",
     missionId: "p2-01-factorial-recursivo",
-    missionVersion: 1,
+    missionVersion: 2,
     title: "Recursión y caso base",
     instructions: "La entrega debe manejar números negativos.",
     dueAt: dateFromNow(10),
@@ -110,6 +116,7 @@ const progress: StudentProgress[] = students.flatMap((student, studentIndex) =>
     return {
       userId: student.id,
       assignmentId: assignment.id,
+      missionVersion: assignment.missionVersion,
       status,
       language:
         status === "not_started"
@@ -117,13 +124,21 @@ const progress: StudentProgress[] = students.flatMap((student, studentIndex) =>
           : (["javascript", "python", "cpp"] as const)[index % 3],
       attempts: status === "not_started" ? 0 : (index % 4) + 1,
       hintsUsed: status === "not_started" ? 0 : index % 2,
+      lastEvent:
+        status === "not_started"
+          ? undefined
+          : status === "awaiting_review" || status === "approved"
+            ? "submitted"
+            : "editing",
       lastActivityAt:
-        status === "not_started" ? undefined : dateFromNow(-(index % 3), 18),
+        status === "not_started"
+          ? undefined
+          : dateAgo(index % 3, (index % 5) + 1),
       submittedAt:
         status === "awaiting_review" || status === "approved"
-          ? dateFromNow(-1, 17)
+          ? dateAgo(1, 2)
           : undefined,
-      approvedAt: status === "approved" ? dateFromNow(-1, 19) : undefined,
+      approvedAt: status === "approved" ? dateAgo(1, 1) : undefined,
     };
   }),
 );
@@ -132,6 +147,9 @@ const notifications: AppNotification[] = [
   {
     id: "notification-review",
     userId: "student-01",
+    classId: "class-tomatin-2026",
+    assignmentId: "assignment-once",
+    attemptId: "attempt-camila-once",
     title: "Entrega recibida",
     body: "Variables y acumuladores quedó en revisión.",
     createdAt: dateFromNow(0, 12),
@@ -139,6 +157,9 @@ const notifications: AppNotification[] = [
   {
     id: "notification-feedback",
     userId: "student-01",
+    classId: "class-tomatin-2026",
+    assignmentId: "assignment-once",
+    attemptId: "attempt-camila-once",
     title: "Comentario del mentor",
     body: "Revisa el caso de una compra vacía antes de reenviar.",
     createdAt: dateFromNow(-1, 18),

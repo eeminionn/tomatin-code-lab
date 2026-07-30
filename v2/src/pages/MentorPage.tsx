@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  Activity,
   ArrowRight,
   BookCopy,
   CalendarPlus,
@@ -12,18 +13,25 @@ import {
   Copy,
   Eye,
   FilePlus2,
-  Filter,
   Link2,
   MailPlus,
   MessageSquareText,
   Plus,
   Save,
+  Search,
   Send,
   ShieldCheck,
+  Timer,
+  TrendingUp,
   Users,
   XCircle,
 } from "lucide-react";
-import { Link, Navigate } from "react-router-dom";
+import {
+  Link,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, initials, isOverdue } from "@/lib/format";
 import { useCatalog } from "@/state/catalog";
@@ -40,7 +48,13 @@ import {
   type MissionDraftInput,
 } from "@/types";
 
-type MentorTab = "overview" | "reviews" | "assignments" | "missions" | "invitations";
+type MentorTab =
+  | "overview"
+  | "reviews"
+  | "students"
+  | "assignments"
+  | "missions"
+  | "invitations";
 
 interface LocalMissionDraft extends MissionDraftInput {
   id: string;
@@ -51,6 +65,11 @@ interface LocalMissionDraft extends MissionDraftInput {
 }
 
 const MISSION_DRAFTS_KEY = "tomatin.v2.mission-drafts";
+const REVIEW_CRITERIA = [
+  { id: "correctness", label: "Correctitud" },
+  { id: "readability", label: "Claridad del código" },
+  { id: "edge-cases", label: "Casos límite" },
+] as const;
 
 function readMissionDrafts(): LocalMissionDraft[] {
   try {
@@ -60,14 +79,24 @@ function readMissionDrafts(): LocalMissionDraft[] {
   }
 }
 
+function formLines(value: FormDataEntryValue | null): string[] {
+  return String(value ?? "")
+    .split("\n")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 function MentorOverview({
   onOpenReviews,
 }: {
   onOpenReviews: () => void;
 }) {
   const { snapshot } = useClassroom();
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   if (!snapshot) return null;
   const students = snapshot.profiles.filter((entry) => entry.role === "student");
+  const now = Date.now();
   const reviewCount = snapshot.progress.filter(
     (entry) => entry.status === "awaiting_review",
   ).length;
@@ -82,10 +111,89 @@ function MentorOverview({
       .filter(
         (entry) =>
           entry.lastActivityAt &&
-          Date.now() - new Date(entry.lastActivityAt).getTime() < 86_400_000,
+          now - new Date(entry.lastActivityAt).getTime() < 86_400_000,
       )
       .map((entry) => entry.userId),
   ).size;
+  const activeNow = new Set(
+    snapshot.progress
+      .filter(
+        (entry) =>
+          entry.lastActivityAt &&
+          now - new Date(entry.lastActivityAt).getTime() < 5 * 60_000,
+      )
+      .map((entry) => entry.userId),
+  ).size;
+  const inactiveSevenDays = students.filter((student) => {
+    const latest = snapshot.progress
+      .filter((entry) => entry.userId === student.id && entry.lastActivityAt)
+      .map((entry) => new Date(entry.lastActivityAt!).getTime())
+      .sort((a, b) => b - a)[0];
+    return !latest || now - latest >= 7 * 86_400_000;
+  }).length;
+  const approvedCount = snapshot.progress.filter(
+    (entry) => entry.status === "approved",
+  ).length;
+  const startedCount = snapshot.progress.filter(
+    (entry) => entry.status !== "not_started",
+  ).length;
+  const approvalRate =
+    startedCount > 0 ? Math.round((approvedCount / startedCount) * 100) : 0;
+  const reviewWaits = snapshot.progress
+    .filter(
+      (entry) =>
+        entry.status === "awaiting_review" && Boolean(entry.submittedAt),
+    )
+    .map((entry) => now - new Date(entry.submittedAt!).getTime());
+  const averageReviewHours =
+    reviewWaits.length > 0
+      ? Math.round(
+          reviewWaits.reduce((total, value) => total + value, 0) /
+            reviewWaits.length /
+            3_600_000,
+        )
+      : 0;
+  const oldestReviewHours =
+    reviewWaits.length > 0
+      ? Math.max(1, Math.round(Math.max(...reviewWaits) / 3_600_000))
+      : 0;
+  const visibleAssignments = [...snapshot.assignments]
+    .filter((entry) => entry.status === "published")
+    .sort(
+      (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
+    )
+    .slice(0, 4);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleStudents = students.filter((student) => {
+    if (
+      normalizedQuery &&
+      !`${student.displayName} ${student.githubLogin ?? ""}`
+        .toLowerCase()
+        .includes(normalizedQuery)
+    ) {
+      return false;
+    }
+    if (statusFilter === "all") return true;
+    return snapshot.progress.some(
+      (entry) =>
+        entry.userId === student.id && entry.status === statusFilter,
+    );
+  });
+  const recentActivity = snapshot.progress
+    .filter((entry) => entry.lastActivityAt)
+    .sort(
+      (a, b) =>
+        new Date(b.lastActivityAt!).getTime() -
+        new Date(a.lastActivityAt!).getTime(),
+    )
+    .slice(0, 8);
+  const eventLabels = {
+    opened: "abrió",
+    editing: "está editando",
+    hint_revealed: "reveló una pista de",
+    ran: "ejecutó",
+    submitted: "entregó",
+  } as const;
 
   return (
     <>
@@ -95,16 +203,32 @@ function MentorOverview({
           <div><strong>{students.length}</strong><span>estudiantes</span></div>
         </article>
         <article>
-          <span className="metric-icon warning"><ClipboardCheck /></span>
-          <div><strong>{reviewCount}</strong><span>por revisar</span></div>
+          <span className="metric-icon success"><Activity /></span>
+          <div><strong>{activeNow}</strong><span>activos ahora</span></div>
+        </article>
+        <article>
+          <span className="metric-icon info"><Code2 /></span>
+          <div><strong>{activeToday}</strong><span>activos hoy</span></div>
         </article>
         <article>
           <span className="metric-icon danger"><Clock3 /></span>
           <div><strong>{overdueCount}</strong><span>atrasos</span></div>
         </article>
         <article>
-          <span className="metric-icon success"><Code2 /></span>
-          <div><strong>{activeToday}</strong><span>activos hoy</span></div>
+          <span className="metric-icon warning"><ClipboardCheck /></span>
+          <div><strong>{reviewCount}</strong><span>por revisar</span></div>
+        </article>
+        <article>
+          <span className="metric-icon success"><TrendingUp /></span>
+          <div><strong>{approvalRate}%</strong><span>aprobación</span></div>
+        </article>
+        <article>
+          <span className="metric-icon warning"><Timer /></span>
+          <div><strong>{averageReviewHours} h</strong><span>espera media</span></div>
+        </article>
+        <article>
+          <span className="metric-icon neutral"><Users /></span>
+          <div><strong>{inactiveSevenDays}</strong><span>inactivos 7 días</span></div>
         </article>
       </section>
 
@@ -113,7 +237,10 @@ function MentorOverview({
           <span className="review-callout-icon"><ClipboardCheck /></span>
           <span>
             <strong>{reviewCount} entregas esperan revisión</strong>
-            <small>La entrega más antigua lleva menos de 24 horas.</small>
+            <small>
+              La entrega más antigua espera {oldestReviewHours}{" "}
+              {oldestReviewHours === 1 ? "hora" : "horas"}.
+            </small>
           </span>
           <ArrowRight aria-hidden="true" />
         </button>
@@ -125,46 +252,474 @@ function MentorOverview({
             <p className="eyebrow">SEGUIMIENTO</p>
             <h2 id="matrix-title">Matriz del curso</h2>
           </div>
-          <span className="section-note">Últimas 4 tareas</span>
+          <span className="section-note">Próximas 4 tareas</span>
+        </div>
+        <div className="mentor-filters">
+          <label className="search-field">
+            <Search aria-hidden="true" />
+            <span className="sr-only">Buscar estudiante</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar estudiante"
+            />
+          </label>
+          <label>
+            <span className="sr-only">Filtrar por estado</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <option value="all">Todos los estados</option>
+              <option value="not_started">Pendiente</option>
+              <option value="in_progress">En progreso</option>
+              <option value="awaiting_review">En revisión</option>
+              <option value="changes_requested">Con cambios</option>
+              <option value="approved">Aprobada</option>
+            </select>
+          </label>
         </div>
         <div className="progress-matrix">
           <div className="matrix-row matrix-head">
             <span>Estudiante</span>
-            {snapshot.assignments.slice(0, 4).map((assignment) => (
+            {visibleAssignments.map((assignment) => (
               <span key={assignment.id}>{assignment.title}</span>
             ))}
           </div>
-          {students.map((student) => (
+          {visibleStudents.map((student) => (
             <div className="matrix-row" key={student.id}>
-              <div className="matrix-student">
+              <Link
+                className="matrix-student"
+                to={`/admin/students/${student.id}`}
+              >
                 <span className="avatar">{initials(student.displayName)}</span>
                 <span>
                   <strong>{student.displayName}</strong>
                   <small>{student.githubLogin ? `@${student.githubLogin}` : student.email}</small>
                 </span>
-              </div>
-              {snapshot.assignments.slice(0, 4).map((assignment) => {
+              </Link>
+              {visibleAssignments.map((assignment) => {
                 const progress = snapshot.progress.find(
                   (entry) =>
                     entry.userId === student.id &&
                     entry.assignmentId === assignment.id,
                 );
                 return (
-                  <div className="matrix-status" key={assignment.id}>
+                  <Link
+                    className="matrix-status"
+                    key={assignment.id}
+                    to={`/admin/students/${student.id}?assignment=${assignment.id}`}
+                  >
                     <StatusBadge status={progress?.status ?? "not_started"} />
                     <small>
                       {progress?.lastActivityAt
                         ? formatDate(progress.lastActivityAt, true)
                         : "Sin actividad"}
                     </small>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
           ))}
         </div>
       </section>
+
+      <section className="mentor-section" aria-labelledby="activity-title">
+        <div className="section-header">
+          <div>
+            <p className="eyebrow">TIEMPO REAL</p>
+            <h2 id="activity-title">Actividad reciente</h2>
+          </div>
+          <span className="section-note">Actualización por Realtime</span>
+        </div>
+        <div className="mentor-activity-list">
+          {recentActivity.map((entry) => {
+            const student = snapshot.profiles.find(
+              (profile) => profile.id === entry.userId,
+            );
+            const assignment = snapshot.assignments.find(
+              (item) => item.id === entry.assignmentId,
+            );
+            return (
+              <Link
+                className="mentor-activity-row"
+                key={`${entry.userId}-${entry.assignmentId}`}
+                to={`/admin/students/${entry.userId}?assignment=${entry.assignmentId}`}
+              >
+                <span className="activity-dot" aria-hidden="true" />
+                <span>
+                  <strong>{student?.displayName ?? "Estudiante"}</strong>
+                  <small>
+                    {entry.lastEvent
+                      ? eventLabels[entry.lastEvent]
+                      : "tuvo actividad en"}{" "}
+                    {assignment?.title ?? "una tarea"}
+                    {entry.language
+                      ? ` · ${LANGUAGE_META[entry.language].shortLabel}`
+                      : ""}
+                  </small>
+                </span>
+                <time dateTime={entry.lastActivityAt}>
+                  {formatDate(entry.lastActivityAt!, true)}
+                </time>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
     </>
+  );
+}
+
+function StudentDirectory({
+  selectedStudentId,
+}: {
+  selectedStudentId?: string;
+}) {
+  const { snapshot, startStudentPreview } = useClassroom();
+  const { getMissionById } = useCatalog();
+  const [query, setQuery] = useState("");
+  const [activityFilter, setActivityFilter] = useState("all");
+  if (!snapshot) return null;
+
+  const students = snapshot.profiles
+    .filter((entry) => entry.role === "student")
+    .filter((student) => {
+      const normalized = query.trim().toLowerCase();
+      if (
+        normalized &&
+        !`${student.displayName} ${student.githubLogin ?? ""}`
+          .toLowerCase()
+          .includes(normalized)
+      ) {
+        return false;
+      }
+      const latest = snapshot.progress
+        .filter((entry) => entry.userId === student.id && entry.lastActivityAt)
+        .map((entry) => new Date(entry.lastActivityAt!).getTime())
+        .sort((a, b) => b - a)[0];
+      if (activityFilter === "active") {
+        return Boolean(latest && Date.now() - latest < 86_400_000);
+      }
+      if (activityFilter === "inactive") {
+        return !latest || Date.now() - latest >= 7 * 86_400_000;
+      }
+      return true;
+    });
+  const selected =
+    snapshot.profiles.find(
+      (entry) =>
+        entry.id === selectedStudentId && entry.role === "student",
+    ) ?? students[0];
+
+  if (!selected) {
+    return (
+      <div className="empty-state">
+        <Users aria-hidden="true" />
+        <h2>No hay estudiantes activos</h2>
+      </div>
+    );
+  }
+
+  const progress = snapshot.progress.filter(
+    (entry) => entry.userId === selected.id,
+  );
+  const attempts = snapshot.attempts
+    .filter((entry) => entry.userId === selected.id)
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  const selectedAttemptIds = new Set(attempts.map((entry) => entry.id));
+  const reviews = snapshot.reviews
+    .filter((entry) => selectedAttemptIds.has(entry.attemptId))
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  const repository = snapshot.repositories.find(
+    (entry) => entry.userId === selected.id,
+  );
+  const latestActivity = progress
+    .filter((entry) => entry.lastActivityAt)
+    .sort(
+      (a, b) =>
+        new Date(b.lastActivityAt!).getTime() -
+        new Date(a.lastActivityAt!).getTime(),
+    )[0];
+
+  return (
+    <section className="student-directory" aria-label="Seguimiento por estudiante">
+      <aside className="student-directory-list">
+        <div className="student-directory-controls">
+          <label className="search-field">
+            <Search aria-hidden="true" />
+            <span className="sr-only">Buscar estudiante</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar estudiante"
+            />
+          </label>
+          <select
+            aria-label="Filtrar actividad"
+            value={activityFilter}
+            onChange={(event) => setActivityFilter(event.target.value)}
+          >
+            <option value="all">Todos</option>
+            <option value="active">Activos hoy</option>
+            <option value="inactive">Inactivos 7 días</option>
+          </select>
+        </div>
+        <div className="student-directory-rows">
+          {students.map((student) => {
+            const studentProgress = snapshot.progress.filter(
+              (entry) => entry.userId === student.id,
+            );
+            const pending = studentProgress.filter(
+              (entry) => entry.status === "awaiting_review",
+            ).length;
+            const latest = studentProgress
+              .filter((entry) => entry.lastActivityAt)
+              .sort(
+                (a, b) =>
+                  new Date(b.lastActivityAt!).getTime() -
+                  new Date(a.lastActivityAt!).getTime(),
+              )[0];
+            return (
+              <Link
+                className={`student-directory-row ${
+                  student.id === selected.id ? "is-active" : ""
+                }`}
+                key={student.id}
+                to={`/admin/students/${student.id}`}
+              >
+                <span className="avatar">{initials(student.displayName)}</span>
+                <span>
+                  <strong>{student.displayName}</strong>
+                  <small>
+                    {latest?.lastActivityAt
+                      ? formatDate(latest.lastActivityAt, true)
+                      : "Sin actividad"}
+                  </small>
+                </span>
+                {pending > 0 ? <em>{pending}</em> : null}
+              </Link>
+            );
+          })}
+        </div>
+      </aside>
+
+      <div className="student-detail">
+        <header className="student-detail-header">
+          <span className="avatar large">{initials(selected.displayName)}</span>
+          <div>
+            <p className="eyebrow">ESTUDIANTE</p>
+            <h2>{selected.displayName}</h2>
+            <span>
+              {selected.githubLogin
+                ? `@${selected.githubLogin}`
+                : selected.email}
+            </span>
+          </div>
+          <Link
+            className="button secondary"
+            to="/"
+            onClick={() => startStudentPreview(selected.id)}
+          >
+            <Eye aria-hidden="true" />
+            Ver perspectiva
+          </Link>
+        </header>
+
+        <section className="student-detail-summary" aria-label="Resumen del estudiante">
+          <article>
+            <strong>
+              {progress.filter((entry) => entry.status === "approved").length}
+            </strong>
+            <span>aprobadas</span>
+          </article>
+          <article>
+            <strong>
+              {
+                progress.filter(
+                  (entry) => entry.status === "awaiting_review",
+                ).length
+              }
+            </strong>
+            <span>por revisar</span>
+          </article>
+          <article>
+            <strong>
+              {progress.reduce((total, entry) => total + entry.attempts, 0)}
+            </strong>
+            <span>intentos</span>
+          </article>
+          <article>
+            <strong>
+              {progress.reduce((total, entry) => total + entry.hintsUsed, 0)}
+            </strong>
+            <span>pistas</span>
+          </article>
+        </section>
+
+        <section className="student-current-state">
+          <div>
+            <p className="eyebrow">ÚLTIMA ACTIVIDAD</p>
+            <strong>
+              {latestActivity
+                ? snapshot.assignments.find(
+                    (entry) => entry.id === latestActivity.assignmentId,
+                  )?.title
+                : "Sin actividad registrada"}
+            </strong>
+            {latestActivity?.lastActivityAt ? (
+              <small>{formatDate(latestActivity.lastActivityAt, true)}</small>
+            ) : null}
+          </div>
+          {repository ? (
+            <a href={repository.htmlUrl} target="_blank" rel="noreferrer">
+              <Link2 aria-hidden="true" />
+              {repository.name}
+            </a>
+          ) : (
+            <span>Repositorio pendiente</span>
+          )}
+        </section>
+
+        <section className="student-assignment-progress">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">TAREAS</p>
+              <h3>Progreso y versiones</h3>
+            </div>
+          </div>
+          {progress.map((entry) => {
+            const assignment = snapshot.assignments.find(
+              (item) => item.id === entry.assignmentId,
+            );
+            const mission = assignment
+              ? getMissionById(assignment.missionId, entry.missionVersion)
+              : undefined;
+            return assignment && mission ? (
+              <Link
+                className="student-assignment-row"
+                key={entry.assignmentId}
+                to={`/mission/${mission.slug}?assignment=${assignment.id}`}
+              >
+                <span>
+                  <strong>{assignment.title}</strong>
+                  <small>
+                    {mission.title} · v{entry.missionVersion}
+                  </small>
+                </span>
+                <span>
+                  <StatusBadge status={entry.status} />
+                  <small>
+                    {entry.attempts} intentos · {entry.hintsUsed} pistas
+                  </small>
+                </span>
+                <ArrowRight aria-hidden="true" />
+              </Link>
+            ) : null;
+          })}
+        </section>
+
+        <section className="student-code-history">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">CÓDIGO GUARDADO</p>
+              <h3>Últimas ejecuciones y entregas</h3>
+            </div>
+            <span className="section-note">
+              Borradores privados no incluidos
+            </span>
+          </div>
+          {attempts.slice(0, 20).map((attempt) => {
+            const currentProgress = attempt.assignmentId
+              ? progress.find(
+                  (entry) => entry.assignmentId === attempt.assignmentId,
+                )
+              : undefined;
+            return (
+              <details className="student-attempt" key={attempt.id}>
+                <summary>
+                  <span>
+                    <strong>
+                      {attempt.kind === "submit" ? "Entrega" : "Ejecución"} ·{" "}
+                      {LANGUAGE_META[attempt.language].shortLabel}
+                    </strong>
+                    <small>{formatDate(attempt.createdAt, true)}</small>
+                  </span>
+                  <span>
+                    v{attempt.missionVersion}
+                    {currentProgress &&
+                    currentProgress.missionVersion !== attempt.missionVersion
+                      ? " · versión anterior"
+                      : ""}
+                  </span>
+                </summary>
+                <pre>
+                  <code>{attempt.code}</code>
+                </pre>
+              </details>
+            );
+          })}
+          {attempts.length === 0 ? (
+            <div className="empty-inline">
+              <Code2 aria-hidden="true" />
+              <span>No hay ejecuciones guardadas.</span>
+            </div>
+          ) : null}
+        </section>
+
+        {reviews.length > 0 ? (
+          <section className="student-review-history">
+            <div className="section-header">
+              <div>
+                <p className="eyebrow">FEEDBACK</p>
+                <h3>Revisiones recientes</h3>
+              </div>
+            </div>
+            {reviews.map((review) => (
+              <article key={review.id}>
+                <StatusBadge
+                  status={
+                    review.decision === "approved"
+                      ? "approved"
+                      : review.decision === "changes_requested"
+                        ? "changes_requested"
+                        : "in_progress"
+                  }
+                />
+                <p>{review.comment}</p>
+                {review.criteria.length > 0 ? (
+                  <div className="student-review-criteria">
+                    {review.criteria.map((criterion) => (
+                      <span
+                        className={criterion.met ? "is-met" : ""}
+                        key={criterion.id}
+                      >
+                        {criterion.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {review.inlineComments.map((comment, index) => (
+                  <blockquote key={`${comment.line}-${index}`}>
+                    <strong>L{comment.line}</strong>
+                    {comment.body}
+                  </blockquote>
+                ))}
+                <time dateTime={review.createdAt}>
+                  {formatDate(review.createdAt, true)}
+                </time>
+              </article>
+            ))}
+          </section>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
@@ -173,6 +728,18 @@ function ReviewQueue() {
   const { getMissionById } = useCatalog();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
+  const [query, setQuery] = useState("");
+  const [language, setLanguage] = useState<Language | "all">("all");
+  const [inlineLine, setInlineLine] = useState(1);
+  const [inlineBody, setInlineBody] = useState("");
+  const [inlineComments, setInlineComments] = useState<
+    Array<{ line: number; body: string }>
+  >([]);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState("");
+  const [criteria, setCriteria] = useState(() =>
+    REVIEW_CRITERIA.map((entry) => ({ ...entry, met: false })),
+  );
   if (!profile || !snapshot) return null;
 
   const queue = snapshot.progress
@@ -199,18 +766,76 @@ function ReviewQueue() {
       };
     })
     .filter((entry) => entry.attempt && entry.assignment && entry.student);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleQueue = queue.filter((entry) => {
+    if (language !== "all" && entry.attempt?.language !== language) {
+      return false;
+    }
+    if (!normalizedQuery) return true;
+    return `${entry.student?.displayName ?? ""} ${
+      entry.student?.githubLogin ?? ""
+    } ${entry.assignment?.title ?? ""}`
+      .toLowerCase()
+      .includes(normalizedQuery);
+  });
   const selected =
-    queue.find((entry) => entry.attempt?.id === selectedId) ?? queue[0];
+    visibleQueue.find((entry) => entry.attempt?.id === selectedId) ??
+    visibleQueue[0];
 
-  function decide(decision: "approved" | "changes_requested") {
+  async function decide(decision: "approved" | "changes_requested") {
     if (!selected?.attempt) return;
     const fallback =
       decision === "approved"
         ? "Buen trabajo. La entrega cumple los objetivos de la misión."
         : "Revisa los puntos marcados y envía una nueva versión.";
-    reviewAttempt(selected.attempt.id, decision, comment.trim() || fallback);
+    setReviewBusy(true);
+    setReviewMessage("");
+    try {
+      await reviewAttempt(
+        selected.attempt.id,
+        decision,
+        comment.trim() || fallback,
+        {
+          inlineComments,
+          criteria,
+        },
+      );
+      setComment("");
+      setInlineComments([]);
+      setInlineBody("");
+      setInlineLine(1);
+      setCriteria(
+        REVIEW_CRITERIA.map((entry) => ({ ...entry, met: false })),
+      );
+      setSelectedId(null);
+    } catch (error) {
+      setReviewMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar la revisión.",
+      );
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  function selectReview(attemptId: string | null) {
+    setSelectedId(attemptId);
     setComment("");
-    setSelectedId(null);
+    setInlineComments([]);
+    setInlineBody("");
+    setInlineLine(1);
+    setCriteria(REVIEW_CRITERIA.map((entry) => ({ ...entry, met: false })));
+  }
+
+  function addInlineComment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const body = inlineBody.trim();
+    if (!selected?.attempt || !body) return;
+    const lineCount = selected.attempt.code.split("\n").length;
+    const line = Math.min(Math.max(1, inlineLine), lineCount);
+    setInlineComments((current) => [...current, { line, body }]);
+    setInlineBody("");
   }
 
   return (
@@ -219,18 +844,40 @@ function ReviewQueue() {
         <div className="review-list-heading">
           <div>
             <p className="eyebrow">COLA</p>
-            <h2>{queue.length} entregas</h2>
+            <h2>{visibleQueue.length} entregas</h2>
           </div>
-          <button className="icon-button" type="button" aria-label="Filtrar revisiones">
-            <Filter aria-hidden="true" />
-          </button>
         </div>
-        {queue.map((entry) => (
+        <div className="review-list-filters">
+          <label className="search-field">
+            <Search aria-hidden="true" />
+            <span className="sr-only">Buscar revisión</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Estudiante o tarea"
+            />
+          </label>
+          <select
+            aria-label="Filtrar por lenguaje"
+            value={language}
+            onChange={(event) =>
+              setLanguage(event.target.value as Language | "all")
+            }
+          >
+            <option value="all">Todos los lenguajes</option>
+            {LANGUAGES.map((entry) => (
+              <option key={entry} value={entry}>
+                {LANGUAGE_META[entry].label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {visibleQueue.map((entry) => (
           <button
             className={`review-list-item ${selected?.attempt?.id === entry.attempt?.id ? "is-active" : ""}`}
             type="button"
             key={entry.attempt?.id}
-            onClick={() => setSelectedId(entry.attempt?.id ?? null)}
+            onClick={() => selectReview(entry.attempt?.id ?? null)}
           >
             <span className="avatar">{initials(entry.student?.displayName ?? "?")}</span>
             <span>
@@ -245,11 +892,15 @@ function ReviewQueue() {
             <ArrowRight aria-hidden="true" />
           </button>
         ))}
-        {queue.length === 0 ? (
+        {visibleQueue.length === 0 ? (
           <div className="empty-state compact-empty">
             <CheckCircle2 aria-hidden="true" />
-            <h2>Cola al día</h2>
-            <p>No hay entregas esperando revisión.</p>
+            <h2>{queue.length === 0 ? "Cola al día" : "Sin coincidencias"}</h2>
+            <p>
+              {queue.length === 0
+                ? "No hay entregas esperando revisión."
+                : "Prueba con otro estudiante, tarea o lenguaje."}
+            </p>
           </div>
         ) : null}
       </div>
@@ -267,7 +918,12 @@ function ReviewQueue() {
             </div>
             <Link
               className="button secondary"
-              to={`/mission/${getMissionById(selected.assignment.missionId)?.slug}?assignment=${selected.assignment.id}`}
+              to={`/mission/${
+                getMissionById(
+                  selected.assignment.missionId,
+                  selected.progress.missionVersion,
+                )?.slug
+              }?assignment=${selected.assignment.id}`}
             >
               <Eye aria-hidden="true" />
               Ver misión
@@ -290,10 +946,100 @@ function ReviewQueue() {
               <Code2 aria-hidden="true" />
               {LANGUAGE_META[selected.attempt.language].fileName}
             </div>
-            <pre><code>{selected.attempt.code}</code></pre>
+            <ol className="review-code-lines">
+              {selected.attempt.code.split("\n").map((line, index) => (
+                <li key={`${index + 1}-${line}`}>
+                  <button
+                    type="button"
+                    className={inlineLine === index + 1 ? "is-selected" : ""}
+                    onClick={() => setInlineLine(index + 1)}
+                    aria-label={`Comentar línea ${index + 1}`}
+                  >
+                    <code>{line || " "}</code>
+                  </button>
+                </li>
+              ))}
+            </ol>
           </div>
 
           <div className="review-feedback-form">
+            <form
+              className="inline-comment-form"
+              onSubmit={addInlineComment}
+            >
+              <label htmlFor="inline-comment">
+                Comentario en línea {inlineLine}
+              </label>
+              <div>
+                <input
+                  aria-label="Número de línea"
+                  type="number"
+                  min="1"
+                  max={selected.attempt.code.split("\n").length}
+                  value={inlineLine}
+                  onChange={(event) =>
+                    setInlineLine(Number(event.target.value) || 1)
+                  }
+                />
+                <input
+                  id="inline-comment"
+                  value={inlineBody}
+                  onChange={(event) => setInlineBody(event.target.value)}
+                  placeholder="Observación concreta sobre esta línea"
+                />
+                <button
+                  className="button secondary"
+                  type="submit"
+                  disabled={!inlineBody.trim()}
+                >
+                  <Plus aria-hidden="true" />
+                  Agregar
+                </button>
+              </div>
+            </form>
+            {inlineComments.length > 0 ? (
+              <ul className="inline-comment-list">
+                {inlineComments.map((entry, index) => (
+                  <li key={`${entry.line}-${index}`}>
+                    <strong>L{entry.line}</strong>
+                    <span>{entry.body}</span>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      aria-label={`Eliminar comentario de línea ${entry.line}`}
+                      onClick={() =>
+                        setInlineComments((current) =>
+                          current.filter((_, itemIndex) => itemIndex !== index),
+                        )
+                      }
+                    >
+                      <XCircle aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <fieldset className="review-criteria">
+              <legend>Criterios de revisión</legend>
+              {criteria.map((entry) => (
+                <label key={entry.id}>
+                  <input
+                    type="checkbox"
+                    checked={entry.met}
+                    onChange={(event) =>
+                      setCriteria((current) =>
+                        current.map((criterion) =>
+                          criterion.id === entry.id
+                            ? { ...criterion, met: event.target.checked }
+                            : criterion,
+                        ),
+                      )
+                    }
+                  />
+                  {entry.label}
+                </label>
+              ))}
+            </fieldset>
             <label htmlFor="mentor-comment">Comentario para {selected.student.displayName}</label>
             <textarea
               id="mentor-comment"
@@ -306,7 +1052,8 @@ function ReviewQueue() {
               <button
                 className="button danger"
                 type="button"
-                onClick={() => decide("changes_requested")}
+                disabled={reviewBusy}
+                onClick={() => void decide("changes_requested")}
               >
                 <XCircle aria-hidden="true" />
                 Solicitar cambios
@@ -314,12 +1061,16 @@ function ReviewQueue() {
               <button
                 className="button primary"
                 type="button"
-                onClick={() => decide("approved")}
+                disabled={reviewBusy}
+                onClick={() => void decide("approved")}
               >
                 <Check aria-hidden="true" />
                 Aprobar y asignar XP
               </button>
             </div>
+            <p className="editor-message" role="status">
+              {reviewMessage}
+            </p>
           </div>
         </div>
       ) : null}
@@ -537,6 +1288,8 @@ function ServerDraftEditor({
 }) {
   const [language, setLanguage] = useState<Language>("javascript");
   const [starterCode, setStarterCode] = useState("");
+  const [expectedSignature, setExpectedSignature] = useState("");
+  const [examples, setExamples] = useState("[]");
   const [referenceSolution, setReferenceSolution] = useState("");
   const [publicTests, setPublicTests] = useState("[]");
   const [hiddenTests, setHiddenTests] = useState("[]");
@@ -546,6 +1299,8 @@ function ServerDraftEditor({
 
   useEffect(() => {
     setStarterCode(variant?.starterCode ?? "");
+    setExpectedSignature(variant?.expectedSignature ?? "");
+    setExamples(JSON.stringify(variant?.examples ?? [], null, 2));
     setReferenceSolution(variant?.referenceSolution ?? "");
     setPublicTests(JSON.stringify(variant?.publicTests ?? [], null, 2));
     setHiddenTests(JSON.stringify(variant?.hiddenTests ?? [], null, 2));
@@ -564,7 +1319,15 @@ function ServerDraftEditor({
         content: {
           title: String(data.get("title")),
           summary: String(data.get("summary")),
+          context: String(data.get("context")),
           brief: String(data.get("brief")),
+          goal: String(data.get("goal")),
+          conceptIntro: String(data.get("conceptIntro")),
+          steps: formLines(data.get("steps")),
+          constraints: formLines(data.get("constraints")),
+          successCriteria: formLines(data.get("successCriteria")),
+          prerequisites: formLines(data.get("prerequisites")),
+          hints: formLines(data.get("hints")),
         },
       });
       onSaved(response.drafts ?? []);
@@ -583,14 +1346,21 @@ function ServerDraftEditor({
     try {
       const parsedPublic = JSON.parse(publicTests) as MissionAdminDraft["variants"][number]["publicTests"];
       const parsedHidden = JSON.parse(hiddenTests) as MissionAdminDraft["variants"][number]["hiddenTests"];
-      if (!Array.isArray(parsedPublic) || !Array.isArray(parsedHidden)) {
-        throw new Error("Los tests deben ser arreglos JSON.");
+      const parsedExamples = JSON.parse(examples) as MissionAdminDraft["variants"][number]["examples"];
+      if (
+        !Array.isArray(parsedPublic) ||
+        !Array.isArray(parsedHidden) ||
+        !Array.isArray(parsedExamples)
+      ) {
+        throw new Error("Los ejemplos y tests deben ser arreglos JSON.");
       }
       const response = await runMissionAdmin({
         action: "update-variant",
         versionId: draft.id,
         language,
         starterCode,
+        expectedSignature,
+        examples: parsedExamples,
         referenceSolution,
         publicTests: parsedPublic,
         hiddenTests: parsedHidden,
@@ -642,9 +1412,54 @@ function ServerDraftEditor({
           <input name="summary" required defaultValue={String(draft.content.summary ?? "")} />
         </label>
         <label className="form-span-2">
-          <span>Enunciado</span>
+          <span>Contexto breve</span>
+          <textarea
+            name="context"
+            rows={2}
+            required
+            defaultValue={String(draft.content.context ?? "")}
+          />
+        </label>
+        <label className="form-span-2">
+          <span>Misión concreta</span>
           <textarea name="brief" rows={4} required defaultValue={String(draft.content.brief ?? "")} />
         </label>
+        <label className="form-span-2">
+          <span>Meta verificable</span>
+          <textarea
+            name="goal"
+            rows={2}
+            required
+            defaultValue={String(draft.content.goal ?? "")}
+          />
+        </label>
+        <label className="form-span-2">
+          <span>Introducción conceptual</span>
+          <textarea
+            name="conceptIntro"
+            rows={3}
+            required
+            defaultValue={String(draft.content.conceptIntro ?? "")}
+          />
+        </label>
+        {[
+          ["steps", "Pasos sugeridos", draft.content.steps],
+          ["constraints", "Restricciones", draft.content.constraints],
+          ["successCriteria", "Criterios de éxito", draft.content.successCriteria],
+          ["prerequisites", "ID de prerrequisitos", draft.content.prerequisites],
+          ["hints", "Pistas progresivas", draft.content.hints],
+        ].map(([name, label, value]) => (
+          <label key={String(name)}>
+            <span>{String(label)} · uno por línea</span>
+            <textarea
+              name={String(name)}
+              rows={5}
+              defaultValue={
+                Array.isArray(value) ? value.map(String).join("\n") : ""
+              }
+            />
+          </label>
+        ))}
         <div className="form-actions form-span-2">
           <button className="button secondary" disabled={busy}>
             <Save aria-hidden="true" />
@@ -667,6 +1482,23 @@ function ServerDraftEditor({
       </div>
 
       <form className="variant-editor-form" onSubmit={updateVariant}>
+        <label>
+          <span>Firma esperada</span>
+          <input
+            value={expectedSignature}
+            onChange={(event) => setExpectedSignature(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          <span>Ejemplos explicados (JSON)</span>
+          <textarea
+            value={examples}
+            onChange={(event) => setExamples(event.target.value)}
+            rows={10}
+            spellCheck={false}
+          />
+        </label>
         <label>
           <span>Starter code</span>
           <textarea
@@ -749,7 +1581,15 @@ function MissionManager() {
     const content = {
       title: String(data.get("title")),
       summary: String(data.get("summary")),
+      context: String(data.get("context")),
       brief: String(data.get("brief")),
+      goal: String(data.get("goal")),
+      conceptIntro: String(data.get("conceptIntro")),
+      steps: formLines(data.get("steps")),
+      constraints: formLines(data.get("constraints")),
+      successCriteria: formLines(data.get("successCriteria")),
+      prerequisites: formLines(data.get("prerequisites")),
+      hints: formLines(data.get("hints")),
       course: String(data.get("course")) as LocalMissionDraft["course"],
       courseLabel:
         String(data.get("course")) === "programming-1"
@@ -777,10 +1617,7 @@ function MissionManager() {
     persist([
       {
         id: crypto.randomUUID(),
-        title: content.title,
-        summary: content.summary,
-        brief: content.brief,
-        course: content.course,
+        ...content,
         version: 1,
         status: "draft",
         languages: { javascript: true, python: true, cpp: true },
@@ -816,7 +1653,15 @@ function MissionManager() {
         missionId: source.id,
         title: `${source.title} · copia`,
         summary: source.summary,
+        context: source.context,
         brief: source.brief,
+        goal: source.goal,
+        conceptIntro: source.conceptIntro,
+        steps: source.steps,
+        constraints: source.constraints,
+        successCriteria: source.successCriteria,
+        prerequisites: source.prerequisites,
+        hints: source.hints,
         course: source.course,
         version: source.version + 1,
         status: "draft",
@@ -868,6 +1713,8 @@ function MissionManager() {
               draft.variants.some(
                 (variant) =>
                   variant.language === language &&
+                  variant.expectedSignature.length > 0 &&
+                  variant.examples.length > 0 &&
                   variant.referenceSolution.length > 0 &&
                   variant.publicTests.length > 0 &&
                   variant.hiddenTests.length > 0,
@@ -917,9 +1764,33 @@ function MissionManager() {
             <input name="summary" required />
           </label>
           <label className="form-span-2">
-            <span>Enunciado</span>
+            <span>Contexto breve</span>
+            <textarea name="context" rows={2} required />
+          </label>
+          <label className="form-span-2">
+            <span>Misión concreta</span>
             <textarea name="brief" rows={4} required />
           </label>
+          <label className="form-span-2">
+            <span>Meta verificable</span>
+            <textarea name="goal" rows={2} required />
+          </label>
+          <label className="form-span-2">
+            <span>Introducción conceptual</span>
+            <textarea name="conceptIntro" rows={3} required />
+          </label>
+          {[
+            ["steps", "Pasos sugeridos"],
+            ["constraints", "Restricciones"],
+            ["successCriteria", "Criterios de éxito"],
+            ["prerequisites", "ID de prerrequisitos"],
+            ["hints", "Pistas progresivas"],
+          ].map(([name, label]) => (
+            <label key={name}>
+              <span>{label} · uno por línea</span>
+              <textarea name={name} rows={5} />
+            </label>
+          ))}
           <div className="form-actions form-span-2">
             <span>Se creará como borrador sin publicar.</span>
             <button className="button ghost" type="button" onClick={() => setCreating(false)}>Cancelar</button>
@@ -1085,12 +1956,36 @@ function InvitationsManager() {
 }
 
 export function Component() {
-  const { profile, snapshot } = useClassroom();
-  const [tab, setTab] = useState<MentorTab>("overview");
+  const { profile, snapshot, isStudentPreview } = useClassroom();
+  const location = useLocation();
+  const navigate = useNavigate();
   if (!profile || !snapshot) return null;
   if (profile.role !== "owner" && profile.role !== "mentor") {
     return <Navigate to="/" replace />;
   }
+  if (isStudentPreview) {
+    return <Navigate to="/" replace />;
+  }
+
+  const [, section, selectedStudentId] = location.pathname
+    .split("/")
+    .filter(Boolean);
+  const tab: MentorTab =
+    section === "reviews" ||
+    section === "students" ||
+    section === "assignments" ||
+    section === "missions" ||
+    section === "invitations"
+      ? section
+      : "overview";
+  const tabPaths: Record<MentorTab, string> = {
+    overview: "/admin",
+    reviews: "/admin/reviews",
+    students: "/admin/students",
+    assignments: "/admin/assignments",
+    missions: "/admin/missions",
+    invitations: "/admin/invitations",
+  };
 
   const reviewCount = snapshot.progress.filter(
     (entry) => entry.status === "awaiting_review",
@@ -1114,6 +2009,7 @@ export function Component() {
         {[
           ["overview", "Resumen", Users],
           ["reviews", "Revisiones", ClipboardCheck],
+          ["students", "Estudiantes", Users],
           ["assignments", "Asignaciones", CalendarPlus],
           ["missions", "Misiones", BookCopy],
           ["invitations", "Invitaciones", MailPlus],
@@ -1123,7 +2019,7 @@ export function Component() {
             className={tab === value ? "is-active" : ""}
             aria-current={tab === value ? "page" : undefined}
             key={value as string}
-            onClick={() => setTab(value as MentorTab)}
+            onClick={() => navigate(tabPaths[value as MentorTab])}
           >
             <Icon aria-hidden="true" />
             {label as string}
@@ -1136,9 +2032,12 @@ export function Component() {
 
       <div className="mentor-content">
         {tab === "overview" ? (
-          <MentorOverview onOpenReviews={() => setTab("reviews")} />
+          <MentorOverview onOpenReviews={() => navigate("/admin/reviews")} />
         ) : null}
         {tab === "reviews" ? <ReviewQueue /> : null}
+        {tab === "students" ? (
+          <StudentDirectory selectedStudentId={selectedStudentId} />
+        ) : null}
         {tab === "assignments" ? <AssignmentsManager /> : null}
         {tab === "missions" ? <MissionManager /> : null}
         {tab === "invitations" ? <InvitationsManager /> : null}

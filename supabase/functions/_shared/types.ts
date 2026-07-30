@@ -16,6 +16,14 @@ export interface MissionTest {
   feedback: string;
 }
 
+export interface MissionExample {
+  id: string;
+  label: string;
+  input: string;
+  output: string;
+  explanation: string;
+}
+
 export interface TestResult {
   id: string;
   label: string;

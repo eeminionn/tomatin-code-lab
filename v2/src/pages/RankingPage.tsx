@@ -3,8 +3,8 @@ import { initials } from "@/lib/format";
 import { useClassroom } from "@/state/classroom-context";
 
 export function Component() {
-  const { profile, snapshot } = useClassroom();
-  if (!profile || !snapshot) return null;
+  const { viewProfile, snapshot } = useClassroom();
+  if (!viewProfile || !snapshot) return null;
 
   const students = snapshot.profiles.filter((entry) => entry.role === "student");
   const rows = students
@@ -78,7 +78,7 @@ export function Component() {
         </div>
         {rows.map((row, index) => (
           <div
-            className={`ranking-row ${row.student.id === profile.id ? "is-current" : ""}`}
+            className={`ranking-row ${row.student.id === viewProfile.id ? "is-current" : ""}`}
             key={row.student.id}
           >
             <strong className="ranking-position">

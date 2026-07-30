@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -17,48 +17,84 @@ import { LANGUAGE_META, LANGUAGES, type Course } from "@/types";
 type CourseFilter = "all" | Course;
 
 export function Component() {
-  const { profile, snapshot } = useClassroom();
-  const { missions } = useCatalog();
+  const { viewProfile, snapshot } = useClassroom();
+  const { missions, getMissionById } = useCatalog();
   const [course, setCourse] = useState<CourseFilter>("all");
   const [query, setQuery] = useState("");
   const [onlyAssigned, setOnlyAssigned] = useState(true);
 
-  if (!profile || !snapshot) return null;
-  const assignments = snapshot.assignments.filter((assignment) =>
-    assignment.studentIds.includes(profile.id),
-  );
+  const assignments =
+    viewProfile && snapshot
+      ? snapshot.assignments.filter((assignment) =>
+          assignment.studentIds.includes(viewProfile.id),
+        )
+      : [];
   const assignmentByMission = new Map(
     assignments.map((assignment) => [assignment.missionId, assignment]),
   );
   const progressByAssignment = new Map(
-    snapshot.progress
-      .filter((entry) => entry.userId === profile.id)
+    (snapshot?.progress ?? [])
+      .filter((entry) => entry.userId === viewProfile?.id)
       .map((entry) => [entry.assignmentId, entry]),
   );
 
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return missions.filter((mission) => {
-      if (course !== "all" && mission.course !== course) return false;
-      if (onlyAssigned && !assignmentByMission.has(mission.id)) return false;
-      if (!normalized) return true;
-      return [
-        mission.title,
-        mission.summary,
-        mission.module,
-        ...mission.tags,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalized);
-    });
-  }, [assignmentByMission, course, missions, onlyAssigned, query]);
+  const normalized = query.trim().toLowerCase();
+  const filtered = missions.filter((mission) => {
+    if (course !== "all" && mission.course !== course) return false;
+    if (onlyAssigned && !assignmentByMission.has(mission.id)) return false;
+    if (!normalized) return true;
+    return [
+      mission.title,
+      mission.summary,
+      mission.module,
+      ...mission.tags,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalized);
+  });
+  const assignedJourney = assignments
+    .map((assignment) => {
+      const progress = progressByAssignment.get(assignment.id);
+      const mission = getMissionById(
+        assignment.missionId,
+        progress?.missionVersion ?? assignment.missionVersion,
+      );
+      return mission ? { assignment, progress, mission } : null;
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    .sort(
+      (a, b) =>
+        a.mission.course.localeCompare(b.mission.course) ||
+        a.mission.order - b.mission.order,
+    );
+  const recommended = assignedJourney.find(
+    (entry) => entry.progress?.status !== "approved",
+  );
+  const courseProgress = (["programming-1", "programming-2"] as const).map(
+    (courseId) => {
+      const entries = assignedJourney.filter(
+        (entry) => entry.mission.course === courseId,
+      );
+      return {
+        course: courseId,
+        approved: entries.filter(
+          (entry) => entry.progress?.status === "approved",
+        ).length,
+        total: entries.length,
+      };
+    },
+  );
+
+  if (!viewProfile || !snapshot) return null;
 
   return (
     <main className="page missions-page">
       <header className="page-header">
         <div>
-          <p className="eyebrow">CATÁLOGO // 20 MISIONES</p>
+          <p className="eyebrow">
+            CATÁLOGO // {missions.length} MISIONES
+          </p>
           <h1>Misiones</h1>
           <p>
             Las tareas asignadas aparecen primero. Puedes practicar cualquier
@@ -128,12 +164,59 @@ export function Component() {
         </button>
       </div>
 
+      {assignedJourney.length > 0 ? (
+        <section className="learning-path" aria-label="Recorrido formativo">
+          <div className="learning-progress">
+            {courseProgress.map((entry) => (
+              <div key={entry.course}>
+                <span>
+                  {entry.course === "programming-1"
+                    ? "Programación I"
+                    : "Programación II"}
+                  <strong>
+                    {entry.approved}/{entry.total}
+                  </strong>
+                </span>
+                <progress
+                  max={Math.max(entry.total, 1)}
+                  value={entry.approved}
+                />
+              </div>
+            ))}
+          </div>
+          {recommended ? (
+            <Link
+              className="recommended-mission"
+              to={`/mission/${recommended.mission.slug}?assignment=${recommended.assignment.id}`}
+            >
+              <span>
+                <small>SIGUIENTE MISIÓN</small>
+                <strong>{recommended.assignment.title}</strong>
+              </span>
+              <ArrowRight aria-hidden="true" />
+            </Link>
+          ) : (
+            <span className="journey-complete">
+              <BookOpenCheck aria-hidden="true" />
+              Recorrido asignado completado
+            </span>
+          )}
+        </section>
+      ) : null}
+
       <section className="mission-grid" aria-label="Misiones">
         {filtered.map((mission) => {
           const assignment = assignmentByMission.get(mission.id);
           const progress = assignment
             ? progressByAssignment.get(assignment.id)
             : undefined;
+          const displayMission = assignment
+            ? getMissionById(
+                mission.id,
+                progress?.missionVersion ?? assignment.missionVersion,
+              )
+            : mission;
+          if (!displayMission) return null;
           const status = progress?.status ?? "not_started";
           const overdue = assignment
             ? isOverdue(assignment.dueAt, status)
@@ -152,31 +235,46 @@ export function Component() {
                 )}
               </div>
               <div className="mission-card-body">
-                <span className="mission-module">{mission.module}</span>
-                <h2>{mission.title}</h2>
-                <p>{mission.summary}</p>
+                <span className="mission-module">{displayMission.module}</span>
+                <h2>{displayMission.title}</h2>
+                <p className="mission-summary">{displayMission.summary}</p>
+                {displayMission.prerequisites.length > 0 ? (
+                  <p className="mission-prerequisite">
+                    Antes:{" "}
+                    {displayMission.prerequisites
+                      .map(
+                        (missionId) =>
+                          getMissionById(missionId)?.title ?? missionId,
+                      )
+                      .join(", ")}
+                  </p>
+                ) : (
+                  <p className="mission-prerequisite is-start">
+                    Punto de inicio del curso
+                  </p>
+                )}
                 <div className="mission-tags">
-                  {mission.tags.slice(0, 3).map((tag) => (
+                  {displayMission.tags.slice(0, 3).map((tag) => (
                     <span key={tag}>{tag}</span>
                   ))}
                 </div>
               </div>
               <div className="mission-card-meta">
                 <span>
-                  <Clock3 aria-hidden="true" /> {mission.duration} min
+                  <Clock3 aria-hidden="true" /> {displayMission.duration} min
                 </span>
                 <span>
-                  <Zap aria-hidden="true" /> {assignment?.points ?? mission.points} XP
+                  <Zap aria-hidden="true" /> {assignment?.points ?? displayMission.points} XP
                 </span>
                 {assignment ? (
                   <span>{formatDate(assignment.dueAt)}</span>
                 ) : (
-                  <span>{mission.difficulty}</span>
+                  <span>{displayMission.difficulty}</span>
                 )}
               </div>
               <Link
                 className="mission-card-link"
-                to={`/mission/${mission.slug}${assignment ? `?assignment=${assignment.id}` : ""}`}
+                to={`/mission/${displayMission.slug}${assignment ? `?assignment=${assignment.id}` : ""}`}
               >
                 <BookOpenCheck aria-hidden="true" />
                 Abrir workspace

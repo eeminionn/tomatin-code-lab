@@ -25,6 +25,15 @@ function LoadingScreen() {
   );
 }
 
+function HomeRoute() {
+  const { profile, isStudentPreview } = useClassroom();
+  const isStaff = profile?.role === "owner" || profile?.role === "mentor";
+  if (isStaff && !isStudentPreview) {
+    return <Navigate to="/admin" replace />;
+  }
+  return <DashboardPage />;
+}
+
 export function App() {
   const { profile, loading } = useClassroom();
   if (loading) return <LoadingScreen />;
@@ -34,12 +43,13 @@ export function App() {
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route element={<AppShell />}>
-          <Route index element={<DashboardPage />} />
+          <Route index element={<HomeRoute />} />
           <Route path="missions" element={<MissionsPage />} />
           <Route path="mission/:slug" element={<MissionWorkspace />} />
           <Route path="ranking" element={<RankingPage />} />
           <Route path="feedback" element={<FeedbackPage />} />
-          <Route path="mentor" element={<MentorPage />} />
+          <Route path="admin/*" element={<MentorPage />} />
+          <Route path="mentor" element={<Navigate to="/admin" replace />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="auth/callback" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />

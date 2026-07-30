@@ -1,12 +1,17 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { executeJudge0 } from "../_shared/judge0.ts";
-import type { Language, MissionTest } from "../_shared/types.ts";
+import type {
+  Language,
+  MissionExample,
+  MissionTest,
+} from "../_shared/types.ts";
 
 type AdminAction =
   | "list"
   | "create"
   | "duplicate"
+  | "get-solution"
   | "update-content"
   | "update-variant"
   | "publish"
@@ -15,11 +20,14 @@ type AdminAction =
 interface AdminBody {
   action?: AdminAction;
   missionId?: string;
+  missionVersion?: number;
   sourceMissionId?: string;
   versionId?: string;
   language?: Language;
   content?: Record<string, unknown>;
   starterCode?: string;
+  expectedSignature?: string;
+  examples?: MissionExample[];
   referenceSolution?: string;
   publicTests?: MissionTest[];
   hiddenTests?: MissionTest[];
@@ -100,6 +108,8 @@ Deno.serve(async (request) => {
           id,
           language,
           starter_code,
+          expected_signature,
+          examples,
           public_tests,
           hidden_test_count
         )
@@ -122,6 +132,8 @@ Deno.serve(async (request) => {
               id: variant.id,
               language: variant.language,
               starterCode: variant.starter_code,
+              expectedSignature: variant.expected_signature ?? "",
+              examples: variant.examples ?? [],
               publicTests: variant.public_tests,
               hiddenTestCount: variant.hidden_test_count,
               referenceSolution: secure?.reference_solution ?? "",
@@ -158,7 +170,9 @@ Deno.serve(async (request) => {
     if (versionError || !version) throw new Error("Versión de origen no encontrada.");
     const { data: variants, error: variantsError } = await admin
       .from("mission_variants")
-      .select("id, language, starter_code, public_tests, hidden_test_count")
+      .select(
+        "id, language, starter_code, expected_signature, examples, public_tests, hidden_test_count",
+      )
       .eq("mission_version_id", version.id);
     if (variantsError || variants?.length !== 3) {
       throw new Error("La misión de origen no tiene tres variantes.");
@@ -189,6 +203,8 @@ Deno.serve(async (request) => {
           mission_version_id: targetVersionId,
           language: variant.language,
           starter_code: variant.starter_code,
+          expected_signature: variant.expected_signature,
+          examples: variant.examples,
           public_tests: variant.public_tests,
           hidden_test_count: variant.hidden_test_count,
         })
@@ -210,6 +226,58 @@ Deno.serve(async (request) => {
   try {
     if (body.action === "list") {
       return jsonResponse(request, { drafts: await loadDrafts() });
+    }
+
+    if (body.action === "get-solution") {
+      if (
+        !body.missionId ||
+        !body.missionVersion ||
+        !body.language ||
+        !LANGUAGES.has(body.language)
+      ) {
+        return jsonResponse(
+          request,
+          { error: "Misión, versión y lenguaje requeridos." },
+          400,
+        );
+      }
+      const { data: variant, error: variantError } = await admin
+        .from("mission_variants")
+        .select(
+          "id, expected_signature, mission_versions!inner(mission_id, version, status)",
+        )
+        .eq("language", body.language)
+        .eq("mission_versions.mission_id", body.missionId)
+        .eq("mission_versions.version", body.missionVersion)
+        .eq("mission_versions.status", "published")
+        .single();
+      if (variantError || !variant) {
+        return jsonResponse(request, { error: "Solución no encontrada." }, 404);
+      }
+      const { data: secure, error: secureError } = await admin
+        .schema("private")
+        .from("mission_variants_secure")
+        .select("reference_solution")
+        .eq("variant_id", variant.id)
+        .single();
+      if (secureError || !secure) {
+        return jsonResponse(
+          request,
+          { error: "Solución privada no disponible." },
+          503,
+        );
+      }
+      return jsonResponse(request, {
+        solution: {
+          missionId: body.missionId,
+          missionVersion: body.missionVersion,
+          language: body.language,
+          expectedSignature: variant.expected_signature ?? "",
+          referenceSolution: secure.reference_solution,
+          explanation:
+            "Esta implementación de referencia cumple el contrato y pasa los tests públicos y privados de la versión seleccionada.",
+        },
+      });
     }
 
     if (body.action === "create") {
@@ -311,6 +379,8 @@ Deno.serve(async (request) => {
         !body.language ||
         !LANGUAGES.has(body.language) ||
         typeof body.starterCode !== "string" ||
+        typeof body.expectedSignature !== "string" ||
+        !Array.isArray(body.examples) ||
         typeof body.referenceSolution !== "string" ||
         !Array.isArray(body.publicTests) ||
         !Array.isArray(body.hiddenTests)
@@ -330,6 +400,8 @@ Deno.serve(async (request) => {
             mission_version_id: target.id,
             language: body.language,
             starter_code: body.starterCode,
+            expected_signature: body.expectedSignature,
+            examples: body.examples,
             public_tests: body.publicTests,
             hidden_test_count: body.hiddenTests.length,
           },
@@ -365,6 +437,62 @@ Deno.serve(async (request) => {
       const draft = drafts.find((entry) => entry.id === target.id);
       if (!draft || draft.variants.length !== 3) {
         return jsonResponse(request, { error: "Faltan variantes." }, 409);
+      }
+      const content = target.content as Record<string, unknown>;
+      const requiredText = [
+        "title",
+        "summary",
+        "context",
+        "brief",
+        "goal",
+        "conceptIntro",
+      ];
+      const requiredLists = [
+        ["steps", 3],
+        ["constraints", 2],
+        ["successCriteria", 2],
+        ["hints", 3],
+      ] as const;
+      if (
+        requiredText.some(
+          (field) =>
+            typeof content[field] !== "string" ||
+            String(content[field]).trim().length === 0,
+        ) ||
+        requiredLists.some(
+          ([field, minimum]) =>
+            !Array.isArray(content[field]) ||
+            (content[field] as unknown[]).length < minimum,
+        )
+      ) {
+        return jsonResponse(
+          request,
+          {
+            error:
+              "Completa contexto, misión, concepto, pasos, restricciones, criterios y tres pistas antes de publicar.",
+          },
+          422,
+        );
+      }
+      if (
+        draft.variants.some(
+          (variant) =>
+            !variant.starterCode.trim() ||
+            !variant.expectedSignature.trim() ||
+            variant.examples.length === 0 ||
+            !variant.referenceSolution.trim() ||
+            variant.publicTests.length === 0 ||
+            variant.hiddenTests.length === 0,
+        )
+      ) {
+        return jsonResponse(
+          request,
+          {
+            error:
+              "Cada lenguaje necesita firma, ejemplos, starter, solución y tests públicos y ocultos.",
+          },
+          422,
+        );
       }
       const validations = await Promise.all(
         draft.variants.map(async (variant) => ({

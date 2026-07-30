@@ -9,9 +9,10 @@ import type { Draft, Language } from "@/types";
 
 function draft(language: Language, code: string, assignmentId = "assignment-1"): Draft {
   return {
-    key: createDraftKey("student-1", "mission-1", language, assignmentId),
+    key: createDraftKey("student-1", "mission-1", 2, language, assignmentId),
     userId: "student-1",
     missionId: "mission-1",
+    missionVersion: 2,
     assignmentId,
     language,
     code,
@@ -21,8 +22,18 @@ function draft(language: Language, code: string, assignmentId = "assignment-1"):
 
 beforeEach(async () => {
   await Promise.all(
-    (["javascript", "python", "cpp"] as const).map((language) =>
-      removeDraft(createDraftKey("student-1", "mission-1", language, "assignment-1")),
+    (["javascript", "python", "cpp"] as const).flatMap((language) =>
+      [1, 2].map((missionVersion) =>
+        removeDraft(
+          createDraftKey(
+            "student-1",
+            "mission-1",
+            missionVersion,
+            language,
+            "assignment-1",
+          ),
+        ),
+      ),
     ),
   );
 });
@@ -36,26 +47,88 @@ describe("draft store", () => {
     ]);
 
     await expect(
-      loadDraft(createDraftKey("student-1", "mission-1", "javascript", "assignment-1")),
+      loadDraft(
+        createDraftKey(
+          "student-1",
+          "mission-1",
+          2,
+          "javascript",
+          "assignment-1",
+        ),
+      ),
     ).resolves.toMatchObject({ code: "const answer = 42;" });
     await expect(
-      loadDraft(createDraftKey("student-1", "mission-1", "python", "assignment-1")),
+      loadDraft(
+        createDraftKey(
+          "student-1",
+          "mission-1",
+          2,
+          "python",
+          "assignment-1",
+        ),
+      ),
     ).resolves.toMatchObject({ code: "answer = 42" });
     await expect(
-      loadDraft(createDraftKey("student-1", "mission-1", "cpp", "assignment-1")),
+      loadDraft(
+        createDraftKey(
+          "student-1",
+          "mission-1",
+          2,
+          "cpp",
+          "assignment-1",
+        ),
+      ),
     ).resolves.toMatchObject({ code: "int answer = 42;" });
   });
 
   it("does not mix practice and assigned drafts", async () => {
     const practice = draft("python", "practice", undefined);
     practice.assignmentId = undefined;
-    practice.key = createDraftKey("student-1", "mission-1", "python");
+    practice.key = createDraftKey("student-1", "mission-1", 2, "python");
     await saveDraft(practice);
     await saveDraft(draft("python", "assignment"));
 
     await expect(loadDraft(practice.key)).resolves.toMatchObject({ code: "practice" });
     await expect(
-      loadDraft(createDraftKey("student-1", "mission-1", "python", "assignment-1")),
+      loadDraft(
+        createDraftKey(
+          "student-1",
+          "mission-1",
+          2,
+          "python",
+          "assignment-1",
+        ),
+      ),
     ).resolves.toMatchObject({ code: "assignment" });
+  });
+
+  it("keeps drafts from previous mission versions", async () => {
+    const previous = draft("javascript", "version one");
+    previous.missionVersion = 1;
+    previous.key = createDraftKey(
+      previous.userId,
+      previous.missionId,
+      1,
+      previous.language,
+      previous.assignmentId,
+    );
+    await saveDraft(previous);
+    await saveDraft(draft("javascript", "version two"));
+
+    await expect(loadDraft(previous.key)).resolves.toMatchObject({
+      code: "version one",
+      missionVersion: 1,
+    });
+    await expect(
+      loadDraft(
+        createDraftKey(
+          "student-1",
+          "mission-1",
+          2,
+          "javascript",
+          "assignment-1",
+        ),
+      ),
+    ).resolves.toMatchObject({ code: "version two", missionVersion: 2 });
   });
 });

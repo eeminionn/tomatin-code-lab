@@ -2,11 +2,18 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { missions as localMissions } from "@/data/missions";
 import { supabase } from "@/services/supabase";
 import { useClassroom } from "./classroom-context";
-import type { Language, Mission, MissionTest } from "@/types";
+import type {
+  Language,
+  Mission,
+  MissionExample,
+  MissionTest,
+} from "@/types";
 
 interface CatalogVariantRow {
   language: Language;
   starter_code: string;
+  expected_signature: string | null;
+  examples: MissionExample[];
   public_tests: MissionTest[];
   hidden_test_count: number;
 }
@@ -27,8 +34,30 @@ interface CatalogRow {
   mission_versions: CatalogVersionRow[];
 }
 
-async function loadRemoteCatalog(): Promise<Mission[]> {
-  if (!supabase) return localMissions;
+export interface VersionedMission extends Mission {
+  isCurrent: boolean;
+}
+
+export function findMissionVersion(
+  catalog: VersionedMission[],
+  id: string,
+  version?: number,
+): VersionedMission | undefined {
+  return catalog.find(
+    (mission) =>
+      mission.id === id &&
+      (version === undefined
+        ? mission.isCurrent
+        : mission.version === version),
+  );
+}
+
+function localCatalog(): VersionedMission[] {
+  return localMissions.map((mission) => ({ ...mission, isCurrent: true }));
+}
+
+async function loadRemoteCatalog(): Promise<VersionedMission[]> {
+  if (!supabase) return localCatalog();
   const { data, error } = await supabase
     .from("missions")
     .select(`
@@ -44,6 +73,8 @@ async function loadRemoteCatalog(): Promise<Mission[]> {
         mission_variants(
           language,
           starter_code,
+          expected_signature,
+          examples,
           public_tests,
           hidden_test_count
         )
@@ -54,56 +85,64 @@ async function loadRemoteCatalog(): Promise<Mission[]> {
     .order("id");
   if (error) throw error;
 
-  return (data as unknown as CatalogRow[]).flatMap((row) => {
-    const version = row.mission_versions.find(
-      (entry) => entry.version === row.current_version,
-    );
-    if (!version || version.mission_variants.length !== 3) return [];
-    const variants = Object.fromEntries(
-      version.mission_variants.map((variant) => [
-        variant.language,
+  return (data as unknown as CatalogRow[]).flatMap((row) =>
+    row.mission_versions.flatMap((version) => {
+      if (version.mission_variants.length !== 3) return [];
+      const variants = Object.fromEntries(
+        version.mission_variants.map((variant) => [
+          variant.language,
+          {
+            language: variant.language,
+            starterCode: variant.starter_code,
+            expectedSignature: variant.expected_signature ?? "",
+            examples: variant.examples ?? [],
+            publicTests: variant.public_tests,
+            hiddenTestCount: variant.hidden_test_count,
+          },
+        ]),
+      ) as Mission["variants"];
+      return [
         {
-          language: variant.language,
-          starterCode: variant.starter_code,
-          publicTests: variant.public_tests,
-          hiddenTestCount: variant.hidden_test_count,
+          ...version.content,
+          id: row.id,
+          slug: row.slug,
+          course: row.course,
+          title: row.title,
+          version: version.version,
+          variants,
+          isCurrent: version.version === row.current_version,
         },
-      ]),
-    ) as Mission["variants"];
-    return [
-      {
-        ...version.content,
-        id: row.id,
-        slug: row.slug,
-        course: row.course,
-        title: row.title,
-        version: row.current_version,
-        variants,
-      },
-    ];
-  });
+      ];
+    }),
+  );
 }
 
 export function useCatalog() {
   const { profile, backendMode } = useClassroom();
   const queryClient = useQueryClient();
-  const query = useQuery({
+  const query = useQuery<VersionedMission[]>({
     queryKey: ["mission-catalog"],
     queryFn: loadRemoteCatalog,
     enabled: backendMode === "supabase" && Boolean(profile),
-    initialData: backendMode === "demo" ? localMissions : undefined,
+    initialData: backendMode === "demo" ? localCatalog() : undefined,
     staleTime: 60_000,
   });
-  const missions = query.data?.length ? query.data : localMissions;
+  const versionedMissions = query.data?.length ? query.data : localCatalog();
+  const missions = versionedMissions.filter((mission) => mission.isCurrent);
 
   return {
     missions,
+    versionedMissions,
     loading: query.isLoading,
     error: query.error,
-    getMissionById: (id: string) =>
-      missions.find((mission) => mission.id === id),
-    getMissionBySlug: (slug: string) =>
-      missions.find((mission) => mission.slug === slug),
+    getMissionById: (id: string, version?: number) =>
+      findMissionVersion(versionedMissions, id, version),
+    getMissionBySlug: (slug: string, version?: number) =>
+      versionedMissions.find(
+        (mission) =>
+          mission.slug === slug &&
+          (version === undefined ? mission.isCurrent : mission.version === version),
+      ),
     refreshCatalog: () =>
       queryClient.invalidateQueries({ queryKey: ["mission-catalog"] }),
   };

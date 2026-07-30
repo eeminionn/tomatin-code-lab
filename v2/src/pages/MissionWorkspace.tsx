@@ -15,6 +15,7 @@ import {
   CircleAlert,
   Clock3,
   Code2,
+  Copy,
   ExternalLink,
   FileCode2,
   Github,
@@ -24,6 +25,7 @@ import {
   Play,
   RotateCcw,
   Send,
+  ShieldCheck,
   TerminalSquare,
   TestTube2,
   X,
@@ -31,7 +33,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
-import type { BeforeMount } from "@monaco-editor/react";
+import type { BeforeMount, OnMount } from "@monaco-editor/react";
 import { formatDate, relativeDueDate } from "@/lib/format";
 import {
   createDraftKey,
@@ -39,6 +41,10 @@ import {
   saveDraft,
 } from "@/services/draft-store";
 import { runMissionCode } from "@/services/runner";
+import {
+  runMissionAdmin,
+  type MissionSolution,
+} from "@/services/mission-admin";
 import { useClassroom } from "@/state/classroom-context";
 import { useCatalog } from "@/state/catalog";
 import {
@@ -53,7 +59,8 @@ import {
 const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 
 type MobilePane = "brief" | "code" | "results";
-type BriefTab = "problem" | "hints" | "history";
+type BriefTab = "problem" | "hints" | "history" | "solution";
+type SaveState = "loading" | "saving" | "synced" | "local" | "error";
 
 const configureMonaco: BeforeMount = (monaco) => {
   monaco.editor.defineTheme("tomatin-terminal", {
@@ -79,7 +86,15 @@ const configureMonaco: BeforeMount = (monaco) => {
   });
 };
 
-function ResultSummary({ result }: { result: RunResult | null }) {
+function ResultSummary({
+  result,
+  testInputs,
+  onDiagnosticLine,
+}: {
+  result: RunResult | null;
+  testInputs: Record<string, string>;
+  onDiagnosticLine: (line: number) => void;
+}) {
   if (!result) {
     return (
       <div className="result-empty">
@@ -157,13 +172,21 @@ function ResultSummary({ result }: { result: RunResult | null }) {
         <section className="diagnostic-list" aria-labelledby="diagnostics-title">
           <h3 id="diagnostics-title">Diagnósticos</h3>
           {result.diagnostics.map((diagnostic, index) => (
-            <div className={`diagnostic ${diagnostic.severity}`} key={`${diagnostic.message}-${index}`}>
+            <button
+              className={`diagnostic ${diagnostic.severity}`}
+              disabled={!diagnostic.line}
+              key={`${diagnostic.message}-${index}`}
+              onClick={() =>
+                diagnostic.line ? onDiagnosticLine(diagnostic.line) : undefined
+              }
+              type="button"
+            >
               <CircleAlert aria-hidden="true" />
               <span>
                 {diagnostic.line ? `Línea ${diagnostic.line}: ` : ""}
                 {diagnostic.message}
               </span>
-            </div>
+            </button>
           ))}
         </section>
       ) : null}
@@ -185,18 +208,30 @@ function ResultSummary({ result }: { result: RunResult | null }) {
                 </strong>
                 {!test.passed ? (
                   <>
-                    <dl>
-                      <div>
-                        <dt>Esperado</dt>
-                        <dd>{test.expected}</dd>
-                      </div>
-                      {test.actual ? (
+                    {!test.hidden ? (
+                      <dl>
+                        {testInputs[test.id] ? (
+                          <div>
+                            <dt>Entrada</dt>
+                            <dd>{testInputs[test.id]}</dd>
+                          </div>
+                        ) : null}
                         <div>
-                          <dt>Obtenido</dt>
-                          <dd>{test.actual}</dd>
+                          <dt>Esperado</dt>
+                          <dd>{test.expected}</dd>
                         </div>
-                      ) : null}
-                    </dl>
+                        {test.actual ? (
+                          <div>
+                            <dt>Obtenido</dt>
+                            <dd>{test.actual}</dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    ) : (
+                      <p className="hidden-test-feedback">
+                        Un caso privado encontró un comportamiento pendiente.
+                      </p>
+                    )}
                     {test.feedback ? <p>{test.feedback}</p> : null}
                   </>
                 ) : null}
@@ -222,21 +257,37 @@ function ResultSummary({ result }: { result: RunResult | null }) {
 export function Component() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
-  const { getMissionBySlug } = useCatalog();
-  const mission = slug ? getMissionBySlug(slug) : undefined;
-  const { profile, snapshot, recordAttempt, recordHint, backendMode } = useClassroom();
+  const { getMissionById, getMissionBySlug } = useCatalog();
+  const {
+    profile,
+    viewProfile,
+    isStudentPreview,
+    snapshot,
+    recordAttempt,
+    recordHint,
+    recordActivity,
+    backendMode,
+  } = useClassroom();
   const assignmentId = searchParams.get("assignment") ?? undefined;
+  const linkedAttemptId = searchParams.get("attempt") ?? undefined;
+  const linkedReviewId = searchParams.get("review") ?? undefined;
   const assignment = snapshot?.assignments.find(
-    (entry) => entry.id === assignmentId && entry.missionId === mission?.id,
+    (entry) => entry.id === assignmentId,
   );
   const progress = snapshot?.progress.find(
     (entry) =>
-      entry.userId === profile?.id && entry.assignmentId === assignment?.id,
+      entry.userId === viewProfile?.id &&
+      entry.assignmentId === assignment?.id,
   );
+  const missionVersion = progress?.missionVersion ?? assignment?.missionVersion;
+  const mission = slug ? getMissionBySlug(slug, missionVersion) : undefined;
+  const validAssignment =
+    assignment && assignment.missionId === mission?.id ? assignment : undefined;
   const initialLanguage =
-    progress?.language && assignment?.allowedLanguages.includes(progress.language)
+    progress?.language &&
+    validAssignment?.allowedLanguages.includes(progress.language)
       ? progress.language
-      : assignment?.allowedLanguages[0] ?? "javascript";
+      : validAssignment?.allowedLanguages[0] ?? "javascript";
   const [language, setLanguage] = useState<Language>(initialLanguage);
   const [codeByLanguage, setCodeByLanguage] = useState<Record<Language, string>>(
     () =>
@@ -249,98 +300,274 @@ export function Component() {
         : { javascript: "", python: "", cpp: "" },
   );
   const [loadedLanguages, setLoadedLanguages] = useState<Set<Language>>(new Set());
-  const [saveState, setSaveState] = useState<"loading" | "saving" | "saved">(
-    "loading",
-  );
+  const [saveState, setSaveState] = useState<SaveState>("loading");
+  const [saveMessage, setSaveMessage] = useState("");
   const [result, setResult] = useState<RunResult | null>(null);
   const [running, setRunning] = useState<AttemptKind | null>(null);
-  const [briefTab, setBriefTab] = useState<BriefTab>("problem");
+  const [briefTab, setBriefTab] = useState<BriefTab>(
+    linkedAttemptId || linkedReviewId ? "history" : "problem",
+  );
   const [mobilePane, setMobilePane] = useState<MobilePane>("brief");
   const [revealedHints, setRevealedHints] = useState(0);
+  const [solution, setSolution] = useState<MissionSolution | null>(null);
+  const [solutionError, setSolutionError] = useState("");
+  const [solutionLoading, setSolutionLoading] = useState(false);
   const saveTimer = useRef<number | undefined>(undefined);
+  const lastEditingSignal = useRef(0);
+  const openedActivityKey = useRef("");
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const isStaff = profile?.role === "owner" || profile?.role === "mentor";
+  const canViewSolution = isStaff && !isStudentPreview;
 
   const history = useMemo(
     () =>
       snapshot?.attempts.filter(
         (entry) =>
-          entry.userId === profile?.id &&
+          entry.userId === viewProfile?.id &&
           entry.missionId === mission?.id &&
-          entry.assignmentId === assignment?.id,
+          entry.assignmentId === validAssignment?.id,
       ) ?? [],
-    [assignment?.id, mission?.id, profile?.id, snapshot?.attempts],
+    [
+      mission?.id,
+      snapshot?.attempts,
+      validAssignment?.id,
+      viewProfile?.id,
+    ],
+  );
+  const linkedReview = snapshot?.reviews.find(
+    (entry) => entry.id === linkedReviewId,
   );
 
   useEffect(() => {
-    if (!profile || !mission || loadedLanguages.has(language)) return;
-    let active = true;
-    setSaveState("loading");
-    const key = createDraftKey(
-      profile.id,
-      mission.id,
-      language,
-      assignment?.id,
+    if (!mission) return;
+    setCodeByLanguage({
+      javascript: mission.variants.javascript.starterCode,
+      python: mission.variants.python.starterCode,
+      cpp: mission.variants.cpp.starterCode,
+    });
+    setLoadedLanguages(new Set());
+    setResult(null);
+    setSolution(null);
+  }, [mission?.id, mission?.version]);
+
+  useEffect(() => {
+    if (!linkedAttemptId) return;
+    const linkedAttempt = history.find(
+      (attempt) => attempt.id === linkedAttemptId,
     );
-    void loadDraft(key, {
-      userId: profile.id,
-      missionId: mission.id,
-      assignmentId: assignment?.id,
-      language,
-    }).then((draft) => {
-      if (!active) return;
-      if (draft) {
+    if (!linkedAttempt) return;
+    setBriefTab("history");
+    setMobilePane("brief");
+    setLanguage(linkedAttempt.language);
+    setCodeByLanguage((current) => ({
+      ...current,
+      [linkedAttempt.language]: linkedAttempt.code,
+    }));
+    setResult(linkedAttempt.result);
+  }, [history, linkedAttemptId]);
+
+  useEffect(() => {
+    if (!viewProfile || !mission || loadedLanguages.has(language)) return;
+    if (isStudentPreview) {
+      const latestAttempt = history.find(
+        (attempt) => attempt.language === language,
+      );
+      if (latestAttempt) {
         setCodeByLanguage((current) => ({
           ...current,
-          [language]: draft.code,
+          [language]: latestAttempt.code,
         }));
       }
       setLoadedLanguages((current) => new Set(current).add(language));
-      setSaveState("saved");
-    });
+      setSaveState("local");
+      setSaveMessage("Vista de solo lectura; no se cargan borradores privados.");
+      return;
+    }
+    let active = true;
+    setSaveState("loading");
+    setSaveMessage("");
+    const key = createDraftKey(
+      viewProfile.id,
+      mission.id,
+      mission.version,
+      language,
+      validAssignment?.id,
+    );
+    void loadDraft(key, {
+      userId: viewProfile.id,
+      missionId: mission.id,
+      missionVersion: mission.version,
+      assignmentId: validAssignment?.id,
+      language,
+    })
+      .then((draft) => {
+        if (!active) return;
+        if (draft) {
+          setCodeByLanguage((current) => ({
+            ...current,
+            [language]: draft.code,
+          }));
+        }
+        setLoadedLanguages((current) => new Set(current).add(language));
+        setSaveState(backendMode === "supabase" ? "synced" : "local");
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadedLanguages((current) => new Set(current).add(language));
+        setSaveState("error");
+        setSaveMessage("No se pudo recuperar el borrador guardado.");
+      });
     return () => {
       active = false;
     };
-  }, [assignment?.id, language, loadedLanguages, mission, profile]);
+  }, [
+    backendMode,
+    history,
+    isStudentPreview,
+    language,
+    loadedLanguages,
+    mission,
+    validAssignment?.id,
+    viewProfile,
+  ]);
 
   useEffect(() => {
-    if (!profile || !mission || !loadedLanguages.has(language)) return;
+    if (
+      !viewProfile ||
+      !mission ||
+      isStudentPreview ||
+      !loadedLanguages.has(language)
+    ) {
+      return;
+    }
     window.clearTimeout(saveTimer.current);
     setSaveState("saving");
     saveTimer.current = window.setTimeout(() => {
       const code = codeByLanguage[language];
       void saveDraft({
         key: createDraftKey(
-          profile.id,
+          viewProfile.id,
           mission.id,
+          mission.version,
           language,
-          assignment?.id,
+          validAssignment?.id,
         ),
-        userId: profile.id,
+        userId: viewProfile.id,
         missionId: mission.id,
-        assignmentId: assignment?.id,
+        missionVersion: mission.version,
+        assignmentId: validAssignment?.id,
         language,
         code,
         updatedAt: new Date().toISOString(),
-      }).then(() => setSaveState("saved"));
+      })
+        .then((saveResult) => {
+          if (saveResult.remote === "synced") {
+            setSaveState("synced");
+            setSaveMessage("");
+          } else if (saveResult.remote === "local_only") {
+            setSaveState("local");
+            setSaveMessage("Guardado en este navegador.");
+          } else {
+            setSaveState("error");
+            setSaveMessage(saveResult.message ?? "Error de sincronización.");
+          }
+        })
+        .catch(() => {
+          setSaveState("error");
+          setSaveMessage("No se pudo guardar el borrador.");
+        });
     }, 500);
     return () => window.clearTimeout(saveTimer.current);
   }, [
-    assignment?.id,
     codeByLanguage,
     language,
     loadedLanguages,
     mission,
-    profile,
+    isStudentPreview,
+    validAssignment?.id,
+    viewProfile,
   ]);
 
+  useEffect(() => {
+    if (
+      !profile ||
+      profile.role !== "student" ||
+      !validAssignment ||
+      !mission
+    ) {
+      return;
+    }
+    const activityKey = `${profile.id}:${validAssignment.id}:${mission.version}`;
+    if (openedActivityKey.current === activityKey) return;
+    openedActivityKey.current = activityKey;
+    recordActivity(validAssignment.id, language, "opened");
+  }, [
+    mission?.id,
+    mission?.version,
+    profile,
+    recordActivity,
+    validAssignment,
+  ]);
+
+  useEffect(() => {
+    if (!canViewSolution || briefTab !== "solution" || !mission) return;
+    let active = true;
+    setSolutionLoading(true);
+    setSolutionError("");
+    void runMissionAdmin({
+      action: "get-solution",
+      missionId: mission.id,
+      missionVersion: mission.version,
+      language,
+    })
+      .then((response) => {
+        if (!active) return;
+        setSolution(response.solution ?? null);
+        if (!response.solution) {
+          setSolutionError("La solución no está disponible.");
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        setSolution(null);
+        setSolutionError(
+          backendMode === "demo"
+            ? "La solución privada está disponible en el aula conectada."
+            : error instanceof Error
+              ? error.message
+              : "No se pudo cargar la solución.",
+        );
+      })
+      .finally(() => {
+        if (active) setSolutionLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [backendMode, briefTab, canViewSolution, language, mission]);
+
+  useEffect(() => {
+    if (!canViewSolution && briefTab === "solution") {
+      setBriefTab("problem");
+    }
+  }, [briefTab, canViewSolution]);
+
   if (!mission) return <Navigate to="/missions" replace />;
-  if (!profile || !snapshot) return null;
+  if (!profile || !viewProfile || !snapshot) return null;
 
   const activeMission = mission;
-  const activeProfile = profile;
-  const allowedLanguages = assignment?.allowedLanguages ?? [...LANGUAGES];
+  const activeProfile = viewProfile;
+  const allowedLanguages = validAssignment?.allowedLanguages ?? [...LANGUAGES];
   const currentCode = codeByLanguage[language];
+  const testInputs = Object.fromEntries(
+    activeMission.variants[language].publicTests.map((testCase) => [
+      testCase.id,
+      testCase.actualExpression ?? testCase.expression,
+    ]),
+  );
 
   async function execute(kind: AttemptKind) {
+    if (isStudentPreview) return;
     setRunning(kind);
     setResult(null);
     setMobilePane("results");
@@ -349,7 +576,7 @@ export function Component() {
       language,
       code: currentCode,
       kind,
-      assignmentId: assignment?.id,
+      assignmentId: validAssignment?.id,
     });
     const annotatedResult = {
       ...rawResult,
@@ -363,7 +590,7 @@ export function Component() {
       id: annotatedResult.id,
       userId: activeProfile.id,
       missionId: activeMission.id,
-      assignmentId: assignment?.id,
+      assignmentId: validAssignment?.id,
       missionVersion: activeMission.version,
       language,
       kind,
@@ -372,6 +599,13 @@ export function Component() {
       createdAt: annotatedResult.createdAt,
     };
     recordAttempt(attempt);
+    if (validAssignment && activeProfile.role === "student") {
+      recordActivity(
+        validAssignment.id,
+        language,
+        kind === "submit" ? "submitted" : "ran",
+      );
+    }
     setRunning(null);
   }
 
@@ -398,21 +632,39 @@ export function Component() {
           </div>
         </div>
         <div className="workspace-header-meta">
-          {assignment ? (
+          {validAssignment ? (
             <span className="due-chip">
               <Clock3 aria-hidden="true" />
-              {relativeDueDate(assignment.dueAt)}
+              {relativeDueDate(validAssignment.dueAt)}
             </span>
           ) : (
             <span className="practice-label">Práctica libre</span>
           )}
-          <span className={`sync-state ${saveState}`}>
-            {saveState === "saved" ? <Check /> : <LoaderCircle className="spin" />}
-            {saveState === "saved"
-              ? "Borrador guardado"
-              : saveState === "saving"
-                ? "Guardando"
-                : "Cargando"}
+          <span
+            className={`sync-state ${saveState}`}
+            role="status"
+            title={saveMessage || undefined}
+          >
+            {isStudentPreview ||
+            saveState === "synced" ||
+            saveState === "local" ? (
+              <Check />
+            ) : saveState === "error" ? (
+              <CircleAlert />
+            ) : (
+              <LoaderCircle className="spin" />
+            )}
+            {isStudentPreview
+              ? "Solo lectura"
+              : saveState === "synced"
+              ? "Sincronizado"
+              : saveState === "local"
+                ? "Guardado local"
+                : saveState === "error"
+                  ? "Error de sincronización"
+                  : saveState === "saving"
+                    ? "Guardando"
+                    : "Cargando"}
           </span>
         </div>
       </header>
@@ -440,18 +692,21 @@ export function Component() {
       <div className="workspace-layout">
         <aside className={`brief-pane mobile-${mobilePane === "brief" ? "visible" : "hidden"}`}>
           <div className="brief-tabs" role="tablist" aria-label="Información de la misión">
-            {[
-              ["problem", "Problema"],
-              ["hints", "Pistas"],
-              ["history", "Historial"],
-            ].map(([value, label]) => (
+            {(
+              [
+                ["problem", "Misión"],
+                ["hints", "Pistas"],
+                ["history", "Historial"],
+                ...(canViewSolution ? [["solution", "Solución"]] : []),
+              ] as [BriefTab, string][]
+            ).map(([value, label]) => (
               <button
                 type="button"
                 role="tab"
                 aria-selected={briefTab === value}
                 className={briefTab === value ? "is-active" : ""}
                 key={value}
-                onClick={() => setBriefTab(value as BriefTab)}
+                onClick={() => setBriefTab(value)}
               >
                 {label}
               </button>
@@ -466,35 +721,111 @@ export function Component() {
                   <p>{mission.context}</p>
                 </section>
                 <section className="brief-section">
-                  <p className="eyebrow">TAREA</p>
-                  <h2>{mission.summary}</h2>
+                  <p className="eyebrow">TU MISIÓN</p>
+                  <h2>{mission.goal}</h2>
                   <p>{mission.brief}</p>
                 </section>
                 <section className="brief-section">
-                  <p className="eyebrow">OBJETIVOS</p>
+                  <p className="eyebrow">IDEA CLAVE</p>
+                  <p>{mission.conceptIntro}</p>
+                </section>
+                <section className="brief-section contract-section">
+                  <p className="eyebrow">CONTRATO</p>
+                  <code>
+                    {mission.variants[language].expectedSignature ||
+                      LANGUAGE_META[language].fileName}
+                  </code>
+                  <p>
+                    Conserva esta firma: los tests llaman directamente a esta
+                    función.
+                  </p>
+                </section>
+                <section className="brief-section">
+                  <p className="eyebrow">EJEMPLOS</p>
+                  <div className="mission-examples">
+                    {mission.variants[language].examples.map((example) => (
+                      <article key={example.id}>
+                        <strong>{example.label}</strong>
+                        <dl>
+                          <div>
+                            <dt>Entrada</dt>
+                            <dd>
+                              <code>{example.input}</code>
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Salida</dt>
+                            <dd>
+                              <code>{example.output}</code>
+                            </dd>
+                          </div>
+                        </dl>
+                        <p>{example.explanation}</p>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+                <section className="brief-section">
+                  <p className="eyebrow">PASOS SUGERIDOS</p>
+                  <ol className="mission-steps">
+                    {mission.steps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                </section>
+                <section className="brief-section">
+                  <p className="eyebrow">RESTRICCIONES</p>
+                  <ul className="mission-constraints">
+                    {mission.constraints.map((constraint) => (
+                      <li key={constraint}>{constraint}</li>
+                    ))}
+                  </ul>
+                </section>
+                <section className="brief-section">
+                  <p className="eyebrow">LISTO CUANDO</p>
                   <ul className="objective-list">
-                    {mission.objectives.map((objective) => (
-                      <li key={objective}>
+                    {mission.successCriteria.map((criterion) => (
+                      <li key={criterion}>
                         <CheckCircle2 aria-hidden="true" />
-                        {objective}
+                        {criterion}
                       </li>
                     ))}
                   </ul>
                 </section>
+                {mission.prerequisites.length > 0 ? (
+                  <section className="brief-section prerequisites">
+                    <p className="eyebrow">ANTES DE ESTA MISIÓN</p>
+                    {mission.prerequisites.map((missionId) => {
+                      const prerequisite = getMissionById(missionId);
+                      return prerequisite ? (
+                        <Link
+                          key={missionId}
+                          to={`/mission/${prerequisite.slug}`}
+                        >
+                          {prerequisite.title}
+                          <ChevronRight aria-hidden="true" />
+                        </Link>
+                      ) : null;
+                    })}
+                  </section>
+                ) : null}
                 <section className="brief-facts">
                   <span>
                     <Clock3 aria-hidden="true" /> {mission.duration} min
                   </span>
                   <span>
-                    <Zap aria-hidden="true" /> {assignment?.points ?? mission.points} XP
+                    <Zap aria-hidden="true" />{" "}
+                    {validAssignment?.points ?? mission.points} XP
                   </span>
                   <span>{mission.difficulty}</span>
                 </section>
-                {assignment ? (
+                {validAssignment ? (
                   <section className="assignment-note">
-                    <strong>{assignment.title}</strong>
-                    <p>{assignment.instructions}</p>
-                    <small>Entrega: {formatDate(assignment.dueAt, true)}</small>
+                    <strong>{validAssignment.title}</strong>
+                    <p>{validAssignment.instructions}</p>
+                    <small>
+                      Entrega: {formatDate(validAssignment.dueAt, true)}
+                    </small>
                   </section>
                 ) : null}
               </>
@@ -522,7 +853,9 @@ export function Component() {
                     onClick={() =>
                       setRevealedHints((current) => {
                         const next = current + 1;
-                        if (assignment) recordHint(assignment.id, next);
+                        if (validAssignment) {
+                          recordHint(validAssignment.id, next);
+                        }
                         return next;
                       })
                     }
@@ -545,6 +878,37 @@ export function Component() {
                     <p>{history.length} ejecuciones registradas</p>
                   </div>
                 </div>
+                {linkedReview ? (
+                  <article className="linked-review">
+                    <span>
+                      {linkedReview.decision === "approved"
+                        ? "Entrega aprobada"
+                        : linkedReview.decision === "changes_requested"
+                          ? "Cambios solicitados"
+                          : "Comentario del mentor"}
+                    </span>
+                    <p>{linkedReview.comment}</p>
+                    {linkedReview.criteria.length > 0 ? (
+                      <div className="linked-review-criteria">
+                        {linkedReview.criteria.map((criterion) => (
+                          <span
+                            className={criterion.met ? "is-met" : ""}
+                            key={criterion.id}
+                          >
+                            {criterion.met ? "Cumple" : "Revisar"} ·{" "}
+                            {criterion.label}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {linkedReview.inlineComments.map((comment, index) => (
+                      <blockquote key={`${comment.line}-${index}`}>
+                        <strong>Línea {comment.line}</strong>
+                        {comment.body}
+                      </blockquote>
+                    ))}
+                  </article>
+                ) : null}
                 {history.map((attempt) => (
                   <button
                     className="history-item"
@@ -564,7 +928,8 @@ export function Component() {
                     <span>
                       <strong>
                         {attempt.kind === "submit" ? "Entrega" : "Ejecución"} ·{" "}
-                        {LANGUAGE_META[attempt.language].shortLabel}
+                        {LANGUAGE_META[attempt.language].shortLabel} · v
+                        {attempt.missionVersion}
                       </strong>
                       <small>{formatDate(attempt.createdAt, true)}</small>
                     </span>
@@ -577,6 +942,59 @@ export function Component() {
                     <span>Aún no hay intentos.</span>
                   </div>
                 ) : null}
+              </section>
+            ) : null}
+
+            {briefTab === "solution" && canViewSolution ? (
+              <section className="solution-panel">
+                <div className="solution-heading">
+                  <ShieldCheck aria-hidden="true" />
+                  <div>
+                    <h2>Solución de referencia</h2>
+                    <p>
+                      Visible solo para staff y para la versión evaluada.
+                    </p>
+                  </div>
+                </div>
+                {solutionLoading ? (
+                  <div className="empty-inline">
+                    <LoaderCircle className="spin" aria-hidden="true" />
+                    <span>Cargando solución privada...</span>
+                  </div>
+                ) : solution ? (
+                  <>
+                    <div className="solution-contract">
+                      <span>Firma</span>
+                      <code>{solution.expectedSignature}</code>
+                    </div>
+                    <p>{solution.explanation}</p>
+                    <div className="solution-code-heading">
+                      <span>{LANGUAGE_META[solution.language].fileName}</span>
+                      <button
+                        className="icon-button"
+                        type="button"
+                        aria-label="Copiar solución"
+                        title="Copiar solución"
+                        onClick={() =>
+                          void navigator.clipboard.writeText(
+                            solution.referenceSolution,
+                          )
+                        }
+                      >
+                        <Copy aria-hidden="true" />
+                      </button>
+                    </div>
+                    <pre className="solution-code">
+                      <code>{solution.referenceSolution}</code>
+                    </pre>
+                  </>
+                ) : (
+                  <div className="empty-state compact-empty">
+                    <CircleAlert aria-hidden="true" />
+                    <h2>Solución no disponible</h2>
+                    <p>{solutionError}</p>
+                  </div>
+                )}
               </section>
             ) : null}
           </div>
@@ -610,6 +1028,7 @@ export function Component() {
               type="button"
               title="Restaurar starter code"
               aria-label="Restaurar starter code"
+              disabled={isStudentPreview}
               onClick={resetStarter}
             >
               <RotateCcw aria-hidden="true" />
@@ -631,19 +1050,30 @@ export function Component() {
                 value={currentCode}
                 beforeMount={configureMonaco}
                 onMount={(editor) => {
+                  editorRef.current = editor;
                   if (import.meta.env.DEV) {
                     window.__TOMATIN_EDITOR__ = editor;
                   }
                 }}
-                onChange={(value) =>
+                onChange={(value) => {
                   setCodeByLanguage((current) => ({
                     ...current,
                     [language]: value ?? "",
-                  }))
-                }
+                  }));
+                  if (
+                    validAssignment &&
+                    profile.role === "student" &&
+                    Date.now() - lastEditingSignal.current >= 60_000
+                  ) {
+                    lastEditingSignal.current = Date.now();
+                    recordActivity(validAssignment.id, language, "editing");
+                  }
+                }}
                 options={{
                   automaticLayout: true,
                   accessibilitySupport: "auto",
+                  readOnly: isStudentPreview,
+                  domReadOnly: isStudentPreview,
                   fontSize: 14,
                   fontFamily:
                     '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
@@ -672,7 +1102,7 @@ export function Component() {
             <button
               className="button secondary"
               type="button"
-              disabled={Boolean(running)}
+              disabled={Boolean(running) || isStudentPreview}
               onClick={() => void execute("run")}
             >
               {running === "run" ? (
@@ -685,7 +1115,7 @@ export function Component() {
             <button
               className="button primary"
               type="button"
-              disabled={Boolean(running)}
+              disabled={Boolean(running) || isStudentPreview}
               onClick={() => void execute("submit")}
             >
               {running === "submit" ? (
@@ -693,7 +1123,7 @@ export function Component() {
               ) : (
                 <Send aria-hidden="true" />
               )}
-              {assignment ? "Entregar" : "Comprobar"}
+              {validAssignment ? "Entregar" : "Comprobar"}
             </button>
           </div>
         </section>
@@ -733,7 +1163,18 @@ export function Component() {
               </span>
             </div>
           ) : (
-            <ResultSummary result={result} />
+            <ResultSummary
+              result={result}
+              testInputs={testInputs}
+              onDiagnosticLine={(line) => {
+                setMobilePane("code");
+                window.setTimeout(() => {
+                  editorRef.current?.revealLineInCenter(line);
+                  editorRef.current?.setPosition({ lineNumber: line, column: 1 });
+                  editorRef.current?.focus();
+                }, 0);
+              }}
+            />
           )}
         </section>
       </div>

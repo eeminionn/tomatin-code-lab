@@ -38,6 +38,12 @@ export type AssignmentStatus =
   | "changes_requested"
   | "approved";
 export type AttemptKind = "run" | "submit";
+export type ActivityKind =
+  | "opened"
+  | "editing"
+  | "hint_revealed"
+  | "ran"
+  | "submitted";
 export type RunStatus =
   | "idle"
   | "queued"
@@ -58,9 +64,19 @@ export interface MissionTest {
   feedback: string;
 }
 
+export interface MissionExample {
+  id: string;
+  label: string;
+  input: string;
+  output: string;
+  explanation: string;
+}
+
 export interface MissionVariant {
   language: Language;
   starterCode: string;
+  expectedSignature: string;
+  examples: MissionExample[];
   referenceSolution?: string;
   publicTests: MissionTest[];
   hiddenTests?: MissionTest[];
@@ -78,6 +94,12 @@ export interface Mission {
   summary: string;
   context: string;
   brief: string;
+  goal: string;
+  conceptIntro: string;
+  steps: string[];
+  constraints: string[];
+  successCriteria: string[];
+  prerequisites: string[];
   difficulty: Difficulty;
   points: number;
   duration: number;
@@ -120,8 +142,10 @@ export interface Assignment {
 export interface StudentProgress {
   userId: string;
   assignmentId: string;
+  missionVersion: number;
   status: AssignmentStatus;
   language?: Language;
+  lastEvent?: ActivityKind;
   lastActivityAt?: string;
   submittedAt?: string;
   approvedAt?: string;
@@ -133,6 +157,7 @@ export interface Draft {
   key: string;
   userId: string;
   missionId: string;
+  missionVersion: number;
   assignmentId?: string;
   language: Language;
   code: string;
@@ -218,12 +243,25 @@ export interface Review {
   mentorId: string;
   decision: "approved" | "changes_requested" | "comment";
   comment: string;
+  inlineComments: Array<{
+    line: number;
+    body: string;
+  }>;
+  criteria: Array<{
+    id: string;
+    label: string;
+    met: boolean;
+  }>;
   createdAt: string;
 }
 
 export interface AppNotification {
   id: string;
   userId: string;
+  classId?: string;
+  assignmentId?: string;
+  attemptId?: string;
+  reviewId?: string;
   title: string;
   body: string;
   readAt?: string;
@@ -274,4 +312,12 @@ export interface MissionDraftInput {
   summary: string;
   brief: string;
   course: Course;
+  context?: string;
+  goal?: string;
+  conceptIntro?: string;
+  steps?: string[];
+  constraints?: string[];
+  successCriteria?: string[];
+  prerequisites?: string[];
+  hints?: string[];
 }

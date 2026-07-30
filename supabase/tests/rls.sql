@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(15);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -105,6 +105,114 @@ values (
   '{"status":"passed","tests":[]}'
 );
 
+insert into public.drafts (
+  user_id,
+  assignment_id,
+  mission_id,
+  mission_version,
+  language,
+  code
+)
+values
+  (
+    '00000000-0000-0000-0000-000000000102',
+    '00000000-0000-0000-0000-000000000301',
+    'p1-01-la-once',
+    1,
+    'python',
+    'own draft'
+  ),
+  (
+    '00000000-0000-0000-0000-000000000103',
+    '00000000-0000-0000-0000-000000000301',
+    'p1-01-la-once',
+    1,
+    'python',
+    'private draft'
+  );
+
+insert into public.reviews (
+  attempt_id,
+  mentor_id,
+  decision,
+  comment,
+  inline_comments,
+  criteria
+)
+values (
+  '00000000-0000-0000-0000-000000000401',
+  '00000000-0000-0000-0000-000000000101',
+  'comment',
+  'Private feedback',
+  '[{"line":1,"body":"Private line comment"}]',
+  '[{"id":"correctness","label":"Correctitud","met":true}]'
+);
+
+insert into public.notifications (user_id, class_id, title, body)
+values
+  (
+    '00000000-0000-0000-0000-000000000102',
+    '00000000-0000-0000-0000-000000000201',
+    'Own feedback',
+    'Visible'
+  ),
+  (
+    '00000000-0000-0000-0000-000000000103',
+    '00000000-0000-0000-0000-000000000201',
+    'Other feedback',
+    'Private'
+  );
+
+update public.student_progress
+set status = 'awaiting_review'
+where user_id = '00000000-0000-0000-0000-000000000103';
+
+update public.missions
+set current_version = current_version + 1
+where id = 'p1-01-la-once';
+
+select is(
+  (
+    select progress.mission_version
+    from public.student_progress progress
+    where progress.user_id = '00000000-0000-0000-0000-000000000102'
+  ),
+  (
+    select mission.current_version
+    from public.missions mission
+    where mission.id = 'p1-01-la-once'
+  ),
+  'publishing migrates open progress to the current mission version'
+);
+
+select is(
+  (
+    select progress.mission_version
+    from public.student_progress progress
+    where progress.user_id = '00000000-0000-0000-0000-000000000103'
+  ),
+  1,
+  'publishing preserves the version of a submission awaiting review'
+);
+
+update public.student_progress
+set status = 'changes_requested'
+where user_id = '00000000-0000-0000-0000-000000000103';
+
+select is(
+  (
+    select progress.mission_version
+    from public.student_progress progress
+    where progress.user_id = '00000000-0000-0000-0000-000000000103'
+  ),
+  (
+    select mission.current_version
+    from public.missions mission
+    where mission.id = 'p1-01-la-once'
+  ),
+  'requesting changes migrates the student to the current mission version'
+);
+
 set local role authenticated;
 select set_config(
   'request.jwt.claim.sub',
@@ -123,6 +231,45 @@ select is(
   (select count(*) from public.student_progress),
   1::bigint,
   'students only read their own progress'
+);
+
+select is(
+  (select count(*) from public.drafts),
+  1::bigint,
+  'students only read their own versioned drafts'
+);
+
+select is(
+  (select count(*) from public.reviews),
+  0::bigint,
+  'students cannot read reviews on another student attempt'
+);
+
+select is(
+  (select count(*) from public.notifications),
+  1::bigint,
+  'students only read their own notifications'
+);
+
+select lives_ok(
+  $$
+    select public.record_student_activity(
+      '00000000-0000-0000-0000-000000000301',
+      'python',
+      'editing'
+    )
+  $$,
+  'students can record throttled activity for their own assignment'
+);
+
+select results_eq(
+  $$
+    select last_event
+    from public.student_progress
+    where user_id = '00000000-0000-0000-0000-000000000102'
+  $$,
+  array['editing'::text],
+  'activity updates the current student progress only'
 );
 
 select throws_ok(

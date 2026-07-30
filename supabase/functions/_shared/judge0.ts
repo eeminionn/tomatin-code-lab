@@ -155,7 +155,9 @@ function protectHiddenResults(
       label: `Test oculto ${match.index + 1}`,
       passed: result.passed,
       expected: "Comportamiento esperado protegido",
-      feedback: result.passed ? undefined : match.test.feedback,
+      feedback: result.passed
+        ? undefined
+        : "Revisa los casos límite y el contrato de la misión.",
       hidden: true,
     };
   });

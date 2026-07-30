@@ -16,6 +16,13 @@ test("opens an assigned mission in two actions and runs visible tests", async ({
   await expect(page.getByRole("button", { name: "JS", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "PY", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "C++", exact: true })).toBeVisible();
+  await expect(page.getByText("TU MISIÓN")).toBeVisible();
+  await expect(page.getByText("IDEA CLAVE")).toBeVisible();
+  await expect(page.getByText("PASOS SUGERIDOS")).toBeVisible();
+  await expect(page.getByText(/1200 × 2 \+ 850 × 3 = 4950/)).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.__TOMATIN_EDITOR__?.getValue()))
+    .toContain("let total = 0");
 
   await page.getByRole("button", { name: "Ejecutar" }).click();
   await expect(page.getByText(/tests|Error de ejecución|Hay tests por corregir/).first()).toBeVisible({
@@ -36,7 +43,7 @@ test("keeps independent code when changing language", async ({ page }) => {
     window.__TOMATIN_EDITOR__?.setValue(code);
   }, pythonDraft);
   await expect(page.locator(".sync-state.saving")).toBeVisible();
-  await expect(page.locator(".sync-state.saved")).toContainText("Borrador guardado");
+  await expect(page.locator(".sync-state.local")).toContainText("Guardado local");
 
   await page.getByRole("button", { name: "JS", exact: true }).click();
   await expect(
@@ -57,7 +64,6 @@ test("dashboard has no serious automated accessibility violations", async ({
   page,
 }) => {
   const results = await new AxeBuilder({ page })
-    .disableRules(["color-contrast"])
     .analyze();
   expect(results.violations).toEqual([]);
 });

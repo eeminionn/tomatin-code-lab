@@ -1,5 +1,24 @@
 import { cpp, mission, test, variant } from "./mission-builders";
 
+const onceExamples = [
+  {
+    id: "once-total",
+    label: "Dos productos",
+    input: "1200 × 2 + 850 × 3",
+    output: "4950",
+    explanation:
+      "1200 × 2 + 850 × 3 = 4950. Cada precio se multiplica por la cantidad de su misma posición antes de sumar ambos subtotales.",
+  },
+  {
+    id: "once-empty",
+    label: "Compra vacía",
+    input: "precios = [], cantidades = []",
+    output: "0",
+    explanation:
+      "Sin productos, el acumulador conserva su valor inicial de cero.",
+  },
+];
+
 export const programmingOneMissions = [
   mission({
     id: "p1-01-la-once",
@@ -9,9 +28,33 @@ export const programmingOneMissions = [
     order: 1,
     title: "La once de Tomatin",
     summary: "Calcula un total sin mezclar texto y números.",
-    context: "Hay que cerrar la compra del taller antes de que llegue el pedido.",
+    context:
+      "Tomatin está cerrando una compra para el taller. Cada precio ocupa la misma posición que la cantidad correspondiente.",
     brief:
-      "Implementa totalOnce. Recibe precios y cantidades en posiciones equivalentes y retorna la suma de precio por cantidad.",
+      "Completa totalOnce para calcular el subtotal de cada producto y devolver la suma total de la compra.",
+    goal:
+      "Obtén un único total numérico a partir de dos listas relacionadas: precios y cantidades.",
+    conceptIntro:
+      "Dos arreglos pueden describir una misma colección cuando comparten sus índices. En la posición i, precios[i] y cantidades[i] pertenecen al mismo producto. El acumulador total debe comenzar en cero y aumentar una vez por producto.",
+    steps: [
+      "Inicializa el acumulador total en cero.",
+      "Recorre todas las posiciones válidas de precios.",
+      "Multiplica el precio por la cantidad de la misma posición.",
+      "Suma cada subtotal y devuelve total al terminar.",
+    ],
+    constraints: [
+      "No cambies el nombre ni los parámetros de totalOnce.",
+      "Precios y cantidades tendrán el mismo largo.",
+      "Una compra vacía debe retornar cero.",
+      "Devuelve un número; no formatees el resultado como texto.",
+    ],
+    successCriteria: [
+      "Relaciona correctamente los elementos que comparten índice.",
+      "Acumula todos los subtotales sin reiniciar total.",
+      "Retorna 4950 para precios [1200, 850] y cantidades [2, 3].",
+      "Retorna cero cuando ambas listas están vacías.",
+    ],
+    prerequisites: [],
     difficulty: "Inicial",
     points: 100,
     duration: 12,
@@ -24,12 +67,22 @@ export const programmingOneMissions = [
     hints: [
       "El elemento en la posición i de precios corresponde a la posición i de cantidades.",
       "Parte el acumulador en cero y actualízalo una vez por producto.",
+      "Pseudocódigo: para cada i, calcula precios[i] por cantidades[i], súmalo a total y devuelve total después del bucle.",
     ],
     variants: {
       javascript: variant(
         "javascript",
         `function totalOnce(precios, cantidades) {
-  // Retorna el total numérico.
+  let total = 0;
+
+  for (let i = 0; i < precios.length; i += 1) {
+    const precio = precios[i];
+    const cantidad = cantidades[i];
+
+    // TODO: calcula el subtotal y súmalo a total.
+  }
+
+  return total;
 }
 `,
         `function totalOnce(precios, cantidades) {
@@ -63,12 +116,20 @@ export const programmingOneMissions = [
             "Revisa el producto único.",
           ),
         ],
+        onceExamples,
       ),
       python: variant(
         "python",
         `def total_once(precios, cantidades):
-    # Retorna el total numérico.
-    pass
+    total = 0
+
+    for i in range(len(precios)):
+        precio = precios[i]
+        cantidad = cantidades[i]
+
+        # TODO: calcula el subtotal y súmalo a total.
+
+    return total
 `,
         `def total_once(precios, cantidades):
     return sum(precio * cantidades[i] for i, precio in enumerate(precios))
@@ -100,12 +161,21 @@ export const programmingOneMissions = [
             "Revisa el producto único.",
           ),
         ],
+        onceExamples,
       ),
       cpp: variant(
         "cpp",
         cpp(`double totalOnce(const vector<double>& precios, const vector<int>& cantidades) {
-  // Retorna el total numérico.
-  return 0;
+  double total = 0;
+
+  for (size_t i = 0; i < precios.size(); ++i) {
+    double precio = precios[i];
+    int cantidad = cantidades[i];
+
+    // TODO: calcula el subtotal y súmalo a total.
+  }
+
+  return total;
 }`),
         cpp(`double totalOnce(const vector<double>& precios, const vector<int>& cantidades) {
   double total = 0;
@@ -139,6 +209,7 @@ export const programmingOneMissions = [
             "Revisa el producto único.",
           ),
         ],
+        onceExamples,
       ),
     },
   }),
@@ -169,7 +240,8 @@ export const programmingOneMissions = [
       javascript: variant(
         "javascript",
         `function revisarGol(fueraDeJuego, falta) {
-  // Retorna "GOL" o "ANULADO".
+  const jugadaLimpia = false; // TODO: combina ambas infracciones.
+  return jugadaLimpia ? "GOL" : "ANULADO";
 }
 `,
         `function revisarGol(fueraDeJuego, falta) {
@@ -188,8 +260,8 @@ export const programmingOneMissions = [
       python: variant(
         "python",
         `def revisar_gol(fuera_de_juego, falta):
-    # Retorna "GOL" o "ANULADO".
-    pass
+    jugada_limpia = False  # TODO: combina ambas infracciones.
+    return "GOL" if jugada_limpia else "ANULADO"
 `,
         `def revisar_gol(fuera_de_juego, falta):
     return "GOL" if not fuera_de_juego and not falta else "ANULADO"
@@ -206,8 +278,8 @@ export const programmingOneMissions = [
       cpp: variant(
         "cpp",
         cpp(`string revisarGol(bool fueraDeJuego, bool falta) {
-  // Retorna "GOL" o "ANULADO".
-  return "";
+  bool jugadaLimpia = false;  // TODO: combina ambas infracciones.
+  return jugadaLimpia ? "GOL" : "ANULADO";
 }`),
         cpp(`string revisarGol(bool fueraDeJuego, bool falta) {
   return !fueraDeJuego && !falta ? "GOL" : "ANULADO";
@@ -251,7 +323,12 @@ export const programmingOneMissions = [
       javascript: variant(
         "javascript",
         `function secuenciaPines(pines) {
-  // Retorna un arreglo de mensajes.
+  const salida = [];
+  for (let i = 0; i < pines.length; i += 1) {
+    const pin = pines[i];
+    // TODO: agrega el mensaje de este pin a salida.
+  }
+  return salida;
 }
 `,
         `function secuenciaPines(pines) {
@@ -269,8 +346,11 @@ export const programmingOneMissions = [
       python: variant(
         "python",
         `def secuencia_pines(pines):
-    # Retorna una lista de mensajes.
-    pass
+    salida = []
+    for pin in pines:
+        # TODO: agrega el mensaje de este pin a salida.
+        pass
+    return salida
 `,
         `def secuencia_pines(pines):
     return [f"PIN {pin}: ON" for pin in pines]
@@ -284,8 +364,11 @@ export const programmingOneMissions = [
       cpp: variant(
         "cpp",
         cpp(`vector<string> secuenciaPines(const vector<int>& pines) {
-  // Retorna un mensaje por cada pin.
-  return {};
+  vector<string> salida;
+  for (int pin : pines) {
+    // TODO: agrega el mensaje de este pin a salida.
+  }
+  return salida;
 }`),
         cpp(`vector<string> secuenciaPines(const vector<int>& pines) {
   vector<string> salida;
@@ -321,7 +404,11 @@ export const programmingOneMissions = [
       javascript: variant(
         "javascript",
         `function bolsasNecesarias(gramos) {
-  // Cada bolsa contiene 500 gramos.
+  if (gramos <= 0) return 0;
+  const gramosPorBolsa = 500;
+  const bolsasCompletas = Math.floor(gramos / gramosPorBolsa);
+  // TODO: considera si sobran gramos.
+  return bolsasCompletas;
 }
 `,
         `function bolsasNecesarias(gramos) {
@@ -337,8 +424,12 @@ export const programmingOneMissions = [
       python: variant(
         "python",
         `def bolsas_necesarias(gramos):
-    # Cada bolsa contiene 500 gramos.
-    pass
+    if gramos <= 0:
+        return 0
+    gramos_por_bolsa = 500
+    bolsas_completas = gramos // gramos_por_bolsa
+    # TODO: considera si sobran gramos.
+    return bolsas_completas
 `,
         `import math
 
@@ -354,8 +445,11 @@ def bolsas_necesarias(gramos):
       cpp: variant(
         "cpp",
         cpp(`int bolsasNecesarias(int gramos) {
-  // Cada bolsa contiene 500 gramos.
-  return 0;
+  if (gramos <= 0) return 0;
+  const int gramosPorBolsa = 500;
+  int bolsasCompletas = gramos / gramosPorBolsa;
+  // TODO: considera si sobran gramos.
+  return bolsasCompletas;
 }`),
         cpp(`int bolsasNecesarias(int gramos) {
   return gramos <= 0 ? 0 : (gramos + 499) / 500;
@@ -389,7 +483,13 @@ def bolsas_necesarias(gramos):
       javascript: variant(
         "javascript",
         `function detectarAnomalias(lecturas) {
-  // Retorna solo las lecturas anómalas.
+  if (lecturas.length === 0) return [];
+  let suma = 0;
+  for (const lectura of lecturas) suma += lectura;
+  const promedio = suma / lecturas.length;
+  const anomalias = [];
+  // TODO: recorre las lecturas y agrega las que superen el umbral.
+  return anomalias;
 }
 `,
         `function detectarAnomalias(lecturas) {
@@ -407,8 +507,15 @@ def bolsas_necesarias(gramos):
       python: variant(
         "python",
         `def detectar_anomalias(lecturas):
-    # Retorna solo las lecturas anómalas.
-    pass
+    if not lecturas:
+        return []
+    suma = 0
+    for lectura in lecturas:
+        suma += lectura
+    promedio = suma / len(lecturas)
+    anomalias = []
+    # TODO: agrega las lecturas que superen el umbral.
+    return anomalias
 `,
         `def detectar_anomalias(lecturas):
     if not lecturas:
@@ -425,8 +532,13 @@ def bolsas_necesarias(gramos):
       cpp: variant(
         "cpp",
         cpp(`vector<double> detectarAnomalias(const vector<double>& lecturas) {
-  // Retorna solo las lecturas anómalas.
-  return {};
+  if (lecturas.empty()) return {};
+  double suma = 0;
+  for (double lectura : lecturas) suma += lectura;
+  double promedio = suma / lecturas.size();
+  vector<double> anomalias;
+  // TODO: agrega las lecturas que superen el umbral.
+  return anomalias;
 }`),
         cpp(`vector<double> detectarAnomalias(const vector<double>& lecturas) {
   if (lecturas.empty()) return {};
@@ -469,7 +581,9 @@ def bolsas_necesarias(gramos):
       javascript: variant(
         "javascript",
         `function claveValida(entrada) {
-  // Retorna true si cumple letras-guion-dos dígitos.
+  const normalizada = entrada.trim().toLowerCase();
+  const patron = /TODO/; // TODO: reemplaza por el formato completo.
+  return patron.test(normalizada);
 }
 `,
         `function claveValida(entrada) {
@@ -484,9 +598,12 @@ def bolsas_necesarias(gramos):
       ),
       python: variant(
         "python",
-        `def clave_valida(entrada):
-    # Retorna True si cumple letras-guion-dos dígitos.
-    pass
+        `import re
+
+def clave_valida(entrada):
+    normalizada = entrada.strip().lower()
+    patron = r"TODO"  # TODO: reemplaza por el formato completo.
+    return re.fullmatch(patron, normalizada) is not None
 `,
         `import re
 
@@ -502,8 +619,14 @@ def clave_valida(entrada):
       cpp: variant(
         "cpp",
         cpp(`bool claveValida(string entrada) {
-  // Retorna true si cumple letras-guion-dos dígitos.
-  return false;
+  auto inicio = entrada.find_first_not_of(" \\t\\n\\r");
+  if (inicio == string::npos) return false;
+  auto fin = entrada.find_last_not_of(" \\t\\n\\r");
+  string normalizada = entrada.substr(inicio, fin - inicio + 1);
+  transform(normalizada.begin(), normalizada.end(), normalizada.begin(),
+            [](unsigned char c) { return tolower(c); });
+  regex patron("TODO");  // TODO: reemplaza por el formato completo.
+  return regex_match(normalizada, patron);
 }`),
         cpp(`bool claveValida(string entrada) {
   auto inicio = entrada.find_first_not_of(" \\t\\n\\r");
@@ -546,11 +669,13 @@ def clave_valida(entrada):
       javascript: variant(
         "javascript",
         `function stockSeguro(stock, retiro) {
-  // Retorna el nuevo stock o -1.
+  const retiroInvalido = false; // TODO: valida ambos casos inválidos.
+  if (retiroInvalido) return -1;
+  return stock; // TODO: aplica el retiro.
 }
 
 function necesitaReposicion(stock, minimo) {
-  // Retorna true o false.
+  return false; // TODO: compara el stock con el mínimo.
 }
 `,
         `function stockSeguro(stock, retiro) {
@@ -570,12 +695,13 @@ function necesitaReposicion(stock, minimo) {
       python: variant(
         "python",
         `def stock_seguro(stock, retiro):
-    # Retorna el nuevo stock o -1.
-    pass
+    retiro_invalido = False  # TODO: valida ambos casos inválidos.
+    if retiro_invalido:
+        return -1
+    return stock  # TODO: aplica el retiro.
 
 def necesita_reposicion(stock, minimo):
-    # Retorna True o False.
-    pass
+    return False  # TODO: compara el stock con el mínimo.
 `,
         `def stock_seguro(stock, retiro):
     return -1 if retiro < 0 or retiro > stock else stock - retiro
@@ -592,13 +718,13 @@ def necesita_reposicion(stock, minimo):
       cpp: variant(
         "cpp",
         cpp(`int stockSeguro(int stock, int retiro) {
-  // Retorna el nuevo stock o -1.
-  return -1;
+  bool retiroInvalido = false;  // TODO: valida ambos casos inválidos.
+  if (retiroInvalido) return -1;
+  return stock;  // TODO: aplica el retiro.
 }
 
 bool necesitaReposicion(int stock, int minimo) {
-  // Retorna true o false.
-  return false;
+  return false;  // TODO: compara el stock con el mínimo.
 }`),
         cpp(`int stockSeguro(int stock, int retiro) {
   return retiro < 0 || retiro > stock ? -1 : stock - retiro;
@@ -636,7 +762,12 @@ bool necesitaReposicion(int stock, int minimo) {
       javascript: variant(
         "javascript",
         `function contarHasta(limite) {
-  // Retorna [1, 2, ..., limite] o [].
+  if (limite < 1 || limite > 100) return [];
+  const salida = [];
+  for (let i = 1; i <= limite; i += 1) {
+    // TODO: agrega el valor actual.
+  }
+  return salida;
 }
 `,
         `function contarHasta(limite) {
@@ -655,8 +786,13 @@ bool necesitaReposicion(int stock, int minimo) {
       python: variant(
         "python",
         `def contar_hasta(limite):
-    # Retorna [1, 2, ..., limite] o [].
-    pass
+    if limite < 1 or limite > 100:
+        return []
+    salida = []
+    for valor in range(1, limite + 1):
+        # TODO: agrega el valor actual.
+        pass
+    return salida
 `,
         `def contar_hasta(limite):
     if limite < 1 or limite > 100:
@@ -672,8 +808,12 @@ bool necesitaReposicion(int stock, int minimo) {
       cpp: variant(
         "cpp",
         cpp(`vector<int> contarHasta(int limite) {
-  // Retorna {1, 2, ..., limite} o {}.
-  return {};
+  if (limite < 1 || limite > 100) return {};
+  vector<int> salida;
+  for (int valor = 1; valor <= limite; ++valor) {
+    // TODO: agrega el valor actual.
+  }
+  return salida;
 }`),
         cpp(`vector<int> contarHasta(int limite) {
   if (limite < 1 || limite > 100) return {};
@@ -710,7 +850,9 @@ bool necesitaReposicion(int stock, int minimo) {
       javascript: variant(
         "javascript",
         `function esApta(peso, madurez) {
-  // Retorna true o false.
+  const pesoValido = false; // TODO: comprueba ambos límites.
+  const madurezValida = false; // TODO: comprueba ambos límites.
+  return pesoValido && madurezValida;
 }
 `,
         `function esApta(peso, madurez) {
@@ -729,8 +871,9 @@ bool necesitaReposicion(int stock, int minimo) {
       python: variant(
         "python",
         `def es_apta(peso, madurez):
-    # Retorna True o False.
-    pass
+    peso_valido = False  # TODO: comprueba ambos límites.
+    madurez_valida = False  # TODO: comprueba ambos límites.
+    return peso_valido and madurez_valida
 `,
         `def es_apta(peso, madurez):
     return 150 <= peso <= 300 and 3 <= madurez <= 5
@@ -747,8 +890,9 @@ bool necesitaReposicion(int stock, int minimo) {
       cpp: variant(
         "cpp",
         cpp(`bool esApta(int peso, int madurez) {
-  // Retorna true o false.
-  return false;
+  bool pesoValido = false;  // TODO: comprueba ambos límites.
+  bool madurezValida = false;  // TODO: comprueba ambos límites.
+  return pesoValido && madurezValida;
 }`),
         cpp(`bool esApta(int peso, int madurez) {
   return peso >= 150 && peso <= 300 && madurez >= 3 && madurez <= 5;
@@ -785,7 +929,10 @@ bool necesitaReposicion(int stock, int minimo) {
       javascript: variant(
         "javascript",
         `function resumenMarcador(goles, tarjetas, minuto) {
-  // Retorna "goles|tarjetas|minuto" o "ERROR".
+  const datosInvalidos = false; // TODO: valida los tres valores.
+  if (datosInvalidos) return "ERROR";
+  // TODO: construye el resumen con separadores verticales.
+  return "";
 }
 `,
         `function resumenMarcador(goles, tarjetas, minuto) {
@@ -802,8 +949,11 @@ bool necesitaReposicion(int stock, int minimo) {
       python: variant(
         "python",
         `def resumen_marcador(goles, tarjetas, minuto):
-    # Retorna "goles|tarjetas|minuto" o "ERROR".
-    pass
+    datos_invalidos = False  # TODO: valida los tres valores.
+    if datos_invalidos:
+        return "ERROR"
+    # TODO: construye el resumen con separadores verticales.
+    return ""
 `,
         `def resumen_marcador(goles, tarjetas, minuto):
     if goles < 0 or tarjetas < 0 or minuto < 0 or minuto > 120:
@@ -819,7 +969,9 @@ bool necesitaReposicion(int stock, int minimo) {
       cpp: variant(
         "cpp",
         cpp(`string resumenMarcador(int goles, int tarjetas, int minuto) {
-  // Retorna "goles|tarjetas|minuto" o "ERROR".
+  bool datosInvalidos = false;  // TODO: valida los tres valores.
+  if (datosInvalidos) return "ERROR";
+  // TODO: construye el resumen con separadores verticales.
   return "";
 }`),
         cpp(`string resumenMarcador(int goles, int tarjetas, int minuto) {

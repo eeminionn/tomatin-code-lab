@@ -11,6 +11,12 @@ describe("security contracts", () => {
     expect(serialized).not.toContain("referenceSolution");
     expect(serialized).not.toContain("hiddenTests");
     expect(serialized).not.toContain("expression\":\"hidden");
+    for (const mission of publicMissions) {
+      for (const variant of Object.values(mission.variants)) {
+        expect(variant.expectedSignature.length).toBeGreaterThan(5);
+        expect(variant.examples.length).toBeGreaterThanOrEqual(2);
+      }
+    }
   });
 
   it("keeps XP idempotent and private variants inaccessible", () => {
@@ -28,6 +34,35 @@ describe("security contracts", () => {
     expect(migration).toContain(
       "with check (user_id = auth.uid() and kind = 'run' and remote = false)",
     );
+  });
+
+  it("versions student drafts and protects staff-only solutions", () => {
+    const contracts = readFileSync(
+      resolve(
+        "supabase/migrations/202607300001_tomatin_3_contracts.sql",
+      ),
+      "utf8",
+    );
+    const missionAdmin = readFileSync(
+      resolve("supabase/functions/mission-admin/index.ts"),
+      "utf8",
+    );
+    const judge0 = readFileSync(
+      resolve("supabase/functions/_shared/judge0.ts"),
+      "utf8",
+    );
+
+    expect(contracts).toContain("drafts_versioned_key");
+    expect(contracts).toContain("record_student_activity");
+    expect(contracts).toContain("mission_version set not null");
+    expect(contracts).toContain("inline_comments");
+    expect(missionAdmin).toContain('.in("role", ["owner", "mentor"])');
+    expect(missionAdmin).toContain('body.action === "get-solution"');
+    expect(missionAdmin).toContain('.schema("private")');
+    expect(judge0).toContain(
+      "Revisa los casos límite y el contrato de la misión.",
+    );
+    expect(judge0).not.toContain("feedback: result.passed ? undefined : match");
   });
 
   it("requires GitHub login and keeps repository credentials server-side", () => {

@@ -162,7 +162,24 @@ export function createExecutionHandler(kind: "run" | "submit") {
 
       assignment = data;
       classId = data.class_id;
-      missionVersion = data.mission_version;
+      if (isAssigned && !isStaff) {
+        const { data: progress, error: progressError } = await admin
+          .from("student_progress")
+          .select("mission_version")
+          .eq("user_id", userId)
+          .eq("assignment_id", data.id)
+          .single();
+        if (progressError || !progress) {
+          return jsonResponse(
+            request,
+            { error: "No se encontró la versión asignada al estudiante." },
+            409,
+          );
+        }
+        missionVersion = progress.mission_version;
+      } else {
+        missionVersion = data.mission_version;
+      }
     } else {
       const [{ data: mission }, { data: membership }] = await Promise.all([
         admin
@@ -271,6 +288,8 @@ export function createExecutionHandler(kind: "run" | "submit") {
       const passed = result.status === "passed";
       const progressPatch: Record<string, unknown> = {
         language: body.language,
+        last_event:
+          kind === "submit" && passed ? "submitted" : "ran",
         last_activity_at: attempt.created_at,
       };
       if (kind === "submit" && passed) {
@@ -315,6 +334,9 @@ export function createExecutionHandler(kind: "run" | "submit") {
           await admin.from("notifications").insert(
             staff.map((member) => ({
               user_id: member.user_id,
+              class_id: assignment.class_id,
+              assignment_id: assignment.id,
+              attempt_id: attempt.id,
               title: "Nueva entrega",
               body: `${student?.display_name ?? "Un estudiante"} envió una tarea para revisión.`,
             })),

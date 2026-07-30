@@ -26,6 +26,8 @@ const publicMissions = missions.map((mission) => ({
         {
           language,
           starterCode: variant.starterCode,
+          expectedSignature: variant.expectedSignature,
+          examples: variant.examples,
           publicTests: variant.publicTests,
           hiddenTestCount: variant.hiddenTests?.length ?? 0,
         },
@@ -80,6 +82,8 @@ insert into public.mission_variants (
   mission_version_id,
   language,
   starter_code,
+  expected_signature,
+  examples,
   public_tests,
   hidden_test_count
 )
@@ -87,6 +91,8 @@ select
   version.id,
   ${sql(language)},
   ${sql(variant.starterCode)},
+  ${sql(variant.expectedSignature)},
+  ${json(variant.examples)},
   ${json(variant.publicTests)},
   ${variant.hiddenTests?.length ?? 0}
 from public.mission_versions version
@@ -94,6 +100,8 @@ where version.mission_id = ${sql(id)}
   and version.version = ${version}
 on conflict (mission_version_id, language) do update set
   starter_code = excluded.starter_code,
+  expected_signature = excluded.expected_signature,
+  examples = excluded.examples,
   public_tests = excluded.public_tests,
   hidden_test_count = excluded.hidden_test_count;
 
@@ -118,11 +126,21 @@ on conflict (variant_id) do update set
   }
 }
 
-statements.push("commit;", "");
+statements.push(`
+update public.student_progress progress
+set mission_version = mission.current_version
+from public.assignments assignment
+join public.missions mission on mission.id = assignment.mission_id
+where progress.assignment_id = assignment.id
+  and progress.status in ('not_started', 'in_progress', 'changes_requested')
+  and progress.mission_version < mission.current_version;
+
+commit;
+`);
 
 const destination = resolve("supabase/seed.sql");
 const migrationDestination = resolve(
-  "supabase/migrations/202607250002_mission_catalog.sql",
+  "supabase/migrations/202607300002_mission_catalog_v2.sql",
 );
 const publicDestination = resolve(
   "v2/src/data/missions-public.generated.ts",

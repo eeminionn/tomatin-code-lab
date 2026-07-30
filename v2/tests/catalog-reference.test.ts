@@ -83,13 +83,30 @@ describe("mission catalog", () => {
     expect(new Set(missions.map((mission) => mission.slug)).size).toBe(20);
 
     for (const mission of missions) {
+      expect(mission.version).toBe(2);
+      expect(mission.goal.length).toBeGreaterThan(30);
+      expect(mission.conceptIntro.length).toBeGreaterThan(60);
+      expect(mission.steps.length).toBeGreaterThanOrEqual(3);
+      expect(mission.constraints.length).toBeGreaterThanOrEqual(2);
+      expect(mission.successCriteria.length).toBeGreaterThanOrEqual(2);
+      expect(mission.hints.length).toBeGreaterThanOrEqual(3);
       for (const language of LANGUAGES) {
         const variant = mission.variants[language];
         expect(variant.language).toBe(language);
         expect(variant.starterCode.length).toBeGreaterThan(40);
+        expect(variant.expectedSignature.length).toBeGreaterThan(5);
+        expect(variant.examples.length).toBeGreaterThanOrEqual(2);
         expect(variant.referenceSolution?.length).toBeGreaterThan(60);
         expect(variant.publicTests.length).toBeGreaterThanOrEqual(2);
         expect(variant.hiddenTests?.length).toBeGreaterThanOrEqual(1);
+      }
+    }
+
+    for (const mission of missions.filter(
+      (entry) => entry.course === "programming-1",
+    )) {
+      for (const language of LANGUAGES) {
+        expect(mission.variants[language].starterCode).toContain("TODO");
       }
     }
   });
