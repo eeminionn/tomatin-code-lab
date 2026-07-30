@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Preguntas y conversación
+    url: https://github.com/eeminionn/tomatin-code-lab/discussions/categories/q-a
+    about: Usa Discussions para preguntas de uso que no describan un error ni una tarea concreta.
+  - name: Reporte privado de seguridad
+    url: https://github.com/eeminionn/tomatin-code-lab/security/advisories/new
+    about: Informa vulnerabilidades, secretos expuestos o accesos indebidos sin publicar detalles.
+

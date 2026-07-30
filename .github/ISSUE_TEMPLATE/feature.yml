@@ -1,0 +1,74 @@
+name: Proponer una mejora
+description: Propón una capacidad nueva a partir de una necesidad concreta.
+title: "[Mejora]: "
+labels:
+  - enhancement
+assignees:
+  - eeminionn
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe primero el problema. Una buena propuesta permite comparar alternativas antes de elegir una implementación.
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Persona beneficiada
+      options:
+        - Estudiante
+        - Mentor o administrador
+        - Creador de contenido
+        - Contribuidor
+        - Varias de las anteriores
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema u oportunidad
+      description: Explica qué necesidad existe y cómo se resuelve actualmente.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Describe el resultado deseado sin asumir detalles técnicos innecesarios.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: Incluye opciones descartadas y sus principales compromisos.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacidad, seguridad y accesibilidad
+      description: Indica si toca datos estudiantiles, permisos, autenticación o interacción por teclado.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Referencias o diseños
+      description: Enlaces, capturas o productos de referencia.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmaciones
+      options:
+        - label: Busqué propuestas existentes y no encontré una equivalente.
+          required: true
+        - label: Entiendo que el proyecto está en desarrollo y la propuesta puede iterarse.
+          required: true
+

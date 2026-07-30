@@ -1,26 +1,52 @@
-# Contributing
+# Contribuir
 
-Contributions should keep the project educational, original, accessible, and
-safe to run in a browser.
+Las contribuciones deben mantener el proyecto educativo, original, accesible y
+seguro. Lee el [código de conducta](CODE_OF_CONDUCT.md) antes de participar.
 
-## Local workflow
+## Issues
 
-1. Create a focused branch from `main`.
-2. Make one coherent change.
-3. Run `npm run check`.
-4. Open a pull request that explains the learning or user impact.
+Usa el formulario que corresponda y completa el contexto, las tareas, los
+criterios de aceptación y la validación prevista. Cada issue de implementación
+debe tener:
 
-## Mission guidelines
+- Una persona responsable.
+- Labels de tipo y área.
+- Un milestone cuando forme parte de una entrega planificada.
+- Un GitHub Project solo cuando exista un tablero activo que aporte seguimiento
+  adicional; no se crea uno para duplicar un milestone.
+- Una checklist actualizada durante el trabajo.
 
-- Write original prompts; do not copy course assignments.
-- State the objective, starter code, two hints, and at least two executable
-  checks.
-- Keep Chilean references welcoming and understandable without local context.
-- Avoid real secrets, personal data, harassment, and deceptive instructions.
-- Prefer a clear concept over a joke when the two compete.
+Las dudas abiertas pertenecen a Discussions. Nunca publiques secretos, tokens,
+soluciones privadas ni datos personales de estudiantes.
 
-## Accessibility
+## Flujo local
 
-All controls need a keyboard path and accessible name. Check desktop and mobile
-layouts, visible focus, reduced motion, contrast, and long Spanish labels.
+1. Crea una rama enfocada desde `main`.
+2. Realiza un cambio coherente y vinculado a un issue.
+3. Ejecuta `pnpm check`; añade `pnpm test:e2e` y `supabase test db` cuando
+   corresponda.
+4. Abre un pull request con `Closes #…`, impacto, validación, privacidad y
+   despliegue.
+5. Completa responsable, labels y milestone antes de solicitar revisión.
+6. Fusiona solo con CI en verde y actualiza la checklist del issue.
 
+## Misiones
+
+- Escribe enunciados originales; no copies tareas de otros cursos.
+- Incluye objetivo, contrato, starter code, pistas progresivas y casos
+  ejecutables.
+- Mantén las referencias locales acogedoras y comprensibles sin contexto
+  adicional.
+- Prefiere un concepto claro antes que un chiste.
+
+## Privacidad
+
+Las credenciales, tests ocultos, soluciones de referencia y entregas
+estudiantiles son datos de servidor. No deben aparecer en el bundle, fixtures,
+logs ni historial de Git. Los cambios de autorización necesitan pruebas RLS.
+
+## Accesibilidad
+
+Todos los controles necesitan una ruta de teclado y un nombre accesible. Revisa
+escritorio y móvil, foco visible, movimiento reducido, contraste y etiquetas
+largas en español.
