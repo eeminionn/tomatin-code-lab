@@ -25,6 +25,7 @@ jobs:
       PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUBMISSION_REPOSITORY_TOKEN: ${{ secrets.SUBMISSION_REPOSITORY_TOKEN }}
       SUBMISSION_REPOSITORY_OWNER: ${{ vars.SUBMISSION_REPOSITORY_OWNER }}
+      SUBMISSION_REPOSITORY_NAME: ${{ vars.SUBMISSION_REPOSITORY_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -60,13 +61,39 @@ jobs:
       - name: Apply database migrations
         run: supabase db push
 
+      - name: Verify central submission repository
+        run: |
+          owner="${SUBMISSION_REPOSITORY_OWNER:-eeminionn}"
+          repository="${SUBMISSION_REPOSITORY_NAME:-tomatin-code-lab-resoluciones}"
+          status="$(
+            curl --silent --show-error \
+              --output repository.json \
+              --write-out "%{http_code}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $SUBMISSION_REPOSITORY_TOKEN" \
+              --header "X-GitHub-Api-Version: 2026-03-10" \
+              "https://api.github.com/repos/$owner/$repository"
+          )"
+          test "$status" = "200" || {
+            echo "::error::The submission token cannot access $owner/$repository (HTTP $status)."
+            exit 1
+          }
+          jq --exit-status \
+            '.private == true and .permissions.push == true' \
+            repository.json >/dev/null || {
+              echo "::error::$owner/$repository must be private and writable by the submission token."
+              exit 1
+            }
+
       - name: Configure repository sync
         run: |
           owner="${SUBMISSION_REPOSITORY_OWNER:-eeminionn}"
+          repository="${SUBMISSION_REPOSITORY_NAME:-tomatin-code-lab-resoluciones}"
           supabase secrets set \
             --project-ref "$PROJECT_ID" \
             GITHUB_REPOSITORY_TOKEN="$SUBMISSION_REPOSITORY_TOKEN" \
-            GITHUB_REPOSITORY_OWNER="$owner"
+            GITHUB_REPOSITORY_OWNER="$owner" \
+            GITHUB_REPOSITORY_NAME="$repository"
 
       - name: Deploy Edge Functions
         run: supabase functions deploy --project-ref "$PROJECT_ID"

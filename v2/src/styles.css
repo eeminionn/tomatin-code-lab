@@ -1452,6 +1452,15 @@ fieldset legend {
   background: rgba(103, 232, 165, 0.05);
 }
 
+.repository-location {
+  cursor: default;
+}
+
+.repository-location:hover {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.025);
+}
+
 .repository-link > span,
 .repository-pending > span:last-child {
   display: grid;
@@ -4139,10 +4148,15 @@ fieldset legend {
 
 .student-current-state > a {
   display: inline-flex;
+  max-width: 62%;
+  min-width: 0;
   align-items: center;
   gap: 6px;
+  overflow: hidden;
   color: var(--cyan);
   font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .student-current-state svg {

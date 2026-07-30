@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(35);
+select plan(39);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -641,6 +641,100 @@ select throws_ok(
   'P0001',
   'Invitation has no remaining seats.',
   'a third student cannot exceed the invitation capacity'
+);
+
+set local role service_role;
+
+select lives_ok(
+  $$
+    insert into public.student_repositories (
+      class_id,
+      user_id,
+      owner_login,
+      repository_name,
+      html_url,
+      status,
+      collaborator_status,
+      storage_mode,
+      student_path
+    )
+    values
+      (
+        '00000000-0000-0000-0000-000000000201',
+        '00000000-0000-0000-0000-000000000102',
+        'eeminionn',
+        'tomatin-code-lab-resoluciones',
+        'https://github.com/eeminionn/tomatin-code-lab-resoluciones',
+        'ready',
+        'not_required',
+        'central',
+        'student-one-00000102'
+      ),
+      (
+        '00000000-0000-0000-0000-000000000201',
+        '00000000-0000-0000-0000-000000000103',
+        'eeminionn',
+        'tomatin-code-lab-resoluciones',
+        'https://github.com/eeminionn/tomatin-code-lab-resoluciones',
+        'ready',
+        'not_required',
+        'central',
+        'student-two-00000103'
+      )
+  $$,
+  'multiple students can map to the same private repository'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000102',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000102","role":"authenticated"}',
+  true
+);
+
+select is(
+  (select count(*) from public.student_repositories),
+  1::bigint,
+  'a student reads only their central repository mapping'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000103',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000103","role":"authenticated"}',
+  true
+);
+
+select is(
+  (select count(*) from public.student_repositories),
+  1::bigint,
+  'another student cannot read the first student mapping'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000101',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000101","role":"authenticated"}',
+  true
+);
+
+select is(
+  (select count(*) from public.student_repositories),
+  2::bigint,
+  'class staff reads every central repository mapping'
 );
 
 select * from finish();

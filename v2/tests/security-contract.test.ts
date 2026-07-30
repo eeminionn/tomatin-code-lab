@@ -108,6 +108,12 @@ describe("security contracts", () => {
       ),
       "utf8",
     );
+    const centralRepositoryMigration = readFileSync(
+      resolve(
+        "supabase/migrations/202607300007_central_submission_repository.sql",
+      ),
+      "utf8",
+    );
     const repositoryService = readFileSync(
       resolve("supabase/functions/_shared/github-submissions.ts"),
       "utf8",
@@ -125,12 +131,22 @@ describe("security contracts", () => {
     expect(repositoryMigration).toContain(
       "user_id = auth.uid() or is_class_staff(class_id)",
     );
+    expect(centralRepositoryMigration).toContain(
+      "storage_mode in ('legacy_per_student', 'central')",
+    );
+    expect(centralRepositoryMigration).toContain(
+      "student_repositories_class_student_path_key",
+    );
     expect(repositoryService).toContain(
       'Deno.env.get("GITHUB_REPOSITORY_TOKEN")',
     );
-    expect(repositoryService).toContain("private: true");
     expect(repositoryService).toContain(
-      "misiones/${mission.slug}/${fileNames[input.language]}",
+      'Deno.env.get("GITHUB_REPOSITORY_NAME")',
     );
+    expect(repositoryService).toContain("private: true");
+    expect(repositoryService).toContain('collaborator_status: "not_required"');
+    expect(repositoryService).not.toContain("/collaborators/");
+    expect(repositoryService).toContain("attempt < 3");
+    expect(repositoryService).toContain("error.status !== 409");
   });
 });

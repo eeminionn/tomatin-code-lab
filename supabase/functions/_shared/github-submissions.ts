@@ -1,10 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Language } from "./types.ts";
+import {
+  studentSubmissionFolder,
+  submissionFilePath,
+} from "./github-paths.ts";
 
 const GITHUB_API = "https://api.github.com";
 const GITHUB_API_VERSION = "2026-03-10";
 const DEFAULT_OWNER = "eeminionn";
-const DEFAULT_PREFIX = "tomatin-code-lab-";
+const DEFAULT_REPOSITORY_NAME = "tomatin-code-lab-resoluciones";
+const REPOSITORY_DESCRIPTION =
+  "Entregas privadas de estudiantes de Tomatin Code Lab, administradas por el backend del aula.";
 
 interface ProfileRow {
   id: string;
@@ -23,7 +29,14 @@ interface RepositoryRow {
   html_url: string;
   visibility: "private";
   status: "ready" | "error";
-  collaborator_status: "pending" | "invited" | "active" | "error";
+  collaborator_status:
+    | "pending"
+    | "invited"
+    | "active"
+    | "not_required"
+    | "error";
+  storage_mode: "legacy_per_student" | "central";
+  student_path: string | null;
   last_synced_at: string | null;
   last_error: string | null;
 }
@@ -42,15 +55,18 @@ interface GitHubRepository {
 
 interface GitHubContent {
   sha: string;
-  html_url: string | null;
 }
 
 interface GitHubContentCommit {
-  content: GitHubContent | null;
   commit: {
     sha: string;
     html_url: string | null;
   };
+}
+
+interface GitHubAuthor {
+  name: string;
+  email: string;
 }
 
 export interface RepositorySyncResult {
@@ -93,8 +109,9 @@ function githubConfiguration() {
     token: Deno.env.get("GITHUB_REPOSITORY_TOKEN")?.trim() ?? "",
     owner:
       Deno.env.get("GITHUB_REPOSITORY_OWNER")?.trim() || DEFAULT_OWNER,
-    prefix:
-      Deno.env.get("GITHUB_REPOSITORY_PREFIX")?.trim() || DEFAULT_PREFIX,
+    repositoryName:
+      Deno.env.get("GITHUB_REPOSITORY_NAME")?.trim() ||
+      DEFAULT_REPOSITORY_NAME,
   };
 }
 
@@ -130,14 +147,6 @@ function safeError(error: unknown): string {
   return message.replace(/\s+/g, " ").slice(0, 1000);
 }
 
-function repositoryName(prefix: string, login: string, userId: string): string {
-  return `${prefix}${login}-${userId.slice(0, 8)}`
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
-    .replace(/^[._-]+|[._-]+$/g, "")
-    .slice(0, 100);
-}
-
 function encodeGitHubPath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
@@ -162,6 +171,8 @@ function toFrontendRepository(repository: RepositoryRow) {
     visibility: repository.visibility,
     status: repository.status,
     collaboratorStatus: repository.collaborator_status,
+    storageMode: repository.storage_mode,
+    studentPath: repository.student_path ?? undefined,
     lastSyncedAt: repository.last_synced_at ?? undefined,
     lastError: repository.last_error ?? undefined,
   };
@@ -234,6 +245,66 @@ async function findGitHubRepository(
   }
 }
 
+async function upsertGitHubContent(input: {
+  token: string;
+  owner: string;
+  repository: string;
+  path: string;
+  branch: string;
+  message: string;
+  content: string;
+  author?: GitHubAuthor;
+}): Promise<GitHubContentCommit> {
+  const encodedOwner = encodeURIComponent(input.owner);
+  const encodedRepository = encodeURIComponent(input.repository);
+  const encodedPath = encodeGitHubPath(input.path);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let currentFile: GitHubContent | null = null;
+    try {
+      const contentResponse = await githubFetch(
+        input.token,
+        `/repos/${encodedOwner}/${encodedRepository}/contents/${encodedPath}?ref=${encodeURIComponent(input.branch)}`,
+      );
+      currentFile = (await contentResponse.json()) as GitHubContent;
+    } catch (error) {
+      if (!(error instanceof GitHubApiError) || error.status !== 404) {
+        throw error;
+      }
+    }
+
+    try {
+      const response = await githubFetch(
+        input.token,
+        `/repos/${encodedOwner}/${encodedRepository}/contents/${encodedPath}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: input.message,
+            content: encodeBase64(input.content),
+            branch: input.branch,
+            ...(currentFile?.sha ? { sha: currentFile.sha } : {}),
+            ...(input.author ? { author: input.author } : {}),
+          }),
+        },
+      );
+      return (await response.json()) as GitHubContentCommit;
+    } catch (error) {
+      if (
+        !(error instanceof GitHubApiError) ||
+        error.status !== 409 ||
+        attempt === 2
+      ) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 150 * 2 ** attempt));
+    }
+  }
+
+  throw new Error("No se pudo actualizar la entrega después de reintentar.");
+}
+
 async function upsertRepository(
   admin: SupabaseClient,
   row: Omit<RepositoryRow, "id">,
@@ -264,19 +335,25 @@ export async function provisionStudentRepository(
 
   const { profile, classId } = context;
   const current = await storedRepository(admin, classId, userId);
+  const config = githubConfiguration();
+  const studentPath = studentSubmissionFolder(
+    profile.github_login ?? "estudiante",
+    userId,
+  );
   if (
     current?.status === "ready" &&
-    (current.collaborator_status === "active" ||
-      current.collaborator_status === "invited")
+    current.storage_mode === "central" &&
+    current.owner_login.toLowerCase() === config.owner.toLowerCase() &&
+    current.repository_name === config.repositoryName &&
+    current.student_path === studentPath
   ) {
     return {
       status: "ready",
-      message: "Repositorio listo.",
+      message: "Carpeta privada de entregas lista.",
       repository: toFrontendRepository(current),
     };
   }
 
-  const config = githubConfiguration();
   if (!config.token) {
     return {
       status: "pending_setup",
@@ -295,10 +372,7 @@ export async function provisionStudentRepository(
     );
   }
 
-  const name =
-    current?.repository_name ??
-    repositoryName(config.prefix, profile.github_login, userId);
-  const description = `Private Tomatin Code Lab submissions for @${profile.github_login}.`;
+  const name = config.repositoryName;
   let githubRepository = await findGitHubRepository(
     config.token,
     config.owner,
@@ -306,43 +380,58 @@ export async function provisionStudentRepository(
   );
 
   if (!githubRepository) {
-    const createResponse = await githubFetch(config.token, "/user/repos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const createResponse = await githubFetch(config.token, "/user/repos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description: REPOSITORY_DESCRIPTION,
+          private: true,
+          auto_init: true,
+          has_issues: false,
+          has_projects: false,
+          has_wiki: false,
+          has_discussions: false,
+        }),
+      });
+      githubRepository = (await createResponse.json()) as GitHubRepository;
+    } catch (error) {
+      if (!(error instanceof GitHubApiError) || error.status !== 422) {
+        throw error;
+      }
+      githubRepository = await findGitHubRepository(
+        config.token,
+        config.owner,
         name,
-        description,
-        private: true,
-        auto_init: true,
-        has_issues: false,
-        has_projects: false,
-        has_wiki: false,
-        has_discussions: false,
-      }),
-    });
-    githubRepository = (await createResponse.json()) as GitHubRepository;
-  } else if (
-    !githubRepository.private ||
-    githubRepository.description !== description
-  ) {
+      );
+      if (!githubRepository) throw error;
+    }
+  }
+
+  if (!githubRepository.private) {
     throw new Error(
-      `El repositorio ${config.owner}/${name} ya existe y no pertenece a este curso.`,
+      `El repositorio ${config.owner}/${name} debe ser privado.`,
     );
   }
 
-  let collaboratorStatus: RepositoryRow["collaborator_status"] = "pending";
-  let collaboratorError: string | null = null;
-  try {
-    const collaboratorResponse = await githubFetch(
+  if (githubRepository.description !== REPOSITORY_DESCRIPTION) {
+    const updateResponse = await githubFetch(
       config.token,
-      `/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(name)}/collaborators/${encodeURIComponent(profile.github_login)}`,
-      { method: "PUT" },
+      `/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(name)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: REPOSITORY_DESCRIPTION,
+          has_issues: false,
+          has_projects: false,
+          has_wiki: false,
+          has_discussions: false,
+        }),
+      },
     );
-    collaboratorStatus =
-      collaboratorResponse.status === 201 ? "invited" : "active";
-  } catch (error) {
-    collaboratorStatus = "error";
-    collaboratorError = safeError(error);
+    githubRepository = (await updateResponse.json()) as GitHubRepository;
   }
 
   const saved = await upsertRepository(admin, {
@@ -352,20 +441,17 @@ export async function provisionStudentRepository(
     repository_name: githubRepository.name,
     html_url: githubRepository.html_url,
     visibility: "private",
-    status: collaboratorStatus === "error" ? "error" : "ready",
-    collaborator_status: collaboratorStatus,
+    status: "ready",
+    collaborator_status: "not_required",
+    storage_mode: "central",
+    student_path: studentPath,
     last_synced_at: current?.last_synced_at ?? null,
-    last_error: collaboratorError,
+    last_error: null,
   });
 
   return {
     status: "ready",
-    message:
-      collaboratorStatus === "invited"
-        ? "Repositorio creado; la invitación de GitHub está pendiente."
-        : collaboratorStatus === "active"
-          ? "Repositorio listo."
-          : "Repositorio creado, pero la invitación debe reintentarse.",
+    message: "Carpeta privada de entregas lista.",
     repository: toFrontendRepository(saved),
   };
 }
@@ -430,12 +516,12 @@ export async function syncSubmissionToGitHub(
     };
   }
 
-  const fileNames: Record<Language, string> = {
-    javascript: "solucion.js",
-    python: "solucion.py",
-    cpp: "solucion.cpp",
-  };
-  const filePath = `misiones/${mission.slug}/${fileNames[input.language]}`;
+  const filePath = submissionFilePath({
+    githubLogin: context.profile.github_login ?? "estudiante",
+    userId: input.userId,
+    missionSlug: mission.slug,
+    language: input.language,
+  });
   let repository: RepositoryRow | null = null;
 
   try {
@@ -452,7 +538,7 @@ export async function syncSubmissionToGitHub(
       return {
         status: "pending_setup",
         message:
-          "La entrega quedó guardada en el aula; el repositorio se activará al conectar GitHub.",
+          "La entrega quedó guardada en el aula; la carpeta se sincronizará cuando la conexión privada esté disponible.",
         path: filePath,
       };
     }
@@ -473,24 +559,12 @@ export async function syncSubmissionToGitHub(
     const config = githubConfiguration();
     const encodedOwner = encodeURIComponent(repository.owner_login);
     const encodedName = encodeURIComponent(repository.repository_name);
-    const encodedPath = encodeGitHubPath(filePath);
     const repositoryResponse = await githubFetch(
       config.token,
       `/repos/${encodedOwner}/${encodedName}`,
     );
     const githubRepository =
       (await repositoryResponse.json()) as GitHubRepository;
-
-    let currentFile: GitHubContent | null = null;
-    try {
-      const contentResponse = await githubFetch(
-        config.token,
-        `/repos/${encodedOwner}/${encodedName}/contents/${encodedPath}?ref=${encodeURIComponent(githubRepository.default_branch)}`,
-      );
-      currentFile = (await contentResponse.json()) as GitHubContent;
-    } catch (error) {
-      if (!(error instanceof GitHubApiError) || error.status !== 404) throw error;
-    }
 
     const author =
       context.profile.github_id && context.profile.github_login
@@ -499,26 +573,17 @@ export async function syncSubmissionToGitHub(
             email: `${context.profile.github_id}+${context.profile.github_login}@users.noreply.github.com`,
           }
         : undefined;
-    const updateResponse = await githubFetch(
-      config.token,
-      `/repos/${encodedOwner}/${encodedName}/contents/${encodedPath}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `Entrega: ${mission.title} (${input.language})`,
-          content: encodeBase64(input.code),
-          branch: githubRepository.default_branch,
-          ...(currentFile?.sha ? { sha: currentFile.sha } : {}),
-          ...(author ? { author } : {}),
-        }),
-      },
-    );
-    const committed = (await updateResponse.json()) as GitHubContentCommit;
+    const committed = await upsertGitHubContent({
+      token: config.token,
+      owner: repository.owner_login,
+      repository: repository.repository_name,
+      path: filePath,
+      branch: githubRepository.default_branch,
+      message: `Entrega: ${mission.title} (${input.language})`,
+      content: input.code,
+      author,
+    });
     const syncedAt = new Date().toISOString();
-    const fileUrl =
-      committed.content?.html_url ??
-      `${repository.html_url}/blob/${githubRepository.default_branch}/${filePath}`;
     const commitUrl = committed.commit.html_url ?? undefined;
 
     await input.admin
@@ -540,8 +605,6 @@ export async function syncSubmissionToGitHub(
     return {
       status: "synced",
       message: `${filePath} quedó actualizado.`,
-      repositoryUrl: repository.html_url,
-      fileUrl,
       path: filePath,
       commitSha: committed.commit.sha,
     };
@@ -563,7 +626,6 @@ export async function syncSubmissionToGitHub(
       status: "failed",
       message:
         "La entrega quedó guardada en el aula, pero GitHub rechazó la sincronización.",
-      repositoryUrl: repository?.html_url,
       path: filePath,
     };
   }

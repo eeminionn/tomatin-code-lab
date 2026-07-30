@@ -320,6 +320,8 @@ async function fetchSupabaseSnapshot(session: Session) {
         visibility: row.visibility,
         status: row.status,
         collaboratorStatus: row.collaborator_status,
+        storageMode: row.storage_mode ?? "legacy_per_student",
+        studentPath: row.student_path ?? undefined,
         lastSyncedAt: row.last_synced_at ?? undefined,
         lastError: row.last_error ?? undefined,
       })),
@@ -365,11 +367,14 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         const loaded = await fetchSupabaseSnapshot(data.session);
         setProfile(loaded.profile);
         setSnapshot(loaded.snapshot);
+        const ownRepository = loaded.snapshot.repositories.find(
+          (repository) => repository.userId === loaded.profile.id,
+        );
         if (
           loaded.profile.role === "student" &&
-          !loaded.snapshot.repositories.some(
-            (repository) => repository.userId === loaded.profile.id,
-          ) &&
+          (!ownRepository ||
+            ownRepository.storageMode !== "central" ||
+            ownRepository.status === "error") &&
           !provisionRequested.current.has(loaded.profile.id)
         ) {
           provisionRequested.current.add(loaded.profile.id);
@@ -383,7 +388,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                       ...current,
                       repositories: [
                         ...current.repositories.filter(
-                          (entry) => entry.id !== repository.id,
+                          (entry) => entry.userId !== repository.userId,
                         ),
                         repository,
                       ],

@@ -22,11 +22,11 @@ II con veinte misiones originales.
   backend cuando está disponible.
 - JavaScript en Web Worker, Python con Pyodide y ejecución remota con Judge0.
 - Supabase Auth exclusivamente con GitHub, Postgres, Realtime, RLS,
-  invitaciones de un uso y roles `owner`, `mentor` y `student`.
+  invitaciones configurables y roles `owner`, `mentor` y `student`.
 - Asignaciones por estudiante, revisión, reentrega, XP idempotente y ranking
   basado únicamente en tareas aprobadas.
-- Un repositorio privado por estudiante bajo `eeminionn`, con una carpeta por
-  misión y actualización automática al entregar.
+- Un único repositorio privado de resoluciones bajo `eeminionn`, con carpetas
+  aisladas por estudiante y actualización automática al entregar.
 - Panel del mentor con métricas reales, matriz filtrable, actividad reciente,
   detalle por estudiante, historial de código guardado y vista estudiante de
   solo lectura.
@@ -79,24 +79,36 @@ VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 a las Edge Functions. `JUDGE0_URL` y `JUDGE0_API_KEY` son opcionales; por
 defecto se usa la instancia pública de Judge0 CE.
 
-## Repositorios de estudiantes
+## Entregas en GitHub
 
-La aplicación crea un repositorio privado
-`tomatin-code-lab-USUARIO-ID` bajo `eeminionn`, invita al estudiante como
-colaborador y guarda cada entrega en:
+La aplicación usa un único repositorio privado
+`eeminionn/tomatin-code-lab-resoluciones` y guarda cada entrega en:
 
 ```text
-misiones/slug-de-la-mision/solucion.js
-misiones/slug-de-la-mision/solucion.py
-misiones/slug-de-la-mision/solucion.cpp
+resoluciones/usuario-id-corto/misiones/slug-de-la-mision/solucion.js
+resoluciones/usuario-id-corto/misiones/slug-de-la-mision/solucion.py
+resoluciones/usuario-id-corto/misiones/slug-de-la-mision/solucion.cpp
 ```
 
+Los estudiantes no son colaboradores del repositorio central. GitHub concede
+permisos por repositorio, no por carpeta; invitarlos permitiría que vieran
+respuestas ajenas. El estudiante consulta su código, historial y estado de
+sincronización desde el aula, mientras que el mentor puede abrir la carpeta
+privada desde `/admin`. Los commits usan el correo `noreply` verificado del
+estudiante para conservar la atribución cuando GitHub puede asociarla.
+
 Para activarlo, crea un fine-grained personal access token de GitHub cuyo
-resource owner sea `eeminionn`, con acceso a todos los repositorios y permisos
-`Administration: Read and write` y `Contents: Read and write`. Guárdalo como el
-secret de Actions `SUBMISSION_REPOSITORY_TOKEN` y vuelve a ejecutar `Deploy
-Supabase`. La variable opcional `SUBMISSION_REPOSITORY_OWNER` permite cambiar
-el propietario; si no existe, se usa `eeminionn`.
+resource owner sea `eeminionn`, con acceso al repositorio central y permisos
+`Administration: Read and write` y `Contents: Read and write`. Guárdalo como
+el secret de Actions `SUBMISSION_REPOSITORY_TOKEN` y vuelve a ejecutar `Deploy
+Supabase`. Las variables opcionales `SUBMISSION_REPOSITORY_OWNER` y
+`SUBMISSION_REPOSITORY_NAME` permiten cambiar el propietario y el nombre; sus
+valores por defecto son `eeminionn` y `tomatin-code-lab-resoluciones`.
+
+Los repositorios individuales creados por versiones anteriores no se eliminan
+automáticamente. La siguiente sesión o entrega migra el registro del estudiante
+al almacenamiento central; los repositorios anteriores pueden archivarse
+después de comprobar la copia y definir una política de conservación.
 
 ## Verificación
 

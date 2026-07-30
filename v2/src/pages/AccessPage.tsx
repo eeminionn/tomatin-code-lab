@@ -106,7 +106,7 @@ export function AccessPage() {
           </p>
           <p className="access-footnote">
             {hasInvitation
-              ? "Usa la cuenta de GitHub donde quieres recibir tus entregas."
+              ? "Usa la cuenta de GitHub que identificará tus entregas."
               : "El acceso de estudiantes requiere una invitación activa del curso."}
           </p>
         </div>

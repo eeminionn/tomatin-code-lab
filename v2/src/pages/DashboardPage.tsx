@@ -249,25 +249,40 @@ export function Component() {
               </div>
               {repository ? (
                 <>
-                  <a
-                    className="repository-link"
-                    href={repository.htmlUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <span>
-                      <strong>{repository.name}</strong>
-                      <small>Repositorio privado</small>
-                    </span>
-                    <ExternalLink aria-hidden="true" />
-                  </a>
+                  {repository.storageMode === "central" ? (
+                    <div className="repository-link repository-location">
+                      <span>
+                        <strong>Carpeta privada sincronizada</strong>
+                        <small>
+                          {repository.studentPath
+                            ? `resoluciones/${repository.studentPath}`
+                            : "Repositorio central del curso"}
+                        </small>
+                      </span>
+                    </div>
+                  ) : (
+                    <a
+                      className="repository-link"
+                      href={repository.htmlUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <span>
+                        <strong>{repository.name}</strong>
+                        <small>Repositorio individual anterior</small>
+                      </span>
+                      <ExternalLink aria-hidden="true" />
+                    </a>
+                  )}
                   <span
                     className={`repository-state repository-${repository.status}`}
                   >
                     <span aria-hidden="true" />
                     {repository.lastSyncedAt
                       ? `Actualizado ${formatDate(repository.lastSyncedAt, true)}`
-                      : repository.collaboratorStatus === "invited"
+                      : repository.storageMode === "central"
+                        ? "Carpeta lista"
+                        : repository.collaboratorStatus === "invited"
                         ? "Invitación enviada"
                         : "Repositorio listo"}
                   </span>
@@ -276,7 +291,7 @@ export function Component() {
                 <div className="repository-pending" role="status">
                   <span className="system-dot supabase" aria-hidden="true" />
                   <span>
-                    <strong>Preparando repositorio</strong>
+                    <strong>Preparando carpeta privada</strong>
                     <small>@{subjectProfile.githubLogin}</small>
                   </span>
                 </div>

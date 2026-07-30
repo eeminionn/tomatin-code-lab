@@ -236,7 +236,14 @@ export interface StudentRepository {
   htmlUrl: string;
   visibility: "private";
   status: "ready" | "error";
-  collaboratorStatus: "pending" | "invited" | "active" | "error";
+  collaboratorStatus:
+    | "pending"
+    | "invited"
+    | "active"
+    | "not_required"
+    | "error";
+  storageMode: "legacy_per_student" | "central";
+  studentPath?: string;
   lastSyncedAt?: string;
   lastError?: string;
 }

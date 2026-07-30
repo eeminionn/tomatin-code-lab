@@ -444,6 +444,10 @@ function StudentDirectory({
   const repository = snapshot.repositories.find(
     (entry) => entry.userId === selected.id,
   );
+  const repositoryHref =
+    repository?.storageMode === "central" && repository.studentPath
+      ? `${repository.htmlUrl}/tree/main/resoluciones/${repository.studentPath}`
+      : repository?.htmlUrl;
   const latestActivity = progress
     .filter((entry) => entry.lastActivityAt)
     .sort(
@@ -582,12 +586,23 @@ function StudentDirectory({
             ) : null}
           </div>
           {repository ? (
-            <a href={repository.htmlUrl} target="_blank" rel="noreferrer">
+            <a
+              href={repositoryHref}
+              target="_blank"
+              rel="noreferrer"
+              title={
+                repository.studentPath
+                  ? `resoluciones/${repository.studentPath}`
+                  : repository.name
+              }
+            >
               <Link2 aria-hidden="true" />
-              {repository.name}
+              {repository.storageMode === "central"
+                ? `resoluciones/${repository.studentPath ?? selected.githubLogin ?? "estudiante"}`
+                : repository.name}
             </a>
           ) : (
-            <span>Repositorio pendiente</span>
+            <span>Carpeta de entregas pendiente</span>
           )}
         </section>
 
