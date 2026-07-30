@@ -542,6 +542,8 @@ from public.create_class_invitation(
   now() + interval '10 days'
 ) created;
 
+grant select on invitation_acceptance_test to service_role;
+
 select set_config(
   'request.jwt.claim.sub',
   '00000000-0000-0000-0000-000000000104',
