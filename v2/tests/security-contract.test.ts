@@ -221,5 +221,10 @@ describe("security contracts", () => {
       'frontendOnly ? "pnpm frontend:dev" : "pnpm dev"',
     );
     expect(playwrightConfig).toContain('"http://127.0.0.1:4173/"');
+    expect(playwrightConfig).toContain(
+      '"http://127.0.0.1:4173/tomatin-code-lab/beta/"',
+    );
+    expect(playwrightConfig).toContain("baseURL: serverUrl");
+    expect(playwrightConfig).toContain("url: serverUrl");
   });
 });
