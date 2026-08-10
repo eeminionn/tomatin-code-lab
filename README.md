@@ -200,9 +200,10 @@ no permite ocultar carpetas concretas dentro de un repositorio público.
 4. Abre `https://TU_USUARIO.github.io/TU_REPOSITORIO/beta/` e inicia sesión con
    la cuenta cuyo GitHub ID configuraste. Debe entrar al panel de propietario.
 
-La ruta de build se calcula automáticamente a partir del nombre del fork. Para
-un dominio o ruta distinta puedes definir `VITE_BASE_PATH`, incluyendo `/` al
-inicio y al final, por ejemplo `/aula/beta/`.
+La ruta de Pages se calcula automáticamente a partir del nombre del fork. En
+una compilación manual puedes definir `VITE_BASE_PATH`, incluyendo `/` al
+inicio y al final. Si publicas en una ruta distinta de `/<repositorio>/beta/`,
+debes adaptar también el montaje de `_site/beta` y el smoke test del workflow.
 
 ## Variables y secretos
 
