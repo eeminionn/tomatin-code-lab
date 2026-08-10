@@ -5,6 +5,7 @@ import type {
   RunStatus,
   TestResult,
 } from "@/types";
+import { frontendOnlyMessage, isFrontendOnly } from "@/config/runtime";
 import { runWithJudge0 } from "./judge0";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
@@ -124,6 +125,21 @@ export async function runMissionCode(request: RunnerRequest): Promise<RunResult>
       status: "failed",
       stdout: "",
       stderr: "El código supera el límite de 64 KB.",
+      diagnostics: [],
+      tests: [],
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  if (
+    isFrontendOnly &&
+    (request.kind === "submit" || request.language === "cpp")
+  ) {
+    return {
+      id: crypto.randomUUID(),
+      status: "provider_error",
+      stdout: "",
+      stderr: frontendOnlyMessage,
       diagnostics: [],
       tests: [],
       createdAt: new Date().toISOString(),

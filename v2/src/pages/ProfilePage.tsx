@@ -114,6 +114,7 @@ export function Component() {
   const {
     profile,
     isStudentPreview,
+    frontendOnly,
     updateProfile,
   } = useClassroom();
   const [tab, setTab] = useState<EditorTab>("hair");
@@ -134,6 +135,7 @@ export function Component() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (frontendOnly) return;
     setSaving(true);
     setMessage("");
     try {
@@ -369,7 +371,12 @@ export function Component() {
                 </>
               ) : null}
             </span>
-            <button className="button primary" type="submit" disabled={saving}>
+            <button
+              className="button primary"
+              type="submit"
+              disabled={saving || frontendOnly}
+              title={frontendOnly ? "El guardado requiere el backend oficial" : undefined}
+            >
               {saving ? (
                 <LoaderCircle className="spin" aria-hidden="true" />
               ) : (

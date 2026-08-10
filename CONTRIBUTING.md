@@ -21,10 +21,15 @@ soluciones privadas ni datos personales de estudiantes.
 
 ## Flujo local
 
+Las contribuciones provenientes de forks son exclusivamente de frontend. Usa
+`pnpm frontend:dev` para trabajar sobre la interfaz actual de Aula 3.0 sin
+conectar Supabase. No cambies `supabase/`, secretos, migraciones ni workflows de
+producción; CI rechazará esos archivos en un PR desde fork.
+
 1. Crea una rama enfocada desde `main`.
 2. Realiza un cambio coherente y vinculado a un issue.
-3. Ejecuta `pnpm check`; añade `pnpm test:e2e` y `supabase test db` cuando
-   corresponda.
+3. Ejecuta `pnpm check:frontend` y
+   `pnpm test:e2e:frontend`.
 4. Abre un pull request con `Closes #…`, impacto, validación, privacidad y
    despliegue.
 5. Completa responsable, labels y milestone antes de solicitar revisión.
@@ -41,9 +46,9 @@ soluciones privadas ni datos personales de estudiantes.
 
 ## Privacidad
 
-Las credenciales, tests ocultos, soluciones de referencia y entregas
-estudiantiles son datos de servidor. No deben aparecer en el bundle, fixtures,
-logs ni historial de Git. Los cambios de autorización necesitan pruebas RLS.
+Las credenciales, tests ocultos y entregas estudiantiles son datos de servidor.
+No deben aparecer en el bundle, fixtures, logs ni historial de Git. El sandbox
+de contribución no debe enviar solicitudes a Supabase, Judge0 ni GitHub.
 
 ## Accesibilidad
 

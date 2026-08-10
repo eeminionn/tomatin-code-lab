@@ -292,6 +292,7 @@ export function Component() {
     recordHint,
     recordActivity,
     backendMode,
+    frontendOnly,
   } = useClassroom();
   const assignmentId = searchParams.get("assignment") ?? undefined;
   const linkedAttemptId = searchParams.get("attempt") ?? undefined;
@@ -541,6 +542,12 @@ export function Component() {
 
   useEffect(() => {
     if (!canViewSolution || briefTab !== "solution" || !mission) return;
+    if (frontendOnly) {
+      setSolution(null);
+      setSolutionError("Las soluciones privadas requieren el backend oficial.");
+      setSolutionLoading(false);
+      return;
+    }
     let active = true;
     setSolutionLoading(true);
     setSolutionError("");
@@ -574,7 +581,7 @@ export function Component() {
     return () => {
       active = false;
     };
-  }, [backendMode, briefTab, canViewSolution, language, mission]);
+  }, [backendMode, briefTab, canViewSolution, frontendOnly, language, mission]);
 
   useEffect(() => {
     if (!canViewSolution && briefTab === "solution") {
@@ -631,7 +638,11 @@ export function Component() {
   );
 
   async function execute(kind: AttemptKind) {
-    if (isStudentPreview || (kind === "submit" && submitNeedsRun)) return;
+    if (
+      isStudentPreview ||
+      (kind === "submit" && submitNeedsRun) ||
+      (frontendOnly && (kind === "submit" || language === "cpp"))
+    ) return;
     setRunning(kind);
     setResult(null);
     setMobilePane("results");
@@ -1228,7 +1239,16 @@ export function Component() {
             <button
               className="button secondary"
               type="button"
-              disabled={Boolean(running) || isStudentPreview}
+              disabled={
+                Boolean(running) ||
+                isStudentPreview ||
+                (frontendOnly && language === "cpp")
+              }
+              title={
+                frontendOnly && language === "cpp"
+                  ? "C++ requiere el ejecutor remoto y está desactivado en este sandbox"
+                  : undefined
+              }
               onClick={() => void execute("run")}
             >
               {running === "run" ? (
@@ -1241,9 +1261,16 @@ export function Component() {
             <button
               className="button primary"
               type="button"
-              disabled={Boolean(running) || isStudentPreview || submitNeedsRun}
+              disabled={
+                Boolean(running) ||
+                isStudentPreview ||
+                submitNeedsRun ||
+                frontendOnly
+              }
               title={
-                submitNeedsRun
+                frontendOnly
+                  ? "Las entregas requieren el backend oficial"
+                  : submitNeedsRun
                   ? "Ejecuta este código antes de entregarlo"
                   : undefined
               }

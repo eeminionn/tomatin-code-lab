@@ -14,6 +14,7 @@ export function Component() {
   const {
     viewProfile,
     isStudentPreview,
+    frontendOnly,
     snapshot,
     markNotificationRead,
     dismissNotification,
@@ -157,6 +158,7 @@ export function Component() {
                       className="icon-button"
                       type="button"
                       title="Marcar como leído"
+                      disabled={frontendOnly}
                       aria-label={`Marcar ${entry.title} como leído`}
                       onClick={() => markNotificationRead(entry.id)}
                     >
@@ -167,6 +169,7 @@ export function Component() {
                     className="icon-button feedback-delete"
                     type="button"
                     title="Eliminar de Feedback"
+                    disabled={frontendOnly}
                     aria-label={`Eliminar feedback ${entry.title}`}
                     onClick={() => dismissNotification(entry.id)}
                   >

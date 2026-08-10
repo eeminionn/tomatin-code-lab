@@ -18,15 +18,16 @@ interface RepositoryInfo {
 }
 
 export function Component() {
-  const { backendMode } = useClassroom();
+  const { backendMode, frontendOnly } = useClassroom();
   const [repository, setRepository] = useState<RepositoryInfo | null>(null);
 
   useEffect(() => {
+    if (frontendOnly) return;
     fetch("https://api.github.com/repos/eeminionn/tomatin-code-lab")
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then(setRepository)
       .catch(() => setRepository(null));
-  }, []);
+  }, [frontendOnly]);
 
   return (
     <main className="page about-page">
@@ -55,10 +56,16 @@ export function Component() {
           <Radio aria-hidden="true" />
           <span>
             <strong>
-              {backendMode === "supabase" ? "Aula conectada" : "Beta en modo demo"}
+              {frontendOnly
+                ? "Sandbox de frontend"
+                : backendMode === "supabase"
+                  ? "Aula conectada"
+                  : "Beta en modo demo"}
             </strong>
             <small>
-              {backendMode === "supabase"
+              {frontendOnly
+                ? "Sin conexiones a servicios externos"
+                : backendMode === "supabase"
                 ? "Datos sincronizados con Supabase"
                 : "Los datos se guardan solo en este navegador"}
             </small>

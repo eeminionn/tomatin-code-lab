@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isFrontendOnly } from "@/config/runtime";
 import type { StudentRepository } from "@/types";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
@@ -6,7 +7,7 @@ const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const PENDING_INVITATION_KEY = "tomatin.v2.pending-invitation";
 
 export const supabase: SupabaseClient | null =
-  url && publishableKey
+  !isFrontendOnly && url && publishableKey
     ? createClient(url, publishableKey, {
         auth: {
           persistSession: true,

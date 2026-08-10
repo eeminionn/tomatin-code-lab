@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   TriangleAlert,
   Trophy,
+  Unplug,
   UserRound,
   Users,
   X,
@@ -53,6 +54,7 @@ export function AppShell() {
     error,
     clearError,
     backendMode,
+    frontendOnly,
     logout,
     startStudentPreview,
     stopStudentPreview,
@@ -77,7 +79,7 @@ export function AppShell() {
     snapshot?.profiles.filter((entry) => entry.role === "student") ?? [];
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${frontendOnly ? "frontend-only" : ""}`}>
       <aside
         className={`sidebar ${sidebarOpen ? "is-open" : ""}`}
         aria-label="Navegación principal"
@@ -165,9 +167,19 @@ export function AppShell() {
           <div className="system-status">
             <span className={`system-dot ${backendMode}`} aria-hidden="true" />
             <span>
-              <strong>{backendMode === "supabase" ? "Aula conectada" : "Modo demo"}</strong>
+              <strong>
+                {frontendOnly
+                  ? "Sandbox frontend"
+                  : backendMode === "supabase"
+                    ? "Aula conectada"
+                    : "Modo demo"}
+              </strong>
               <small>
-                {backendMode === "supabase" ? "Supabase + Judge0" : "Datos en este navegador"}
+                {frontendOnly
+                  ? "Backend desactivado"
+                  : backendMode === "supabase"
+                    ? "Supabase + Judge0"
+                    : "Datos en este navegador"}
               </small>
             </span>
           </div>
@@ -332,6 +344,16 @@ export function AppShell() {
             </div>
           </div>
         </header>
+        {frontendOnly ? (
+          <div className="frontend-only-banner" role="status">
+            <Unplug aria-hidden="true" />
+            <span>
+              <strong>Vista para contribuir al frontend</strong>
+              Supabase, GitHub, entregas y acciones administrativas están
+              desactivados.
+            </span>
+          </div>
+        ) : null}
         {error ? (
           <div className="app-error" role="alert">
             <TriangleAlert aria-hidden="true" />

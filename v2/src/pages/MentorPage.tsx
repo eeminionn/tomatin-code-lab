@@ -743,7 +743,7 @@ function StudentDirectory({
 }
 
 function ReviewQueue() {
-  const { profile, snapshot, reviewAttempt } = useClassroom();
+  const { profile, snapshot, frontendOnly, reviewAttempt } = useClassroom();
   const { getMissionById } = useCatalog();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
@@ -802,6 +802,7 @@ function ReviewQueue() {
     visibleQueue[0];
 
   async function decide(decision: "approved" | "changes_requested") {
+    if (frontendOnly) return;
     if (!selected?.attempt) return;
     const fallback =
       decision === "approved"
@@ -1071,7 +1072,7 @@ function ReviewQueue() {
               <button
                 className="button danger"
                 type="button"
-                disabled={reviewBusy}
+                disabled={reviewBusy || frontendOnly}
                 onClick={() => void decide("changes_requested")}
               >
                 <XCircle aria-hidden="true" />
@@ -1080,7 +1081,7 @@ function ReviewQueue() {
               <button
                 className="button primary"
                 type="button"
-                disabled={reviewBusy}
+                disabled={reviewBusy || frontendOnly}
                 onClick={() => void decide("approved")}
               >
                 <Check aria-hidden="true" />
@@ -1098,7 +1099,7 @@ function ReviewQueue() {
 }
 
 function AssignmentsManager() {
-  const { snapshot, createAssignment } = useClassroom();
+  const { snapshot, frontendOnly, createAssignment } = useClassroom();
   const { missions, getMissionById } = useCatalog();
   const [creating, setCreating] = useState(false);
   const students = snapshot?.profiles.filter((entry) => entry.role === "student") ?? [];
@@ -1112,6 +1113,7 @@ function AssignmentsManager() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (frontendOnly) return;
     const data = new FormData(event.currentTarget);
     const missionId = String(data.get("missionId"));
     const selectedMission = getMissionById(missionId);
@@ -1240,8 +1242,11 @@ function AssignmentsManager() {
             <button
               className="button primary"
               disabled={
-                languageSelection.length === 0 || studentSelection.length === 0
+                frontendOnly ||
+                languageSelection.length === 0 ||
+                studentSelection.length === 0
               }
+              title={frontendOnly ? "Publicar requiere el backend oficial" : undefined}
             >
               <Send aria-hidden="true" />
               Publicar tarea
@@ -1570,7 +1575,7 @@ function ServerDraftEditor({
 }
 
 function MissionManager() {
-  const { backendMode } = useClassroom();
+  const { backendMode, frontendOnly } = useClassroom();
   const { missions, getMissionById, refreshCatalog } = useCatalog();
   const [drafts, setDrafts] = useState<LocalMissionDraft[]>(readMissionDrafts);
   const [serverDrafts, setServerDrafts] = useState<MissionAdminDraft[]>([]);
@@ -1595,6 +1600,7 @@ function MissionManager() {
 
   async function createDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (frontendOnly) return;
     const data = new FormData(event.currentTarget);
     const sourceMissionId = String(data.get("sourceMissionId"));
     const content = {
@@ -1648,6 +1654,7 @@ function MissionManager() {
   }
 
   async function duplicateMission(id: string) {
+    if (frontendOnly) return;
     const source = getMissionById(id);
     if (!source) return;
     if (backendMode === "supabase") {
@@ -1692,6 +1699,7 @@ function MissionManager() {
   }
 
   async function publishDraft(id: string) {
+    if (frontendOnly) return;
     if (backendMode === "supabase") {
       setBusyId(id);
       setMessage("Validando JavaScript, Python y C++...");
@@ -1813,7 +1821,11 @@ function MissionManager() {
           <div className="form-actions form-span-2">
             <span>Se creará como borrador sin publicar.</span>
             <button className="button ghost" type="button" onClick={() => setCreating(false)}>Cancelar</button>
-            <button className="button primary" disabled={busyId === "create"}>
+            <button
+              className="button primary"
+              disabled={frontendOnly || busyId === "create"}
+              title={frontendOnly ? "Guardar requiere el backend oficial" : undefined}
+            >
               <Save aria-hidden="true" /> Guardar borrador
             </button>
           </div>
@@ -1862,6 +1874,7 @@ function MissionManager() {
                   type="button"
                   disabled={
                     !ready ||
+                    frontendOnly ||
                     busyId === draft.id ||
                     draft.status === "published"
                   }
@@ -1901,7 +1914,7 @@ function MissionManager() {
                 className="icon-button"
                 type="button"
                 aria-label={`Duplicar ${mission.title}`}
-                disabled={busyId === mission.id}
+                disabled={frontendOnly || busyId === mission.id}
                 onClick={() => void duplicateMission(mission.id)}
               >
                 <Copy aria-hidden="true" />
@@ -1920,6 +1933,7 @@ function MissionManager() {
 function InvitationsManager() {
   const {
     snapshot,
+    frontendOnly,
     createInvitation,
     updateInvitation,
     getInvitationToken,
@@ -1970,6 +1984,7 @@ function InvitationsManager() {
 
   async function saveInvitation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (frontendOnly) return;
     if (!editingId) return;
     setBusyId(editingId);
     setMessage("");
@@ -2122,7 +2137,8 @@ function InvitationsManager() {
             <button
               className="button primary"
               type="submit"
-              disabled={busyId === editingId}
+              disabled={frontendOnly || busyId === editingId}
+              title={frontendOnly ? "Crear invitaciones requiere el backend oficial" : undefined}
             >
               {busyId === editingId ? (
                 <LoaderCircle className="spin" aria-hidden="true" />
@@ -2178,7 +2194,9 @@ function InvitationsManager() {
                 <button
                   className="button secondary"
                   type="button"
-                  disabled={!active || busyId === invitation.id}
+                  disabled={
+                    frontendOnly || !active || busyId === invitation.id
+                  }
                   onClick={() => void copyInvitation(invitation)}
                 >
                   {busyId === invitation.id ? (

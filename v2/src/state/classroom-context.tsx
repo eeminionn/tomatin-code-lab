@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { frontendOnlyMessage, isFrontendOnly } from "@/config/runtime";
 import { createDemoSnapshot, demoOwner, demoStudent } from "@/data/demo-classroom";
 import { getMissionById } from "@/data/missions";
 import type {
@@ -48,6 +49,7 @@ interface ClassroomContextValue {
   error: string | null;
   clearError: () => void;
   backendMode: "supabase" | "demo";
+  frontendOnly: boolean;
   loginDemo: (role: "student" | "mentor") => void;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -348,6 +350,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   const isStudentPreview = Boolean(previewProfile);
 
   const persistDemo = useCallback((next: ClassroomSnapshot) => {
+    if (isFrontendOnly) return;
     setSnapshot(next);
     localStorage.setItem(DEMO_SNAPSHOT_KEY, JSON.stringify(next));
   }, []);
@@ -404,7 +407,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       }
 
       const role = localStorage.getItem(DEMO_SESSION_KEY);
-      setSnapshot(readDemoSnapshot());
+      setSnapshot(isFrontendOnly ? createDemoSnapshot() : readDemoSnapshot());
       setProfile(
         role === "mentor" ? demoOwner : role === "student" ? demoStudent : null,
       );
@@ -505,7 +508,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(DEMO_SESSION_KEY, role);
     setPreviewStudentId(null);
     setProfile(role === "mentor" ? demoOwner : demoStudent);
-    setSnapshot(readDemoSnapshot());
+    setSnapshot(isFrontendOnly ? createDemoSnapshot() : readDemoSnapshot());
   }, []);
 
   const logout = useCallback(async () => {
@@ -514,11 +517,14 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     provisionRequested.current.clear();
     setPreviewStudentId(null);
     setProfile(null);
-    if (!supabase) setSnapshot(readDemoSnapshot());
+    if (!supabase) {
+      setSnapshot(isFrontendOnly ? createDemoSnapshot() : readDemoSnapshot());
+    }
   }, []);
 
   const recordAttempt = useCallback(
     (attempt: Attempt) => {
+      if (isFrontendOnly) return;
       if (previewStudentId || !snapshot || !profile) return;
       if (supabase) {
         const isLocalRun =
@@ -598,6 +604,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       comment: string,
       details?: Pick<Review, "inlineComments" | "criteria">,
     ) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot || !profile) return;
       if (supabase) {
         const { error: reviewError } = await supabase.rpc(
@@ -664,6 +671,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
   const createAssignment = useCallback(
     (input: CreateAssignmentInput) => {
+      if (isFrontendOnly) return;
       if (previewStudentId || !snapshot) return;
       if (supabase) {
         void supabase
@@ -716,6 +724,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
   const createInvitation = useCallback(
     async (input: InvitationInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot) return;
       if (supabase) {
         const { data, error: invitationError } = await supabase.rpc(
@@ -776,6 +785,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
   const updateInvitation = useCallback(
     async (id: string, input: InvitationInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot) return;
       if (supabase) {
         const { error: invitationError } = await supabase.rpc(
@@ -817,6 +827,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
   const getInvitationToken = useCallback(
     async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       const invitation = snapshot?.invitations.find((entry) => entry.id === id);
       if (!invitation) throw new Error("Invitación no encontrada.");
       if (invitation.token) return invitation.token;
@@ -857,6 +868,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       displayName: string;
       avatarConfig: Profile["avatarConfig"];
     }) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot || !profile) return;
       const displayName = input.displayName.trim();
       if (!displayName || displayName.length > 80) {
@@ -895,6 +907,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
   const markNotificationRead = useCallback(
     (id: string) => {
+      if (isFrontendOnly) return;
       if (previewStudentId || !snapshot) return;
       if (supabase) {
         void supabase
@@ -924,6 +937,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
   const dismissNotification = useCallback(
     (id: string) => {
+      if (isFrontendOnly) return;
       if (previewStudentId || !snapshot) return;
       const dismissedAt = new Date().toISOString();
       if (supabase) {
@@ -952,6 +966,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
   const recordHint = useCallback(
     (assignmentId: string, count: number) => {
+      if (isFrontendOnly) return;
       if (previewStudentId || !snapshot || !profile) return;
       if (supabase) {
         void supabase
@@ -990,6 +1005,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       language: Language,
       event: ActivityKind,
     ) => {
+      if (isFrontendOnly) return;
       if (previewStudentId || !snapshot || !profile) return;
       if (supabase) {
         void supabase
@@ -1051,6 +1067,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       error,
       clearError,
       backendMode,
+      frontendOnly: isFrontendOnly,
       loginDemo,
       logout,
       refresh,

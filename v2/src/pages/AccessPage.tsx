@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Github, LoaderCircle, TerminalSquare } from "lucide-react";
 import { useClassroom } from "@/state/classroom-context";
+import { isFrontendOnly } from "@/config/runtime";
 import {
   isSupabaseConfigured,
   rememberInvitationFromLocation,
@@ -80,8 +81,9 @@ export function AccessPage() {
               <div className="demo-notice">
                 <strong>Vista beta</strong>
                 <span>
-                  El backend aún no está conectado. Puedes recorrer todos los
-                  flujos con datos locales de demostración.
+                  {isFrontendOnly
+                    ? "Sandbox local de Aula 3.0. El backend está desactivado y los datos son de demostración."
+                    : "El backend aún no está conectado. Puedes recorrer todos los flujos con datos locales de demostración."}
                 </span>
               </div>
               <button
@@ -89,14 +91,14 @@ export function AccessPage() {
                 type="button"
                 onClick={() => loginDemo("student")}
               >
-                Entrar como estudiante
+                {isFrontendOnly ? "Ver interfaz de estudiante" : "Entrar como estudiante"}
               </button>
               <button
                 className="button secondary wide"
                 type="button"
                 onClick={() => loginDemo("mentor")}
               >
-                Entrar como eeminionn
+                {isFrontendOnly ? "Ver panel del mentor" : "Entrar como eeminionn"}
               </button>
             </>
           )}

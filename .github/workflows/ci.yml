@@ -10,6 +10,30 @@ permissions:
   contents: read
 
 jobs:
+  fork-scope:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Reject backend changes from forks
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          blocked=0
+          while IFS= read -r path; do
+            case "$path" in
+              supabase/*|.github/workflows/*|scripts/*)
+                echo "::error file=$path::Fork contributions are frontend-only."
+                blocked=1
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE_SHA"...HEAD)
+          exit "$blocked"
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -45,7 +69,11 @@ jobs:
       - name: Run browser journeys
         run: pnpm test:e2e
 
+      - name: Verify frontend-only sandbox
+        run: pnpm test:e2e:frontend
+
   database-test:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:

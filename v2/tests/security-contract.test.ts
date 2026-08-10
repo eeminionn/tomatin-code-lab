@@ -172,4 +172,39 @@ describe("security contracts", () => {
     expect(cors).toContain('Deno.env.get("ALLOWED_ORIGINS")');
     expect(cors).not.toContain('"Access-Control-Allow-Origin": "*"');
   });
+
+  it("keeps frontend-only forks disconnected from production services", () => {
+    const runtime = readFileSync(
+      resolve("v2/src/config/runtime.ts"),
+      "utf8",
+    );
+    const supabaseClient = readFileSync(
+      resolve("v2/src/services/supabase.ts"),
+      "utf8",
+    );
+    const runner = readFileSync(
+      resolve("v2/src/services/runner.ts"),
+      "utf8",
+    );
+    const pagesWorkflow = readFileSync(
+      resolve(".github/workflows/pages.yml"),
+      "utf8",
+    );
+    const supabaseWorkflow = readFileSync(
+      resolve(".github/workflows/supabase.yml"),
+      "utf8",
+    );
+
+    expect(runtime).toContain('VITE_FRONTEND_ONLY === "true"');
+    expect(supabaseClient).toContain("!isFrontendOnly && url && publishableKey");
+    expect(runner).toContain(
+      'request.kind === "submit" || request.language === "cpp"',
+    );
+    expect(pagesWorkflow).toContain(
+      "github.repository == 'eeminionn/tomatin-code-lab'",
+    );
+    expect(supabaseWorkflow).toContain(
+      "github.repository == 'eeminionn/tomatin-code-lab'",
+    );
+  });
 });

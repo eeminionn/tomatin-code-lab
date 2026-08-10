@@ -6,6 +6,9 @@
   "description": "Aula multilenguaje para practicar Programacion I y II.",
   "scripts": {
     "dev": "vite --config v2/vite.config.ts",
+    "frontend": "pnpm frontend:build && VITE_FRONTEND_ONLY=true VITE_BASE_PATH=/ vite preview --config v2/vite.config.ts --host 127.0.0.1 --port 4173 --open /",
+    "frontend:dev": "VITE_FRONTEND_ONLY=true VITE_BASE_PATH=/ vite --config v2/vite.config.ts --host 127.0.0.1 --port 4173 --open /",
+    "frontend:build": "VITE_FRONTEND_ONLY=true VITE_BASE_PATH=/ vite build --config v2/vite.config.ts",
     "prebuild": "pnpm seed:generate",
     "build": "vite build --config v2/vite.config.ts",
     "typecheck": "tsc --project v2/tsconfig.json --noEmit",
@@ -14,8 +17,10 @@
     "test:legacy": "node --test tests/*.test.js",
     "test:v2": "vitest run --config v2/vitest.config.ts",
     "test:e2e": "playwright test --config v2/playwright.config.ts",
+    "test:e2e:frontend": "VITE_FRONTEND_ONLY=true playwright test v2/e2e/frontend-only.spec.ts --config v2/playwright.config.ts",
     "seed:generate": "tsx --tsconfig v2/tsconfig.json scripts/generate-supabase-seed.ts",
     "check:legacy": "node --check js/app.js && node --check js/auth.js && node --check js/github.js && node --check js/missions.js && node --check js/runner.js && node --check js/store.js && node --check sw.js && node --test tests/*.test.js",
+    "check:frontend": "pnpm typecheck && pnpm test:v2 && pnpm frontend:build",
     "check": "pnpm check:legacy && node --check v2/public/sw.js && pnpm typecheck && pnpm typecheck:edge && pnpm test:v2 && pnpm build"
   },
   "engines": {

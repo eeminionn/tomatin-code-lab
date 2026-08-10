@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   deploy:
+    if: github.repository == 'eeminionn/tomatin-code-lab'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
