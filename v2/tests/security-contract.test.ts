@@ -207,4 +207,19 @@ describe("security contracts", () => {
       "github.repository == 'eeminionn/tomatin-code-lab'",
     );
   });
+
+  it("runs frontend-only E2E through the documented root entrypoint", () => {
+    const playwrightConfig = readFileSync(
+      resolve("v2/playwright.config.ts"),
+      "utf8",
+    );
+
+    expect(playwrightConfig).toContain(
+      'const frontendOnly = process.env.VITE_FRONTEND_ONLY === "true"',
+    );
+    expect(playwrightConfig).toContain(
+      'frontendOnly ? "pnpm frontend:dev" : "pnpm dev"',
+    );
+    expect(playwrightConfig).toContain('"http://127.0.0.1:4173/"');
+  });
 });

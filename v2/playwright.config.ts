@@ -1,6 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 import { fileURLToPath, URL } from "node:url";
 
+const frontendOnly = process.env.VITE_FRONTEND_ONLY === "true";
+const serverUrl = frontendOnly
+  ? "http://127.0.0.1:4173/"
+  : "http://127.0.0.1:4173/tomatin-code-lab/beta/";
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 45_000,
@@ -10,7 +15,7 @@ export default defineConfig({
   retries: 1,
   reporter: [["list"], ["html", { outputFolder: "../playwright-report", open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:4173/tomatin-code-lab/beta/",
+    baseURL: serverUrl,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -27,9 +32,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm dev",
+    command: frontendOnly ? "pnpm frontend:dev" : "pnpm dev",
     cwd: fileURLToPath(new URL("..", import.meta.url)),
-    url: "http://127.0.0.1:4173/tomatin-code-lab/beta/",
+    url: serverUrl,
     reuseExistingServer: true,
     timeout: 120_000,
   },
