@@ -149,4 +149,27 @@ describe("security contracts", () => {
     expect(repositoryService).toContain("attempt < 3");
     expect(repositoryService).toContain("error.status !== 409");
   });
+
+  it("keeps fork ownership and allowed origins configurable on the server", () => {
+    const ownerConfiguration = readFileSync(
+      resolve("supabase/migrations/202608090001_configure_owner.sql"),
+      "utf8",
+    );
+    const cors = readFileSync(
+      resolve("supabase/functions/_shared/cors.ts"),
+      "utf8",
+    );
+
+    expect(ownerConfiguration).toContain("private.app_configuration");
+    expect(ownerConfiguration).toContain("owner_github_id bigint not null");
+    expect(ownerConfiguration).toContain(
+      "revoke all on private.app_configuration from public, anon, authenticated",
+    );
+    expect(ownerConfiguration).toContain(
+      "when user_github_id = configured_owner_github_id then 'owner'",
+    );
+    expect(ownerConfiguration).not.toContain("lower(coalesce(user_login");
+    expect(cors).toContain('Deno.env.get("ALLOWED_ORIGINS")');
+    expect(cors).not.toContain('"Access-Control-Allow-Origin": "*"');
+  });
 });

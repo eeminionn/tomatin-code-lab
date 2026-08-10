@@ -50,6 +50,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/beta/
         run: |
           pnpm install --frozen-lockfile
           pnpm build
@@ -83,6 +84,7 @@ jobs:
       - name: Smoke test beta
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
           beta_url="${PAGE_URL%/}/beta/"
           for attempt in {1..12}; do
@@ -93,7 +95,7 @@ jobs:
               --output beta.html \
               "$beta_url"
             if grep -Fq "<title>Tomatin Code Lab 3.0</title>" beta.html \
-              && grep -Fq "/tomatin-code-lab/beta/assets/" beta.html; then
+              && grep -Fq "/$REPOSITORY_NAME/beta/assets/" beta.html; then
               exit 0
             fi
             echo "Waiting for GitHub Pages propagation ($attempt/12)."

@@ -19,7 +19,7 @@
     "check": "pnpm check:legacy && node --check v2/public/sw.js && pnpm typecheck && pnpm typecheck:edge && pnpm test:v2 && pnpm build"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "license": "MIT",
   "packageManager": "pnpm@11.9.0",

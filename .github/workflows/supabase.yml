@@ -26,6 +26,7 @@ jobs:
       SUBMISSION_REPOSITORY_TOKEN: ${{ secrets.SUBMISSION_REPOSITORY_TOKEN }}
       SUBMISSION_REPOSITORY_OWNER: ${{ vars.SUBMISSION_REPOSITORY_OWNER }}
       SUBMISSION_REPOSITORY_NAME: ${{ vars.SUBMISSION_REPOSITORY_NAME }}
+      APP_ORIGIN: ${{ vars.APP_ORIGIN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -89,11 +90,13 @@ jobs:
         run: |
           owner="${SUBMISSION_REPOSITORY_OWNER:-eeminionn}"
           repository="${SUBMISSION_REPOSITORY_NAME:-tomatin-code-lab-resoluciones}"
+          allowed_origins="${APP_ORIGIN:-https://${GITHUB_REPOSITORY_OWNER}.github.io}"
           supabase secrets set \
             --project-ref "$PROJECT_ID" \
             GITHUB_REPOSITORY_TOKEN="$SUBMISSION_REPOSITORY_TOKEN" \
             GITHUB_REPOSITORY_OWNER="$owner" \
-            GITHUB_REPOSITORY_NAME="$repository"
+            GITHUB_REPOSITORY_NAME="$repository" \
+            ALLOWED_ORIGINS="$allowed_origins"
 
       - name: Deploy Edge Functions
         run: supabase functions deploy --project-ref "$PROJECT_ID"

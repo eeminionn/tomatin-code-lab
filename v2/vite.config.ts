@@ -2,10 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 
+const basePath = process.env.VITE_BASE_PATH ?? "/tomatin-code-lab/beta/";
+
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   envDir: fileURLToPath(new URL("..", import.meta.url)),
-  base: "/tomatin-code-lab/beta/",
+  base: basePath,
   plugins: [react()],
   resolve: {
     alias: {

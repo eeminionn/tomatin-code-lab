@@ -1,114 +1,224 @@
 # Tomatin Code Lab
 
-Aula multilenguaje, actualmente en desarrollo, para practicar Programación I y
-II con veinte misiones originales.
+Tomatin Code Lab es un aula multilenguaje, todavía en desarrollo, para enseñar
+y practicar Programación I y II mediante veinte misiones originales en
+JavaScript, Python y C++. Reúne enunciado, editor, ejecución, entregas,
+feedback, progreso y herramientas para mentor en una misma aplicación.
 
 - **Versión estable:** [eeminionn.github.io/tomatin-code-lab](https://eeminionn.github.io/tomatin-code-lab/)
 - **Aula 3.0 beta:** [eeminionn.github.io/tomatin-code-lab/beta](https://eeminionn.github.io/tomatin-code-lab/beta/)
+- **Estado:** en desarrollo; no es un producto terminado.
 
-> Proyecto independiente. No está afiliado ni respaldado por MIT. El temario
-> toma como referencia conceptos habituales de cursos universitarios; los
-> enunciados y recursos de esta plataforma son originales.
+> Proyecto independiente. No está afiliado ni respaldado por MIT. Los
+> enunciados y recursos educativos de esta plataforma son originales.
 
-## Aula 3.0
+## Quiero contribuir
 
-- React, TypeScript, Vite, rutas con hash y Monaco Editor cargado bajo demanda.
-- Veinte misiones con variantes reales de JavaScript, Python y C++.
-- Misiones guiadas con contexto, meta, contrato, ejemplos explicados, pasos,
-  restricciones, criterios de éxito y tres pistas progresivas.
-- Enunciado, editor, consola, tests, feedback e historial versionado en un
-  mismo workspace.
-- Borradores separados por lenguaje, guardados en IndexedDB y sincronizados al
-  backend cuando está disponible.
-- JavaScript en Web Worker, Python con Pyodide y ejecución remota con Judge0.
-- Supabase Auth exclusivamente con GitHub, Postgres, Realtime, RLS,
-  invitaciones configurables y roles `owner`, `mentor` y `student`.
-- Asignaciones por estudiante, revisión, reentrega, XP idempotente y ranking
-  basado únicamente en tareas aprobadas.
-- Un único repositorio privado de resoluciones bajo `eeminionn`, con carpetas
-  aisladas por estudiante y actualización automática al entregar.
-- Panel del mentor con métricas reales, matriz filtrable, actividad reciente,
-  detalle por estudiante, historial de código guardado y vista estudiante de
-  solo lectura.
-- Revisión con comentarios por línea, criterios reutilizables y enlaces
-  directos desde Feedback a la entrega y versión revisada.
-- Soluciones cargadas bajo demanda solo para `owner` y `mentor`; nunca se
-  incluyen en el catálogo público ni aparecen en vista estudiante.
+Para corregir código, diseño, textos, tests o misiones **no necesitas crear un
+backend, configurar OAuth ni publicar tu fork**. Sin variables de entorno, la
+aplicación abre un aula demo local con diez estudiantes ficticios.
 
-Las soluciones de referencia y los tests ocultos solo aparecen en
-`private.mission_variants_secure`. El catálogo que Vite entrega al navegador se
-genera por separado y no contiene esos campos.
+Requisitos: [Git](https://git-scm.com/), Node.js 22 o superior y
+[pnpm 11](https://pnpm.io/installation).
 
-## Desarrollo local
-
-Requiere Node.js 20 o superior y pnpm 11:
+1. Haz clic en **Fork** en GitHub.
+2. Clona tu fork y conserva el repositorio original como `upstream`:
 
 ```bash
+git clone https://github.com/TU_USUARIO/tomatin-code-lab.git
+cd tomatin-code-lab
+git remote add upstream https://github.com/eeminionn/tomatin-code-lab.git
+```
+
+3. Instala las dependencias y abre el modo demo:
+
+```bash
+corepack enable
 pnpm install
 pnpm dev
 ```
 
-La beta 3.0 queda disponible en
-`http://127.0.0.1:4173/tomatin-code-lab/beta/`. Sin variables de entorno abre
-un aula demostrativa local para diez estudiantes.
+La aplicación queda en
+`http://127.0.0.1:4173/tomatin-code-lab/beta/`. En la pantalla de acceso puedes
+entrar como mentor o estudiante demo; nada de ese modo se escribe en Supabase
+ni en los repositorios oficiales.
 
-## Activar Supabase
-
-1. Crea un proyecto Supabase y configura GitHub como proveedor OAuth.
-2. En la OAuth App de GitHub, usa como `Authorization callback URL` la URL de
-   callback que muestra Supabase. Para este proyecto es
-   `https://vowopvcxrzpuudtsraik.supabase.co/auth/v1/callback`.
-3. En Supabase, bajo `Authentication > URL Configuration`, usa
-   `https://eeminionn.github.io/tomatin-code-lab/beta/` como `Site URL` y añade
-   esa misma URL exacta a `Redirect URLs`.
-4. Copia `.env.example` a `.env.local` y completa:
+4. Crea una rama, realiza un cambio enfocado y verifica:
 
 ```bash
-VITE_SUPABASE_URL=https://PROJECT_REF.supabase.co
+git switch -c feature/descripcion-corta
+pnpm check
+```
+
+5. Sube la rama a tu fork y abre un pull request hacia `eeminionn/main`:
+
+```bash
+git push -u origin feature/descripcion-corta
+```
+
+Antes de trabajar, revisa [CONTRIBUTING.md](CONTRIBUTING.md), el
+[código de conducta](CODE_OF_CONDUCT.md) y los issues abiertos. Los cambios de
+base de datos deben agregarse como una migración nueva; no modifiques una
+migración que ya se encuentre publicada.
+
+## Qué recibe un fork
+
+Un fork copia el historial y todos los archivos versionados: frontend,
+migraciones, Edge Functions, tests, workflows y `.env.example`. No copia la
+infraestructura ni los datos de la instalación oficial.
+
+| Sí queda en el fork | No se copia al fork |
+| --- | --- |
+| Código y archivos rastreados por Git | Usuarios, clases, entregas o datos de Supabase |
+| Migraciones y políticas RLS | Secrets y variables configurados en GitHub Actions |
+| `.env.example` con marcadores | `.env`, `.env.local` y otros archivos ignorados |
+| Workflows de despliegue | GitHub OAuth App y su client secret |
+| Tests y catálogo público | Repositorio privado de resoluciones |
+
+`.gitignore` no oculta archivos que ya estaban versionados: solo evita que Git
+agregue archivos locales coincidentes. En este proyecto excluye dependencias,
+builds, reportes, cobertura y todos los `.env*`, excepto `.env.example`. Por
+eso quien haga fork debe crear sus propias variables y secretos.
+
+## Publicar un fork completo
+
+Esta sección es opcional. Úsala solo si quieres operar una instalación
+independiente con usuarios reales, base de datos y entregas. La instalación no
+compartirá cuentas ni información con Tomatin Code Lab oficial.
+
+### 1. Personaliza el propietario
+
+No existe una contraseña de administrador dentro del frontend. El rol `owner`
+se entrega únicamente a la cuenta cuyo **GitHub ID numérico** coincida con la
+configuración privada del backend.
+
+Antes del primer despliegue de Supabase:
+
+1. Abre `https://api.github.com/users/TU_USUARIO` y copia el número de `id`.
+2. En
+   [`supabase/migrations/202608090001_configure_owner.sql`](supabase/migrations/202608090001_configure_owner.sql),
+   reemplaza `109454414` por ese número.
+3. No reemplaces ese valor por el nombre de usuario: el ID numérico no cambia
+   cuando una cuenta cambia de nombre.
+
+Esa migración debe configurarse antes de crear el primer usuario. Si ya
+desplegaste y alguien inició sesión, crea una migración nueva para cambiar
+`private.app_configuration`; no edites el historial ya aplicado.
+
+Los textos `eeminionn` que aparecen en `v2/src/data/demo-classroom.ts` son solo
+datos de demostración. Puedes personalizarlos, pero no conceden permisos.
+
+### 2. Crea el backend Supabase
+
+1. Crea un proyecto nuevo en [Supabase](https://supabase.com/dashboard).
+2. Guarda estos datos:
+   - **Project ID:** aparece en la URL y en `Project Settings`.
+   - **Database password:** la contraseña elegida al crear el proyecto.
+   - **Project URL** y **Publishable key:** aparecen en el diálogo `Connect`.
+   - **Access token personal:** se crea en la configuración de tu cuenta de
+     Supabase, no dentro del proyecto.
+3. Copia `.env.example` a `.env.local` y completa solo las variables públicas
+   del navegador:
+
+```bash
+VITE_SUPABASE_URL=https://TU_PROJECT_ID.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-5. En GitHub, crea los secrets `SUPABASE_ACCESS_TOKEN`,
-   `SUPABASE_DB_PASSWORD` y `SUPABASE_PROJECT_ID`.
-6. En GitHub Actions, crea las variables `VITE_SUPABASE_URL` y
-   `VITE_SUPABASE_PUBLISHABLE_KEY`.
-7. Ejecuta manualmente el workflow `Deploy Supabase`; desde entonces los
-   cambios en `supabase/` se despliegan al hacer merge a `main`.
+La publishable key está diseñada para el navegador y la seguridad depende de
+RLS. Nunca pongas en un archivo `VITE_*` la database password, access token,
+OAuth client secret, una secret key ni una service-role key.
 
-`SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` son suministradas automáticamente
-a las Edge Functions. `JUDGE0_URL` y `JUDGE0_API_KEY` son opcionales; por
-defecto se usa la instancia pública de Judge0 CE.
+### 3. Configura inicio de sesión con GitHub
 
-## Entregas en GitHub
-
-La aplicación usa un único repositorio privado
-`eeminionn/tomatin-code-lab-resoluciones` y guarda cada entrega en:
+1. En GitHub abre `Settings > Developer settings > OAuth Apps` y crea una OAuth
+   App.
+2. Usa como `Authorization callback URL`:
 
 ```text
-resoluciones/usuario-id-corto/misiones/slug-de-la-mision/solucion.js
-resoluciones/usuario-id-corto/misiones/slug-de-la-mision/solucion.py
-resoluciones/usuario-id-corto/misiones/slug-de-la-mision/solucion.cpp
+https://TU_PROJECT_ID.supabase.co/auth/v1/callback
 ```
 
-Los estudiantes no son colaboradores del repositorio central. GitHub concede
-permisos por repositorio, no por carpeta; invitarlos permitiría que vieran
-respuestas ajenas. El estudiante consulta su código, historial y estado de
-sincronización desde el aula, mientras que el mentor puede abrir la carpeta
-privada desde `/admin`. Los commits usan el correo `noreply` verificado del
-estudiante para conservar la atribución cuando GitHub puede asociarla.
+3. Copia el Client ID y Client Secret al proveedor GitHub de Supabase en
+   `Authentication > Sign In / Providers`.
+4. En `Authentication > URL Configuration` define:
 
-Para activarlo, crea un fine-grained personal access token de GitHub cuyo
-resource owner sea `eeminionn`, con acceso al repositorio central y permisos
-`Administration: Read and write` y `Contents: Read and write`. Guárdalo como
-el secret de Actions `SUBMISSION_REPOSITORY_TOKEN` y vuelve a ejecutar `Deploy
-Supabase`. Las variables opcionales `SUBMISSION_REPOSITORY_OWNER` y
-`SUBMISSION_REPOSITORY_NAME` permiten cambiar el propietario y el nombre; sus
-valores por defecto son `eeminionn` y `tomatin-code-lab-resoluciones`.
+```text
+Site URL: https://TU_USUARIO.github.io/TU_REPOSITORIO/beta/
+Redirect URL: https://TU_USUARIO.github.io/TU_REPOSITORIO/beta/
+```
 
-Los repositorios individuales creados por versiones anteriores no se eliminan
-automáticamente. La siguiente sesión o entrega migra el registro del estudiante
-al almacenamiento central; los repositorios anteriores pueden archivarse
-después de comprobar la copia y definir una política de conservación.
+Para OAuth local, agrega también
+`http://127.0.0.1:4173/tomatin-code-lab/beta/` como Redirect URL. El callback
+de GitHub siempre apunta a Supabase; la Redirect URL de Supabase apunta a la
+aplicación.
+
+### 4. Configura GitHub Actions
+
+En el fork abre `Settings > Secrets and variables > Actions`.
+
+Agrega como **Repository secrets**:
+
+| Nombre | Valor |
+| --- | --- |
+| `SUPABASE_ACCESS_TOKEN` | Access token personal de Supabase |
+| `SUPABASE_DB_PASSWORD` | Contraseña de la base del proyecto |
+| `SUPABASE_PROJECT_ID` | ID o reference del proyecto Supabase |
+| `SUBMISSION_REPOSITORY_TOKEN` | Token del repositorio privado de entregas |
+
+Agrega como **Repository variables**:
+
+| Nombre | Valor |
+| --- | --- |
+| `VITE_SUPABASE_URL` | URL del proyecto Supabase |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Publishable key del proyecto |
+| `APP_ORIGIN` | Opcional: origen de dominio personalizado, sin ruta |
+| `SUBMISSION_REPOSITORY_OWNER` | Tu usuario u organización de GitHub |
+| `SUBMISSION_REPOSITORY_NAME` | Nombre del repositorio privado de entregas |
+
+GitHub no permite crear secrets cuyo nombre empiece con `GITHUB_`; por eso el
+token se llama `SUBMISSION_REPOSITORY_TOKEN` en Actions. El workflow lo instala
+en Supabase con el nombre esperado por las Edge Functions.
+
+### 5. Crea el repositorio de entregas
+
+1. Crea un repositorio **privado**, por ejemplo
+   `TU_USUARIO/tomatin-code-lab-resoluciones`.
+2. Crea un fine-grained personal access token limitado a ese repositorio con
+   `Administration: Read and write` y `Contents: Read and write`.
+3. Guarda el token y los nombres usando las claves del paso anterior.
+
+No uses el repositorio público de la aplicación para respuestas reales: GitHub
+no permite ocultar carpetas concretas dentro de un repositorio público.
+
+### 6. Despliega backend y frontend
+
+1. En `Actions`, ejecuta manualmente **Deploy Supabase**. Este aplica las
+   migraciones, configura secretos y publica las Edge Functions.
+2. En `Settings > Pages`, selecciona **GitHub Actions** como fuente.
+3. Ejecuta **Deploy GitHub Pages**.
+4. Abre `https://TU_USUARIO.github.io/TU_REPOSITORIO/beta/` e inicia sesión con
+   la cuenta cuyo GitHub ID configuraste. Debe entrar al panel de propietario.
+
+La ruta de build se calcula automáticamente a partir del nombre del fork. Para
+un dominio o ruta distinta puedes definir `VITE_BASE_PATH`, incluyendo `/` al
+inicio y al final, por ejemplo `/aula/beta/`.
+
+## Variables y secretos
+
+| Dato | ¿Puede estar en Git? | Ubicación correcta |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` | Sí | `.env.local` o variable de Actions |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Sí | `.env.local` o variable de Actions |
+| GitHub ID numérico del owner | Sí | Migración de configuración |
+| `SUPABASE_ACCESS_TOKEN` | No | Secret de Actions |
+| `SUPABASE_DB_PASSWORD` | No | Secret de Actions |
+| OAuth Client Secret | No | Supabase Auth |
+| `SUBMISSION_REPOSITORY_TOKEN` | No | Secret de Actions |
+| Supabase secret/service-role key | No | Solo backend de Supabase |
+
+Si un secreto se publica por accidente, elimínalo del historial y revócalo de
+inmediato; agregarlo después a `.gitignore` no lo vuelve privado.
 
 ## Verificación
 
@@ -119,25 +229,18 @@ supabase db start
 supabase test db
 ```
 
-La verificación incluye la aplicación estable, tipos, build y las 60 soluciones
-de referencia: JavaScript se ejecuta, Python se interpreta y C++ se compila con
-C++20. Playwright cubre en serie los recorridos de estudiante y mentor; pgTAP
-comprueba las políticas RLS contra una base temporal. El catálogo y la migración SQL se
-regeneran desde una única fuente para evitar que se desalineen.
-
-El procedimiento y los criterios para ampliar el piloto están en
-[`docs/BETA_ROLLOUT.md`](docs/BETA_ROLLOUT.md).
+`pnpm check` valida tipos, build, pruebas unitarias y las 60 soluciones de
+referencia. Playwright cubre los recorridos de estudiante y mentor; pgTAP
+comprueba las políticas RLS contra una base temporal.
 
 ## Estructura
 
-- `v2/`: aplicación React de la beta 3.0.
-- `v2/src/data/programming-*.ts`: fuente privada del catálogo y soluciones.
-- `v2/src/data/missions-public.generated.ts`: catálogo apto para el navegador.
-- `supabase/migrations/`: esquema, RLS y catálogo inicial.
-- `supabase/functions/`: endpoints seguros `run-code`, `submit-code`,
-  `provision-repository` y `mission-admin`.
-- `scripts/generate-supabase-seed.ts`: generador reproducible del catálogo.
-- `index.html`, `styles.css`, `js/`: versión estable, preservada durante el piloto.
+- `v2/`: aplicación React, TypeScript, Vite y Monaco.
+- `v2/src/data/programming-*.ts`: catálogo y soluciones de referencia.
+- `supabase/migrations/`: esquema, configuración, RLS y catálogo inicial.
+- `supabase/functions/`: ejecución, entregas, administración y sincronización.
+- `.github/workflows/`: CI y despliegues reproducibles.
+- `index.html`, `styles.css`, `js/`: versión estable conservada durante el piloto.
 
 ## Licencia
 
