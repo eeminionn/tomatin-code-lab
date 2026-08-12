@@ -49,6 +49,12 @@ test("frontend sandbox keeps the current student UI without backend calls", asyn
   await expect(
     page.getByRole("button", { name: "Guardar perfil" }),
   ).toBeDisabled();
+  await page.getByRole("tab", { name: "Mini" }).click();
+  await expect(page.getByText("Forma", { exact: true })).toBeVisible();
+  await expect(page.locator(".profile-preview .profile-avatar svg")).toBeVisible();
+  await page.getByRole("tab", { name: "Foto" }).click();
+  await expect(page.getByText("Sube una foto")).toBeVisible();
+  await expect(page.getByText(/GIF animado o HEIC/)).toBeVisible();
   await page.getByRole("link", { name: "Acerca del proyecto" }).click();
   await expect(page.getByText("Sin conexiones a servicios externos")).toBeVisible();
   expect(backendRequests).toEqual([]);

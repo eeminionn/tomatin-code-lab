@@ -1055,6 +1055,16 @@ fieldset legend {
   object-fit: cover;
 }
 
+.profile-avatar > svg {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.profile-preview > .profile-avatar > svg {
+  width: 100%;
+}
+
 .profile-avatar > span {
   font-family: "SFMono-Regular", Consolas, monospace;
   font-weight: 800;
@@ -1063,7 +1073,7 @@ fieldset legend {
 .avatar-earring {
   position: absolute;
   z-index: 2;
-  top: 59%;
+  top: 56%;
   width: 9%;
   height: 9%;
   border: 2px solid var(--yellow);
@@ -1073,11 +1083,11 @@ fieldset legend {
 }
 
 .avatar-earring.left {
-  left: 11%;
+  left: 8%;
 }
 
 .avatar-earring.right {
-  right: 11%;
+  right: 8%;
 }
 
 .earrings-hoop .avatar-earring {
@@ -2650,6 +2660,44 @@ fieldset legend {
   line-height: 1.45;
 }
 
+.profile-mode-tabs {
+  display: grid;
+  max-width: 520px;
+  gap: 8px;
+  margin-bottom: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-mode-tabs button {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.016);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.profile-mode-tabs button:hover,
+.profile-mode-tabs button:focus-visible {
+  border-color: rgba(103, 232, 165, 0.35);
+  color: var(--text);
+}
+
+.profile-mode-tabs button.is-active {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(103, 232, 165, 0.06);
+}
+
+.profile-mode-tabs svg {
+  width: 18px;
+}
+
 .avatar-editor-tabs {
   display: flex;
   overflow-x: auto;
@@ -2685,6 +2733,70 @@ fieldset legend {
   display: grid;
   gap: 24px;
   padding: 24px 0 30px;
+}
+
+.mini-editor-panel .profile-avatar {
+  overflow: hidden;
+}
+
+.photo-upload-panel {
+  display: flex;
+  min-height: 280px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px;
+  border: 1px dashed rgba(101, 201, 232, 0.3);
+  border-radius: 5px;
+  text-align: center;
+  background: rgba(101, 201, 232, 0.025);
+}
+
+.photo-upload-panel > div {
+  display: grid;
+  max-width: 430px;
+  place-items: center;
+  gap: 7px;
+}
+
+.photo-upload-panel > div > svg {
+  width: 34px;
+  color: var(--cyan);
+}
+
+.photo-upload-panel h2,
+.photo-upload-panel p {
+  margin: 0;
+}
+
+.photo-upload-panel h2 {
+  font-size: 17px;
+}
+
+.photo-upload-panel p {
+  color: var(--muted-strong);
+  font-size: 10px;
+}
+
+.photo-upload-panel small {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.photo-file-button {
+  position: relative;
+  cursor: pointer;
+}
+
+.photo-file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .avatar-option-group,

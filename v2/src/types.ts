@@ -116,11 +116,13 @@ export interface Profile {
   email: string;
   githubLogin?: string;
   avatarUrl?: string;
+  profileImagePath?: string;
   avatarConfig?: AvatarConfig;
   role: Role;
 }
 
 export interface AvatarConfig {
+  style: "avataaars" | "mini";
   seed: string;
   top: string;
   hairColor: string;
@@ -134,6 +136,21 @@ export interface AvatarConfig {
   clothing: string;
   clothesColor: string;
   earrings: "none" | "stud" | "hoop";
+  miniBody: "round" | "square" | "bean";
+  miniEyes: "bright" | "happy" | "focused" | "wink";
+  miniMouth: "smile" | "grin" | "calm" | "surprised";
+  miniHair: "sprout" | "tuft" | "side" | "cap" | "none";
+  miniAccessory: "none" | "glasses" | "visor" | "headphones";
+  miniOutfit: "hoodie" | "apron" | "jacket" | "tee";
+  miniBodyColor: string;
+  miniAccentColor: string;
+}
+
+export interface ProfileUpdateInput {
+  displayName: string;
+  avatarConfig?: AvatarConfig;
+  imageFile?: File;
+  removeImage?: boolean;
 }
 
 export interface Classroom {

@@ -216,6 +216,29 @@ describe("security contracts", () => {
     );
   });
 
+  it("stores profile photos privately and scopes them to class members", () => {
+    const profileImages = readFileSync(
+      resolve(
+        "supabase/migrations/20260812184323_profile_images_and_avatar_modes.sql",
+      ),
+      "utf8",
+    );
+    const classroom = readFileSync(
+      resolve("v2/src/state/classroom-context.tsx"),
+      "utf8",
+    );
+
+    expect(profileImages).toContain("'profile-images'");
+    expect(profileImages).toContain("false,");
+    expect(profileImages).toContain("Class members read profile images");
+    expect(profileImages).toContain("viewer.user_id = auth.uid()");
+    expect(profileImages).toContain(
+      "(storage.foldername(name))[1] = auth.uid()::text",
+    );
+    expect(classroom).toContain("createSignedUrls(paths, 60 * 60)");
+    expect(classroom).not.toContain("getPublicUrl(profile");
+  });
+
   it("runs frontend-only E2E through the documented root entrypoint", () => {
     const playwrightConfig = readFileSync(
       resolve("v2/playwright.config.ts"),

@@ -4,6 +4,7 @@ import * as avataaars from "@dicebear/avataaars";
 import type { Options as AvataaarsOptions } from "@dicebear/avataaars";
 import { defaultAvatarConfig, sanitizeAvatarConfig } from "@/lib/avatar";
 import type { AvatarConfig, Profile } from "@/types";
+import { MiniAvatar } from "@/components/MiniAvatar";
 
 type AvatarSize = "small" | "medium" | "large" | "preview";
 
@@ -54,18 +55,24 @@ export function ProfileAvatar({
     customConfig ??
     (profile.avatarUrl ? undefined : defaultAvatarConfig(profile.id));
   const generatedUri = useMemo(
-    () => (generatedConfig ? createAvatarUri(generatedConfig) : undefined),
+    () =>
+      generatedConfig?.style === "avataaars"
+        ? createAvatarUri(generatedConfig)
+        : undefined,
     [generatedConfig],
   );
-  const source = generatedUri ?? profile.avatarUrl;
-  const earrings = customConfig?.earrings ?? "none";
+  const source = generatedUri ?? (generatedConfig ? undefined : profile.avatarUrl);
+  const earrings =
+    customConfig?.style === "avataaars" ? customConfig.earrings : "none";
 
   return (
     <span
       className={`profile-avatar size-${size} earrings-${earrings}`}
       aria-hidden={decorative || undefined}
     >
-      {source ? (
+      {generatedConfig?.style === "mini" ? (
+        <MiniAvatar config={generatedConfig} />
+      ) : source ? (
         <img
           alt={decorative ? "" : `Avatar de ${profile.displayName}`}
           src={source}

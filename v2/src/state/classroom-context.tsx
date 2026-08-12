@@ -21,6 +21,7 @@ import type {
   InvitationInput,
   Language,
   Profile,
+  ProfileUpdateInput,
   RewardInput,
   Review,
   UpdateAssignmentInput,
@@ -71,10 +72,7 @@ interface ClassroomContextValue {
   createInvitation: (input: InvitationInput) => Promise<void>;
   updateInvitation: (id: string, input: InvitationInput) => Promise<void>;
   getInvitationToken: (id: string) => Promise<string>;
-  updateProfile: (input: {
-    displayName: string;
-    avatarConfig: Profile["avatarConfig"];
-  }) => Promise<void>;
+  updateProfile: (input: ProfileUpdateInput) => Promise<void>;
   markNotificationRead: (id: string) => void;
   dismissNotification: (id: string) => Promise<void>;
   dismissAllNotifications: () => Promise<void>;
@@ -143,11 +141,33 @@ function mapProfile(row: Record<string, unknown>): Profile {
     email: String(row.email ?? ""),
     githubLogin: row.github_login ? String(row.github_login) : undefined,
     avatarUrl: row.avatar_url ? String(row.avatar_url) : undefined,
+    profileImagePath: row.profile_image_path
+      ? String(row.profile_image_path)
+      : undefined,
     avatarConfig: hasAvatarConfig
       ? sanitizeAvatarConfig(rawAvatarConfig, id)
       : undefined,
     role: row.role as Profile["role"],
   };
+}
+
+async function createProfileImageUrls(rows: Array<Record<string, unknown>>) {
+  if (!supabase) return new Map<string, string>();
+  const paths = [...new Set(
+    rows
+      .map((row) => row.profile_image_path)
+      .filter((path): path is string => typeof path === "string" && Boolean(path)),
+  )];
+  if (paths.length === 0) return new Map<string, string>();
+  const { data, error } = await supabase.storage
+    .from("profile-images")
+    .createSignedUrls(paths, 60 * 60);
+  if (error) throw error;
+  const urls = new Map<string, string>();
+  for (const entry of data ?? []) {
+    if (entry.path && entry.signedUrl) urls.set(entry.path, entry.signedUrl);
+  }
+  return urls;
 }
 
 async function fileToDataUrl(file: File): Promise<string> {
@@ -282,8 +302,23 @@ async function fetchSupabaseSnapshot(session: Session) {
   ].find((query) => query.error)?.error;
   if (firstError) throw firstError;
 
+  const profileRows = [
+    profileQuery.data,
+    ...((profiles.data ?? []) as Array<Record<string, unknown>>),
+  ];
+  const signedProfileImages = await createProfileImageUrls(profileRows);
+
+  const mapProfileWithImage = (row: Record<string, unknown>) => {
+    const mapped = mapProfile(row);
+    const path = mapped.profileImagePath;
+    return {
+      ...mapped,
+      avatarUrl: path ? signedProfileImages.get(path) : mapped.avatarUrl,
+    };
+  };
+
   return {
-    profile: mapProfile(profileQuery.data),
+    profile: mapProfileWithImage(profileQuery.data),
     snapshot: {
       classroom: {
         id: classroom.data.id,
@@ -291,7 +326,7 @@ async function fetchSupabaseSnapshot(session: Session) {
         timezone: classroom.data.timezone,
         ownerId: classroom.data.owner_id,
       },
-      profiles: (profiles.data ?? []).map(mapProfile),
+      profiles: (profiles.data ?? []).map(mapProfileWithImage),
       assignments: (assignments.data ?? []).map((row) => ({
         id: row.id,
         missionId: row.mission_id,
@@ -1156,10 +1191,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (input: {
-      displayName: string;
-      avatarConfig: Profile["avatarConfig"];
-    }) => {
+    async (input: ProfileUpdateInput) => {
       if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot || !profile) return;
       const displayName = input.displayName.trim();
@@ -1167,16 +1199,43 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         throw new Error("El nombre visible debe tener entre 1 y 80 caracteres.");
       }
       if (supabase) {
+        let profileImagePath = profile.profileImagePath ?? null;
+        if (input.imageFile) {
+          const extension = input.imageFile.type === "image/gif" ? "gif" : "webp";
+          const nextPath = `${profile.id}/${crypto.randomUUID()}.${extension}`;
+          const { error: uploadError } = await supabase.storage
+            .from("profile-images")
+            .upload(nextPath, input.imageFile, {
+              contentType: input.imageFile.type,
+              upsert: false,
+            });
+          if (uploadError) throw uploadError;
+          profileImagePath = nextPath;
+        } else if (input.removeImage) {
+          profileImagePath = null;
+        }
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
             display_name: displayName,
             avatar_config: input.avatarConfig ?? null,
+            profile_image_path: profileImagePath,
           })
           .eq("id", profile.id);
         if (profileError) {
+          if (profileImagePath && profileImagePath !== profile.profileImagePath) {
+            await supabase.storage.from("profile-images").remove([profileImagePath]);
+          }
           setError(profileError.message);
           throw profileError;
+        }
+        if (
+          profile.profileImagePath &&
+          profile.profileImagePath !== profileImagePath
+        ) {
+          await supabase.storage
+            .from("profile-images")
+            .remove([profile.profileImagePath]);
         }
         await refresh();
         return;
@@ -1185,6 +1244,11 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         ...profile,
         displayName,
         avatarConfig: input.avatarConfig,
+        avatarUrl: input.imageFile
+          ? URL.createObjectURL(input.imageFile)
+          : input.removeImage
+            ? undefined
+            : profile.avatarUrl,
       };
       setProfile(nextProfile);
       persistDemo({
