@@ -92,10 +92,10 @@ test("frontend sandbox displays mentor controls but blocks mutations", async ({
 
   await page.getByRole("link", { name: /^Revisiones/ }).click();
   await expect(
-    page.getByRole("button", { name: "Solicitar cambios" }),
+    page.getByRole("button", { name: "Pedir cambios" }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Aprobar y asignar XP" }),
+    page.getByRole("button", { name: /Aprobar \(\+\d+ XP\)/ }),
   ).toBeDisabled();
   await page.getByRole("link", { name: "Premios", exact: true }).click();
   await page.getByRole("button", { name: "Nuevo premio" }).click();

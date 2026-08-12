@@ -42,6 +42,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { RankingBoard } from "@/components/RankingBoard";
 import { RewardsManager } from "@/components/RewardsManager";
 import { formatDate, initials, isOverdue } from "@/lib/format";
+import { getPendingReviews } from "@/models/reviews";
 import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
 import {
@@ -78,9 +79,9 @@ interface LocalMissionDraft extends MissionDraftInput {
 
 const MISSION_DRAFTS_KEY = "tomatin.v2.mission-drafts";
 const REVIEW_CRITERIA = [
-  { id: "correctness", label: "Correctitud" },
-  { id: "readability", label: "Claridad del código" },
-  { id: "edge-cases", label: "Casos límite" },
+  { id: "correctness", label: "Da la respuesta correcta" },
+  { id: "readability", label: "Se entiende cómo lo resolvió" },
+  { id: "edge-cases", label: "Funciona también con otros casos" },
 ] as const;
 
 function readMissionDrafts(): LocalMissionDraft[] {
@@ -115,9 +116,8 @@ function MentorOverview({
   if (!snapshot) return null;
   const students = snapshot.profiles.filter((entry) => entry.role === "student");
   const now = Date.now();
-  const reviewCount = snapshot.progress.filter(
-    (entry) => entry.status === "awaiting_review",
-  ).length;
+  const pendingReviews = getPendingReviews(snapshot);
+  const reviewCount = pendingReviews.length;
   const overdueCount = snapshot.progress.filter((entry) => {
     const assignment = snapshot.assignments.find(
       (item) => item.id === entry.assignmentId,
@@ -157,12 +157,11 @@ function MentorOverview({
   ).length;
   const approvalRate =
     startedCount > 0 ? Math.round((approvedCount / startedCount) * 100) : 0;
-  const reviewWaits = snapshot.progress
-    .filter(
-      (entry) =>
-        entry.status === "awaiting_review" && Boolean(entry.submittedAt),
-    )
-    .map((entry) => now - new Date(entry.submittedAt!).getTime());
+  const reviewWaits = pendingReviews
+    .filter((entry) => Boolean(entry.progress.submittedAt))
+    .map(
+      (entry) => now - new Date(entry.progress.submittedAt!).getTime(),
+    );
   const averageReviewHours =
     reviewWaits.length > 0
       ? Math.round(
@@ -215,62 +214,78 @@ function MentorOverview({
 
   return (
     <>
+      {reviewCount > 0 ? (
+        <button className="review-callout" type="button" onClick={onOpenReviews}>
+          <span className="review-callout-icon"><ClipboardCheck /></span>
+          <span>
+            <strong>
+              {reviewCount} {reviewCount === 1 ? "entrega espera" : "entregas esperan"} revisión
+            </strong>
+            <small>
+              La más antigua espera {oldestReviewHours}{" "}
+              {oldestReviewHours === 1 ? "hora" : "horas"}.
+            </small>
+          </span>
+          <ArrowRight aria-hidden="true" />
+        </button>
+      ) : (
+        <div className="review-callout is-clear" role="status">
+          <span className="review-callout-icon"><CheckCircle2 /></span>
+          <span>
+            <strong>No hay entregas por revisar</strong>
+            <small>Puedes seguir con el estado de las tareas.</small>
+          </span>
+        </div>
+      )}
+
       <section className="metrics-strip mentor-metrics" aria-label="Resumen del curso">
         <article>
-          <span className="metric-icon info"><Users /></span>
-          <div><strong>{students.length}</strong><span>estudiantes</span></div>
-        </article>
-        <article>
-          <span className="metric-icon success"><Activity /></span>
-          <div><strong>{activeNow}</strong><span>activos ahora</span></div>
-        </article>
-        <article>
-          <span className="metric-icon info"><Code2 /></span>
-          <div><strong>{activeToday}</strong><span>activos hoy</span></div>
+          <span className="metric-icon warning"><ClipboardCheck /></span>
+          <div><strong>{reviewCount}</strong><span>por revisar</span></div>
         </article>
         <article>
           <span className="metric-icon danger"><Clock3 /></span>
           <div><strong>{overdueCount}</strong><span>atrasos</span></div>
         </article>
         <article>
-          <span className="metric-icon warning"><ClipboardCheck /></span>
-          <div><strong>{reviewCount}</strong><span>por revisar</span></div>
+          <span className="metric-icon info"><Code2 /></span>
+          <div><strong>{activeToday}</strong><span>activos hoy</span></div>
         </article>
         <article>
-          <span className="metric-icon success"><TrendingUp /></span>
-          <div><strong>{approvalRate}%</strong><span>aprobación</span></div>
-        </article>
-        <article>
-          <span className="metric-icon warning"><Timer /></span>
-          <div><strong>{averageReviewHours} h</strong><span>espera media</span></div>
-        </article>
-        <article>
-          <span className="metric-icon neutral"><Users /></span>
-          <div><strong>{inactiveSevenDays}</strong><span>inactivos 7 días</span></div>
+          <span className="metric-icon info"><Users /></span>
+          <div><strong>{students.length}</strong><span>estudiantes</span></div>
         </article>
       </section>
 
-      {reviewCount > 0 ? (
-        <button className="review-callout" type="button" onClick={onOpenReviews}>
-          <span className="review-callout-icon"><ClipboardCheck /></span>
-          <span>
-            <strong>{reviewCount} entregas esperan revisión</strong>
-            <small>
-              La entrega más antigua espera {oldestReviewHours}{" "}
-              {oldestReviewHours === 1 ? "hora" : "horas"}.
-            </small>
-          </span>
-          <ArrowRight aria-hidden="true" />
-        </button>
-      ) : null}
+      <details className="mentor-more-metrics">
+        <summary>Ver más indicadores</summary>
+        <div className="metrics-strip">
+          <article>
+            <span className="metric-icon success"><Activity /></span>
+            <div><strong>{activeNow}</strong><span>activos ahora</span></div>
+          </article>
+          <article>
+            <span className="metric-icon success"><TrendingUp /></span>
+            <div><strong>{approvalRate}%</strong><span>aprobación</span></div>
+          </article>
+          <article>
+            <span className="metric-icon warning"><Timer /></span>
+            <div><strong>{averageReviewHours} h</strong><span>espera media</span></div>
+          </article>
+          <article>
+            <span className="metric-icon neutral"><Users /></span>
+            <div><strong>{inactiveSevenDays}</strong><span>inactivos 7 días</span></div>
+          </article>
+        </div>
+      </details>
 
       <section className="mentor-section" aria-labelledby="matrix-title">
         <div className="section-header">
           <div>
             <p className="eyebrow">SEGUIMIENTO</p>
-            <h2 id="matrix-title">Matriz del curso</h2>
+            <h2 id="matrix-title">Estado de las tareas</h2>
           </div>
-          <span className="section-note">Próximas 4 tareas</span>
+          <span className="section-note">Abre un estado para ver el detalle</span>
         </div>
         <div className="mentor-filters">
           <label className="search-field">
@@ -775,33 +790,10 @@ function ReviewQueue() {
   );
   if (!profile || !snapshot) return null;
 
-  const queue = snapshot.progress
-    .filter((entry) => entry.status === "awaiting_review")
-    .map((progress) => {
-      const attempts = snapshot.attempts
-        .filter(
-          (attempt) =>
-            attempt.userId === progress.userId &&
-            attempt.assignmentId === progress.assignmentId &&
-            attempt.kind === "submit",
-        )
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-      return {
-        progress,
-        attempt: attempts[0],
-        student: snapshot.profiles.find((entry) => entry.id === progress.userId),
-        assignment: snapshot.assignments.find(
-          (entry) => entry.id === progress.assignmentId,
-        ),
-      };
-    })
-    .filter((entry) => entry.attempt && entry.assignment && entry.student);
+  const queue = getPendingReviews(snapshot);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleQueue = queue.filter((entry) => {
-    if (language !== "all" && entry.attempt?.language !== language) {
+    if (language !== "all" && entry.attempt.language !== language) {
       return false;
     }
     if (!normalizedQuery) return true;
@@ -812,8 +804,14 @@ function ReviewQueue() {
       .includes(normalizedQuery);
   });
   const selected =
-    visibleQueue.find((entry) => entry.attempt?.id === selectedId) ??
+    visibleQueue.find((entry) => entry.attempt.id === selectedId) ??
     visibleQueue[0];
+  const selectedMission = selected
+    ? getMissionById(
+        selected.assignment.missionId,
+        selected.progress.missionVersion,
+      )
+    : undefined;
 
   async function decide(decision: "approved" | "changes_requested") {
     if (frontendOnly) return;
@@ -878,7 +876,10 @@ function ReviewQueue() {
         <div className="review-list-heading">
           <div>
             <p className="eyebrow">COLA</p>
-            <h2>{visibleQueue.length} entregas</h2>
+            <h2>
+              {visibleQueue.length}{" "}
+              {visibleQueue.length === 1 ? "entrega" : "entregas"}
+            </h2>
           </div>
         </div>
         <div className="review-list-filters">
@@ -910,17 +911,15 @@ function ReviewQueue() {
           <button
             className={`review-list-item ${selected?.attempt?.id === entry.attempt?.id ? "is-active" : ""}`}
             type="button"
-            key={entry.attempt?.id}
-            onClick={() => selectReview(entry.attempt?.id ?? null)}
+            key={entry.attempt.id}
+            onClick={() => selectReview(entry.attempt.id)}
           >
             <span className="avatar">{initials(entry.student?.displayName ?? "?")}</span>
             <span>
               <strong>{entry.student?.displayName}</strong>
-              <small>{entry.assignment?.title}</small>
+              <small>{entry.assignment.title}</small>
               <em>
-                {entry.attempt
-                  ? `${LANGUAGE_META[entry.attempt.language].shortLabel} · ${formatDate(entry.attempt.createdAt, true)}`
-                  : ""}
+                {`${LANGUAGE_META[entry.attempt.language].shortLabel} · ${formatDate(entry.attempt.createdAt, true)}`}
               </em>
             </span>
             <ArrowRight aria-hidden="true" />
@@ -950,25 +949,22 @@ function ReviewQueue() {
                 {LANGUAGE_META[selected.attempt.language].label}
               </span>
             </div>
-            <Link
-              className="button secondary"
-              to={`/mission/${
-                getMissionById(
-                  selected.assignment.missionId,
-                  selected.progress.missionVersion,
-                )?.slug
-              }?assignment=${selected.assignment.id}`}
-            >
-              <Eye aria-hidden="true" />
-              Ver misión
-            </Link>
+            {selectedMission ? (
+              <Link
+                className="button secondary"
+                to={`/mission/${selectedMission.slug}?assignment=${selected.assignment.id}`}
+              >
+                <Eye aria-hidden="true" />
+                Ver misión
+              </Link>
+            ) : null}
           </header>
 
           <div className="review-result-strip">
             <span className="tone-success">
               <CheckCircle2 aria-hidden="true" />
-              {selected.attempt.result.tests.filter((entry) => entry.passed).length}/
-              {selected.attempt.result.tests.length} tests
+              {selected.attempt.result.tests.filter((entry) => entry.passed).length}{" "}
+              de {selected.attempt.result.tests.length} pruebas
             </span>
             <span>{selected.attempt.result.durationMs ?? "—"} ms</span>
             <span>{selected.progress.attempts} intentos</span>
@@ -1054,7 +1050,7 @@ function ReviewQueue() {
               </ul>
             ) : null}
             <fieldset className="review-criteria">
-              <legend>Criterios de revisión</legend>
+              <legend>Lista rápida (opcional)</legend>
               {criteria.map((entry) => (
                 <label key={entry.id}>
                   <input
@@ -1073,6 +1069,9 @@ function ReviewQueue() {
                   {entry.label}
                 </label>
               ))}
+              <p>
+                Úsala como apoyo. Para terminar, elige pedir cambios o aprobar.
+              </p>
             </fieldset>
             <label htmlFor="mentor-comment">Comentario para {selected.student.displayName}</label>
             <textarea
@@ -1090,7 +1089,7 @@ function ReviewQueue() {
                 onClick={() => void decide("changes_requested")}
               >
                 <XCircle aria-hidden="true" />
-                Solicitar cambios
+                Pedir cambios
               </button>
               <button
                 className="button primary"
@@ -1099,7 +1098,7 @@ function ReviewQueue() {
                 onClick={() => void decide("approved")}
               >
                 <Check aria-hidden="true" />
-                Aprobar y asignar XP
+                Aprobar (+{selected.assignment.points} XP)
               </button>
             </div>
             <p className="editor-message" role="status">
@@ -2550,61 +2549,19 @@ export function Component() {
     section === "rewards"
       ? section
       : "overview";
-  const tabPaths: Record<MentorTab, string> = {
-    overview: "/admin",
-    reviews: "/admin/reviews",
-    students: "/admin/students",
-    ranking: "/admin/ranking",
-    assignments: "/admin/assignments",
-    missions: "/admin/missions",
-    invitations: "/admin/invitations",
-    rewards: "/admin/rewards",
-  };
-
-  const reviewCount = snapshot.progress.filter(
-    (entry) => entry.status === "awaiting_review",
-  ).length;
-
   return (
     <main className="page mentor-page">
       <header className="page-header compact-header">
         <div>
-          <p className="eyebrow">MENTOR // {snapshot.classroom.timezone}</p>
+          <p className="eyebrow">PROFESOR // {snapshot.classroom.timezone}</p>
           <h1>Panel de eeminionn</h1>
-          <p>Seguimiento, revisiones, tareas y contenido del curso.</p>
+          <p>Lo importante del curso, ordenado por prioridad.</p>
         </div>
         <span className="mentor-role">
           <ShieldCheck aria-hidden="true" />
-          Propietario
+          Profesor
         </span>
       </header>
-
-      <nav className="mentor-tabs" aria-label="Secciones del panel mentor">
-        {[
-          ["overview", "Resumen", Users],
-          ["reviews", "Revisiones", ClipboardCheck],
-          ["students", "Estudiantes", Users],
-          ["ranking", "Ranking", Trophy],
-          ["assignments", "Asignaciones", CalendarPlus],
-          ["missions", "Misiones", BookCopy],
-          ["invitations", "Invitaciones", MailPlus],
-          ["rewards", "Premios", Gift],
-        ].map(([value, label, Icon]) => (
-          <button
-            type="button"
-            className={tab === value ? "is-active" : ""}
-            aria-current={tab === value ? "page" : undefined}
-            key={value as string}
-            onClick={() => navigate(tabPaths[value as MentorTab])}
-          >
-            <Icon aria-hidden="true" />
-            {label as string}
-            {value === "reviews" && reviewCount > 0 ? (
-              <span>{reviewCount}</span>
-            ) : null}
-          </button>
-        ))}
-      </nav>
 
       <div className="mentor-content">
         {tab === "overview" ? (

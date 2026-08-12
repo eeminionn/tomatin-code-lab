@@ -28,6 +28,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { getPendingReviews } from "@/models/reviews";
 import { useClassroom } from "@/state/classroom-context";
 
 const studentNavigation = [
@@ -81,6 +82,7 @@ export function AppShell() {
   const isMentor = isActorStaff && !isStudentPreview;
   const students =
     snapshot?.profiles.filter((entry) => entry.role === "student") ?? [];
+  const pendingReviews = snapshot ? getPendingReviews(snapshot).length : 0;
 
   return (
     <div className={`app-shell ${frontendOnly ? "frontend-only" : ""}`}>
@@ -109,7 +111,7 @@ export function AppShell() {
         <nav className="sidebar-nav">
           {isMentor ? (
             <>
-              <p className="nav-label mentor-label">ADMINISTRACIÓN</p>
+              <p className="nav-label mentor-label">AULA</p>
               {adminNavigation.map(({ to, label, icon: Icon, end }) => (
                 <NavLink
                   key={to}
@@ -122,15 +124,8 @@ export function AppShell() {
                 >
                   <Icon aria-hidden="true" />
                   <span>{label}</span>
-                  {label === "Revisiones" &&
-                  (snapshot?.progress.filter(
-                    (entry) => entry.status === "awaiting_review",
-                  ).length ?? 0) > 0 ? (
-                    <span className="nav-count">
-                      {snapshot?.progress.filter(
-                        (entry) => entry.status === "awaiting_review",
-                      ).length ?? 0}
-                    </span>
+                  {label === "Revisiones" && pendingReviews > 0 ? (
+                    <span className="nav-count">{pendingReviews}</span>
                   ) : null}
                 </NavLink>
               ))}
@@ -182,8 +177,8 @@ export function AppShell() {
                 {frontendOnly
                   ? "Backend desactivado"
                   : backendMode === "supabase"
-                    ? "Supabase + Judge0"
-                    : "Datos en este navegador"}
+                    ? "Todo funcionando"
+                    : "Datos de ejemplo"}
               </small>
             </span>
           </div>

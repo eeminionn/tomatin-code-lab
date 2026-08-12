@@ -18,8 +18,8 @@ test("mentor reviews a pending submission and awards XP once", async ({ page }) 
     .getByLabel("Comentario en línea 2")
     .fill("El acumulador debe actualizarse dentro del bucle.");
   await page.getByRole("button", { name: "Agregar" }).click();
-  await page.getByLabel("Correctitud").check();
-  await page.getByRole("button", { name: "Aprobar y asignar XP" }).click();
+  await page.getByLabel("Da la respuesta correcta").check();
+  await page.getByRole("button", { name: /Aprobar \(\+\d+ XP\)/ }).click();
   await expect(page.getByText("Cola al día")).toBeVisible();
 
   await page.getByRole("button", { name: "Ver como estudiante" }).click();
@@ -54,6 +54,22 @@ test("mentor creates and edits a configurable invitation", async ({ page }) => {
   await expect(invitation).toContainText("0/5");
   await expect(invitation).toContainText("REVOCADA");
   await expect(invitation.getByRole("button", { name: "Copiar" })).toBeDisabled();
+});
+
+test("mentor overview prioritizes actions without duplicate navigation", async ({
+  page,
+}) => {
+  await loginAsMentor(page);
+  await expect(
+    page.getByRole("button", { name: /entrega espera revisión/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Estado de las tareas" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Resumen", exact: true }),
+  ).toHaveCount(1);
+  await expect(page.getByText("Ver más indicadores")).toBeVisible();
 });
 
 test("mentor creates an assignment for selected students", async ({ page }) => {

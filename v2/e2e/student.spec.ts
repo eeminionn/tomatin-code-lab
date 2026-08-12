@@ -34,7 +34,7 @@ test("opens an assigned mission in two actions and runs visible tests", async ({
 
   await page.getByRole("button", { name: "Ejecutar" }).click();
   await expect(
-    page.getByText("El código corre, pero aún no pasa todos los tests"),
+    page.getByText("Tu código funciona, pero hay resultados por corregir"),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Qué hacer ahora")).toBeVisible();
   await expect(page.getByText("Compara un caso paso a paso")).toBeVisible();
@@ -67,6 +67,10 @@ test("prioritizes pending tasks and shows the mentor brief before the mission", 
   await expect(pending).toHaveAttribute("open", "");
   await expect(pending.locator(".assignment-row").first()).toContainText(
     "Variables y acumuladores",
+  );
+  await expect(pending.locator(".assignment-row").first()).toHaveAttribute(
+    "href",
+    /mission\/la-once-de-tomatin/,
   );
   await approved.locator("summary").click();
   await expect(approved).toContainText("Condiciones booleanas");
@@ -254,7 +258,7 @@ test("keeps student edits after running code opened from feedback", async ({
     window.__TOMATIN_EDITOR__?.setValue(code);
   }, revisedCode);
   await page.getByRole("button", { name: "Ejecutar" }).click();
-  await expect(page.getByText("Todos los tests pasaron")).toBeVisible({
+  await expect(page.getByText("Todo salió bien")).toBeVisible({
     timeout: 15_000,
   });
   await expect

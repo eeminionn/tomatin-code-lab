@@ -173,8 +173,8 @@ function ResultSummary({
     return (
       <div className="result-empty">
         <TerminalSquare aria-hidden="true" />
-        <strong>Esperando una ejecución</strong>
-        <span>Los tests y diagnósticos aparecerán aquí.</span>
+        <strong>Ejecuta tu código para ver qué ocurre</strong>
+        <span>Aquí verás qué salió bien y qué debes revisar.</span>
       </div>
     );
   }
@@ -185,12 +185,12 @@ function ResultSummary({
     idle: "Sin ejecutar",
     queued: "En cola",
     running: "Ejecutando",
-    passed: "Todos los tests pasaron",
-    failed: "El código corre, pero aún no pasa todos los tests",
-    compile_error: "Error de compilación",
-    runtime_error: "Error de ejecución",
-    timeout: "Tiempo agotado",
-    provider_error: "Ejecutor no disponible",
+    passed: "Todo salió bien",
+    failed: "Tu código funciona, pero hay resultados por corregir",
+    compile_error: "Hay un error antes de ejecutar",
+    runtime_error: "El código se detuvo durante la ejecución",
+    timeout: "El código tardó demasiado",
+    provider_error: "No pudimos ejecutar tu código",
   };
 
   return (
@@ -204,7 +204,7 @@ function ResultSummary({
         <div>
           <strong>{statusLabel[result.status]}</strong>
           <span>
-            {passed}/{result.tests.length} tests
+            {passed} de {result.tests.length} pruebas correctas
             {result.durationMs !== undefined ? ` · ${result.durationMs} ms` : ""}
             {result.memoryKb !== undefined ? ` · ${result.memoryKb} KB` : ""}
           </span>
@@ -264,7 +264,7 @@ function ResultSummary({
 
       {result.diagnostics.length > 0 ? (
         <section className="diagnostic-list" aria-labelledby="diagnostics-title">
-          <h3 id="diagnostics-title">Diagnósticos</h3>
+          <h3 id="diagnostics-title">Errores para corregir</h3>
           {result.diagnostics.map((diagnostic, index) => (
             <button
               className={`diagnostic ${diagnostic.severity}`}
@@ -287,7 +287,7 @@ function ResultSummary({
 
       {result.tests.length > 0 ? (
         <section className="test-results" aria-labelledby="tests-title">
-          <h3 id="tests-title">Tests</h3>
+          <h3 id="tests-title">Pruebas</h3>
           {result.tests.map((test) => (
             <article className={`test-result ${test.passed ? "passed" : "failed"}`} key={test.id}>
               {test.passed ? (
@@ -298,7 +298,7 @@ function ResultSummary({
               <div>
                 <strong>
                   {test.label}
-                  {test.hidden ? <span className="hidden-test-label">oculto</span> : null}
+                  {test.hidden ? <span className="hidden-test-label">privada</span> : null}
                 </strong>
                 {!test.passed ? (
                   <>
@@ -1053,7 +1053,7 @@ export function Component() {
                       LANGUAGE_META[language].fileName}
                   </code>
                   <p>
-                    Conserva esta firma: los tests llaman directamente a esta
+                    Conserva esta firma: las pruebas llaman directamente a esta
                     función.
                   </p>
                 </section>
@@ -1539,7 +1539,7 @@ export function Component() {
               <span>
                 {language === "cpp" || running === "submit"
                   ? "Compilando en el entorno aislado..."
-                  : "Ejecutando tests visibles..."}
+                  : "Ejecutando pruebas visibles..."}
               </span>
             </div>
           ) : (

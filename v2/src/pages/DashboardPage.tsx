@@ -6,7 +6,6 @@ import {
   CircleDot,
   ChevronDown,
   Clock3,
-  Code2,
   ExternalLink,
   Github,
   MessageSquareText,
@@ -110,8 +109,8 @@ export function Component() {
         );
         const status = state?.status ?? "not_started";
         const overdue = isOverdue(assignment.dueAt, status);
-        return (
-          <article className="assignment-row" key={assignment.id}>
+        const content = (
+          <>
             <div className="assignment-order">
               {String(mission?.order ?? 0).padStart(2, "0")}
             </div>
@@ -127,15 +126,24 @@ export function Component() {
             </div>
             <StatusBadge status={status} overdue={overdue} />
             {mission ? (
-              <Link
-                className="icon-button"
-                to={`/mission/${mission.slug}?assignment=${assignment.id}`}
-                aria-label={`Trabajar en ${assignment.title}`}
-                title="Abrir tarea"
-              >
+              <span className="icon-button" aria-hidden="true">
                 <ArrowRight aria-hidden="true" />
-              </Link>
+              </span>
             ) : null}
+          </>
+        );
+        return mission ? (
+          <Link
+            className="assignment-row"
+            key={assignment.id}
+            to={`/mission/${mission.slug}?assignment=${assignment.id}`}
+            aria-label={`Abrir ${assignment.title}`}
+          >
+            {content}
+          </Link>
+        ) : (
+          <article className="assignment-row" key={assignment.id}>
+            {content}
           </article>
         );
       })}
@@ -157,21 +165,13 @@ export function Component() {
           <p>
             {isMentor
               ? "Revisa entregas, atrasos y actividad desde un solo lugar."
-              : "Tareas asignadas primero; el resto del catálogo queda disponible para practicar."}
+              : "Aquí aparecen solamente las tareas que te asignó tu profesor."}
           </p>
         </div>
         {isMentor ? (
           <Link className="button primary" to="/mentor">
             <ShieldCheck aria-hidden="true" />
             Abrir panel mentor
-          </Link>
-        ) : nextMission ? (
-          <Link
-            className="button primary"
-            to={`/mission/${nextMission.slug}?assignment=${nextAssignment?.id}`}
-          >
-            <Code2 aria-hidden="true" />
-            Continuar
           </Link>
         ) : null}
       </header>
@@ -208,7 +208,7 @@ export function Component() {
             </h2>
             <p>
               {nextAssignment
-                ? `La próxima vence ${relativeDueDate(nextAssignment.dueAt)}: ${nextAssignment.title}.`
+                ? `${nextAssignment.title} ${relativeDueDate(nextAssignment.dueAt).toLowerCase()}.`
                 : "No tienes entregas pendientes. Buen trabajo."}
             </p>
           </div>
@@ -217,7 +217,7 @@ export function Component() {
               className="button primary"
               to={`/mission/${nextMission.slug}?assignment=${nextAssignment.id}`}
             >
-              Trabajar ahora <ArrowRight aria-hidden="true" />
+              Continuar <ArrowRight aria-hidden="true" />
             </Link>
           ) : null}
         </section>

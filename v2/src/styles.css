@@ -1436,6 +1436,18 @@ fieldset legend {
   padding: 11px 4px;
   border-bottom: 1px solid var(--line);
   grid-template-columns: 36px minmax(170px, 1fr) 116px auto 36px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.assignment-row[href]:hover,
+.assignment-row[href]:focus-visible {
+  background: rgba(103, 232, 165, 0.045);
+}
+
+.assignment-row[href]:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
 }
 
 .assignment-row:last-child {
@@ -4330,62 +4342,6 @@ fieldset legend {
   width: 17px;
 }
 
-.mentor-tabs {
-  display: flex;
-  gap: 3px;
-  margin-bottom: 22px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--line);
-}
-
-.mentor-tabs button {
-  position: relative;
-  display: inline-flex;
-  min-height: 43px;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  border: 0;
-  color: var(--muted);
-  background: transparent;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.mentor-tabs button::after {
-  position: absolute;
-  right: 8px;
-  bottom: -1px;
-  left: 8px;
-  height: 2px;
-  content: "";
-  background: transparent;
-}
-
-.mentor-tabs button.is-active {
-  color: var(--green);
-}
-
-.mentor-tabs button.is-active::after {
-  background: var(--green);
-}
-
-.mentor-tabs svg {
-  width: 15px;
-}
-
-.mentor-tabs button > span {
-  display: grid;
-  min-width: 18px;
-  height: 18px;
-  place-items: center;
-  border-radius: 9px;
-  color: var(--green-ink);
-  background: var(--yellow);
-  font-size: 8px;
-}
-
 .mentor-content {
   min-height: 400px;
 }
@@ -4394,12 +4350,21 @@ fieldset legend {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.mentor-metrics article:nth-child(n + 5) {
-  border-top: 1px solid var(--line);
+.mentor-more-metrics {
+  margin: -10px 0 22px;
 }
 
-.mentor-metrics article:nth-child(5) {
-  border-left: 0;
+.mentor-more-metrics > summary {
+  width: fit-content;
+  margin-left: auto;
+  color: var(--muted-strong);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.mentor-more-metrics > .metrics-strip {
+  margin-top: 10px;
 }
 
 .mentor-filters {
@@ -4481,6 +4446,16 @@ fieldset legend {
 
 .review-callout:hover {
   border-color: rgba(244, 201, 107, 0.55);
+}
+
+.review-callout.is-clear {
+  border-color: rgba(103, 232, 165, 0.22);
+  background: rgba(103, 232, 165, 0.035);
+}
+
+.review-callout.is-clear .review-callout-icon {
+  color: var(--green);
+  background: rgba(103, 232, 165, 0.09);
 }
 
 .review-callout-icon {
@@ -5215,6 +5190,13 @@ fieldset legend {
   width: 14px;
   min-height: 14px;
   accent-color: var(--green);
+}
+
+.review-criteria > p {
+  width: 100%;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 8px;
 }
 
 .review-actions {
@@ -7229,12 +7211,6 @@ fieldset legend {
 
   .workspace-actions .button {
     flex: 1;
-  }
-
-  .mentor-tabs {
-    margin-right: -14px;
-    margin-left: -14px;
-    padding: 0 10px;
   }
 
   .mentor-filters {
