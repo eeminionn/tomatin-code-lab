@@ -232,6 +232,36 @@ test("feedback identifies its mission and can be dismissed", async ({ page }) =>
   await expect(page.locator(".feedback-item")).toHaveCount(before - 1);
 });
 
+test("keeps student edits after running code opened from feedback", async ({
+  page,
+}) => {
+  await page.getByRole("link", { name: "Feedback" }).click();
+  await page
+    .getByRole("link")
+    .filter({ hasText: "Comentario del mentor" })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => Boolean(window.__TOMATIN_EDITOR__)))
+    .toBeTruthy();
+
+  const revisedCode = `function totalOnce(precios, cantidades) {
+  return precios.reduce(
+    (total, precio, indice) => total + precio * cantidades[indice],
+    0,
+  );
+}`;
+  await page.evaluate((code) => {
+    window.__TOMATIN_EDITOR__?.setValue(code);
+  }, revisedCode);
+  await page.getByRole("button", { name: "Ejecutar" }).click();
+  await expect(page.getByText("Todos los tests pasaron")).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect
+    .poll(() => page.evaluate(() => window.__TOMATIN_EDITOR__?.getValue()))
+    .toBe(revisedCode);
+});
+
 test("feedback can be cleared in one confirmed action", async ({ page }) => {
   await page.getByRole("link", { name: "Feedback" }).click();
   await page.getByRole("button", { name: "Limpiar todo" }).click();

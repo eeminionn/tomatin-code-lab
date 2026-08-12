@@ -448,6 +448,7 @@ export function Component() {
   const saveTimer = useRef<number | undefined>(undefined);
   const lastEditingSignal = useRef(0);
   const openedActivityKey = useRef("");
+  const loadedLinkedAttemptId = useRef<string | null>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const workbenchRef = useRef<HTMLDivElement | null>(null);
   const isStaff = profile?.role === "owner" || profile?.role === "mentor";
@@ -485,11 +486,16 @@ export function Component() {
   }, [mission?.id, mission?.version]);
 
   useEffect(() => {
-    if (!linkedAttemptId) return;
+    if (!linkedAttemptId) {
+      loadedLinkedAttemptId.current = null;
+      return;
+    }
+    if (loadedLinkedAttemptId.current === linkedAttemptId) return;
     const linkedAttempt = history.find(
       (attempt) => attempt.id === linkedAttemptId,
     );
     if (!linkedAttempt) return;
+    loadedLinkedAttemptId.current = linkedAttemptId;
     setBriefTab("history");
     setMobilePane("brief");
     setLanguage(linkedAttempt.language);
