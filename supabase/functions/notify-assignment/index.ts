@@ -32,6 +32,34 @@ function validGitHubLogin(value: unknown): value is string {
   );
 }
 
+function githubFailureMessage(
+  status: number,
+  responseMessage: unknown,
+  target: string,
+  usingLegacyToken: boolean,
+): string {
+  const detail = typeof responseMessage === "string"
+    ? ` GitHub indicó: ${responseMessage}.`
+    : "";
+  const migrationHint = usingLegacyToken
+    ? " Configura el secret GITHUB_NOTIFICATION_TOKEN para separar los avisos de las entregas."
+    : "";
+
+  if (status === 401) {
+    return `El token de notificaciones de GitHub es inválido o expiró.${detail}`;
+  }
+  if (status === 403) {
+    return `El token de notificaciones no tiene permiso Issues: Read and write en ${target}.${detail}${migrationHint}`;
+  }
+  if (status === 404) {
+    return `El token de notificaciones no puede acceder a ${target}; incluye ese repositorio en el token y confirma que el issue exista.${detail}${migrationHint}`;
+  }
+  if (status === 422) {
+    return `GitHub rechazó el comentario en ${target}; comprueba que el issue esté abierto y acepte comentarios.${detail}`;
+  }
+  return `GitHub respondió HTTP ${status} al publicar en ${target}.${detail}`;
+}
+
 function formatDueAt(value: string): string {
   return new Intl.DateTimeFormat("es-CL", {
     dateStyle: "full",
@@ -238,9 +266,12 @@ Deno.serve(async (request) => {
     return jsonResponse(request, { error: message }, 422);
   }
 
-  const githubToken = Deno.env.get("GITHUB_REPOSITORY_TOKEN");
+  const notificationToken = Deno.env.get("GITHUB_NOTIFICATION_TOKEN")?.trim();
+  const legacyToken = Deno.env.get("GITHUB_REPOSITORY_TOKEN")?.trim();
+  const githubToken = notificationToken || legacyToken;
   if (!githubToken) {
-    const message = "Falta GITHUB_REPOSITORY_TOKEN en la Edge Function.";
+    const message =
+      "Falta GITHUB_NOTIFICATION_TOKEN en la Edge Function de avisos.";
     await recordDelivery(admin, assignment, "failed", {
       mentionedLogins,
       missingUserIds,
@@ -255,6 +286,7 @@ Deno.serve(async (request) => {
     DEFAULT_GITHUB_REPOSITORY;
   const issueNumber = Deno.env.get("GITHUB_NOTIFICATION_ISSUE_NUMBER") ??
     DEFAULT_GITHUB_ISSUE_NUMBER;
+  const target = `${owner}/${repository}#${issueNumber}`;
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repository}/issues/${issueNumber}/comments`,
     {
@@ -273,9 +305,12 @@ Deno.serve(async (request) => {
   );
   const responseBody = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = typeof responseBody?.message === "string"
-      ? `GitHub: ${responseBody.message}`
-      : `GitHub respondió HTTP ${response.status}.`;
+    const message = githubFailureMessage(
+      response.status,
+      responseBody?.message,
+      target,
+      !notificationToken,
+    );
     await recordDelivery(admin, assignment, "failed", {
       mentionedLogins,
       missingUserIds,

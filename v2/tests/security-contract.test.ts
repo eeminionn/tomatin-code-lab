@@ -118,6 +118,10 @@ describe("security contracts", () => {
       resolve("supabase/functions/_shared/github-submissions.ts"),
       "utf8",
     );
+    const notificationService = readFileSync(
+      resolve("supabase/functions/notify-assignment/index.ts"),
+      "utf8",
+    );
 
     expect(accessPage).toContain("Continuar con GitHub");
     expect(accessPage).not.toContain("magic-email");
@@ -148,6 +152,10 @@ describe("security contracts", () => {
     expect(repositoryService).not.toContain("/collaborators/");
     expect(repositoryService).toContain("attempt < 3");
     expect(repositoryService).toContain("error.status !== 409");
+    expect(notificationService).toContain(
+      'Deno.env.get("GITHUB_NOTIFICATION_TOKEN")',
+    );
+    expect(notificationService).toContain("Issues: Read and write");
   });
 
   it("keeps fork ownership and allowed origins configurable on the server", () => {

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { isFrontendOnly } from "@/config/runtime";
+import { edgeFunctionErrorMessage } from "@/lib/edge-function-error";
 import type { StudentRepository } from "@/types";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
@@ -76,7 +77,14 @@ export async function notifyAssignment(assignmentId: string) {
     };
     duplicate?: boolean;
   }>("notify-assignment", { body: { assignmentId } });
-  if (error) throw error;
+  if (error) {
+    throw new Error(
+      await edgeFunctionErrorMessage(
+        error,
+        "No se pudo enviar el aviso de la tarea.",
+      ),
+    );
+  }
   return data;
 }
 

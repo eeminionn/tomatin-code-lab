@@ -25,6 +25,7 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUBMISSION_REPOSITORY_TOKEN: ${{ secrets.SUBMISSION_REPOSITORY_TOKEN }}
+      NOTIFICATION_REPOSITORY_TOKEN: ${{ secrets.NOTIFICATION_REPOSITORY_TOKEN }}
       SUBMISSION_REPOSITORY_OWNER: ${{ vars.SUBMISSION_REPOSITORY_OWNER }}
       SUBMISSION_REPOSITORY_NAME: ${{ vars.SUBMISSION_REPOSITORY_NAME }}
       APP_ORIGIN: ${{ vars.APP_ORIGIN }}
@@ -50,6 +51,9 @@ jobs:
             echo "::error::Missing secret SUBMISSION_REPOSITORY_TOKEN."
             exit 1
           }
+          if test -z "$NOTIFICATION_REPOSITORY_TOKEN"; then
+            echo "::warning::Missing NOTIFICATION_REPOSITORY_TOKEN; notifications will temporarily reuse SUBMISSION_REPOSITORY_TOKEN."
+          fi
 
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v2
@@ -87,17 +91,44 @@ jobs:
               exit 1
             }
 
-      - name: Configure repository sync
+      - name: Verify GitHub notification channel
+        run: |
+          token="${NOTIFICATION_REPOSITORY_TOKEN:-$SUBMISSION_REPOSITORY_TOKEN}"
+          status="$(
+            curl --silent --show-error \
+              --output notification-issue.json \
+              --write-out "%{http_code}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $token" \
+              --header "X-GitHub-Api-Version: 2026-03-10" \
+              "https://api.github.com/repos/eeminionn/tomatin-code-lab/issues/59"
+          )"
+          if test "$status" != "200"; then
+            message="The notification token cannot access eeminionn/tomatin-code-lab#59 (HTTP $status)."
+            if test -n "$NOTIFICATION_REPOSITORY_TOKEN"; then
+              echo "::error::$message"
+              exit 1
+            fi
+            echo "::warning::$message Add NOTIFICATION_REPOSITORY_TOKEN with Issues: Read and write."
+          fi
+
+      - name: Configure repository sync and notifications
         run: |
           owner="${SUBMISSION_REPOSITORY_OWNER:-eeminionn}"
           repository="${SUBMISSION_REPOSITORY_NAME:-tomatin-code-lab-resoluciones}"
           allowed_origins="${APP_ORIGIN:-https://${GITHUB_REPOSITORY_OWNER}.github.io}"
+          secrets=(
+            GITHUB_REPOSITORY_TOKEN="$SUBMISSION_REPOSITORY_TOKEN"
+            GITHUB_REPOSITORY_OWNER="$owner"
+            GITHUB_REPOSITORY_NAME="$repository"
+            ALLOWED_ORIGINS="$allowed_origins"
+          )
+          if test -n "$NOTIFICATION_REPOSITORY_TOKEN"; then
+            secrets+=(GITHUB_NOTIFICATION_TOKEN="$NOTIFICATION_REPOSITORY_TOKEN")
+          fi
           supabase secrets set \
             --project-ref "$PROJECT_ID" \
-            GITHUB_REPOSITORY_TOKEN="$SUBMISSION_REPOSITORY_TOKEN" \
-            GITHUB_REPOSITORY_OWNER="$owner" \
-            GITHUB_REPOSITORY_NAME="$repository" \
-            ALLOWED_ORIGINS="$allowed_origins"
+            "${secrets[@]}"
 
       - name: Deploy Edge Functions
         run: supabase functions deploy --project-ref "$PROJECT_ID"
