@@ -54,6 +54,20 @@ test("frontend sandbox keeps the current student UI without backend calls", asyn
   expect(backendRequests).toEqual([]);
 });
 
+test("frontend sandbox renders rewards while keeping redemptions disabled", async ({
+  page,
+}) => {
+  const backendRequests = watchBackendRequests(page);
+  await page.goto("./");
+  await page.getByRole("button", { name: "Ver interfaz de estudiante" }).click();
+  await page.getByRole("link", { name: "Premios" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Premios", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Canjear" })).toBeDisabled();
+  expect(backendRequests).toEqual([]);
+});
+
 test("frontend sandbox displays mentor controls but blocks mutations", async ({
   page,
 }) => {
@@ -76,6 +90,11 @@ test("frontend sandbox displays mentor controls but blocks mutations", async ({
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Aprobar y asignar XP" }),
+  ).toBeDisabled();
+  await page.getByRole("link", { name: "Premios", exact: true }).click();
+  await page.getByRole("button", { name: "Nuevo premio" }).click();
+  await expect(
+    page.getByRole("button", { name: "Guardar premio" }),
   ).toBeDisabled();
   expect(backendRequests).toEqual([]);
 });

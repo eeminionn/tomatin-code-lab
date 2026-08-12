@@ -13,12 +13,14 @@ import {
   Copy,
   Eye,
   FilePlus2,
+  Gift,
   Link2,
   LoaderCircle,
   MailPlus,
   MessageSquareText,
   Pencil,
   Plus,
+  RotateCw,
   Save,
   Search,
   Send,
@@ -38,6 +40,7 @@ import {
 } from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RankingBoard } from "@/components/RankingBoard";
+import { RewardsManager } from "@/components/RewardsManager";
 import { formatDate, initials, isOverdue } from "@/lib/format";
 import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
@@ -62,7 +65,8 @@ type MentorTab =
   | "ranking"
   | "assignments"
   | "missions"
-  | "invitations";
+  | "invitations"
+  | "rewards";
 
 interface LocalMissionDraft extends MissionDraftInput {
   id: string;
@@ -1113,6 +1117,7 @@ function AssignmentsManager() {
     snapshot,
     frontendOnly,
     createAssignment,
+    retryAssignmentNotification,
     updateAssignment,
     deleteAssignment,
   } = useClassroom();
@@ -1131,10 +1136,11 @@ function AssignmentsManager() {
   );
   if (!snapshot) return null;
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (frontendOnly) return;
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const missionId = String(data.get("missionId"));
     const selectedMission = getMissionById(missionId);
     if (!selectedMission) return;
@@ -1147,9 +1153,35 @@ function AssignmentsManager() {
       allowedLanguages: languageSelection,
       studentIds: studentSelection,
     };
-    createAssignment(input);
-    setCreating(false);
-    event.currentTarget.reset();
+    setBusyId("create");
+    setActionError("");
+    try {
+      await createAssignment(input);
+      setCreating(false);
+      form.reset();
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "No se pudo crear la tarea.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function retryNotification(assignmentId: string) {
+    setBusyId(`notification-${assignmentId}`);
+    setActionError("");
+    try {
+      await retryAssignmentNotification(assignmentId);
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo reenviar el aviso de GitHub.",
+      );
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function submitEdit(
@@ -1306,13 +1338,18 @@ function AssignmentsManager() {
               className="button primary"
               disabled={
                 frontendOnly ||
+                busyId === "create" ||
                 languageSelection.length === 0 ||
                 studentSelection.length === 0
               }
               title={frontendOnly ? "Publicar requiere el backend oficial" : undefined}
             >
-              <Send aria-hidden="true" />
-              Publicar tarea
+              {busyId === "create" ? (
+                <LoaderCircle className="spin" aria-hidden="true" />
+              ) : (
+                <Send aria-hidden="true" />
+              )}
+              {busyId === "create" ? "Publicando..." : "Publicar tarea"}
             </button>
           </div>
         </form>
@@ -1330,6 +1367,9 @@ function AssignmentsManager() {
           const approvedCount = assignmentProgress.filter(
             (entry) => entry.status === "approved",
           ).length;
+          const githubNotification = snapshot.githubNotifications.find(
+            (entry) => entry.assignmentId === assignment.id,
+          );
           return (
             <div className="assignment-admin-item" key={assignment.id}>
             <article className="admin-row assignment-admin-row">
@@ -1353,6 +1393,63 @@ function AssignmentsManager() {
                 {assignment.allowedLanguages.map((language) => (
                   <span key={language}>{LANGUAGE_META[language].shortLabel}</span>
                 ))}
+              </div>
+              <div
+                className={`github-delivery ${
+                  githubNotification?.status ?? "missing"
+                }`}
+                title={githubNotification?.lastError}
+              >
+                {githubNotification?.status === "sent" ? (
+                  <CheckCircle2 aria-hidden="true" />
+                ) : githubNotification?.status === "partial" ? (
+                  <Clock3 aria-hidden="true" />
+                ) : githubNotification?.status === "pending" ? (
+                  <LoaderCircle className="spin" aria-hidden="true" />
+                ) : (
+                  <XCircle aria-hidden="true" />
+                )}
+                <span>
+                  {githubNotification?.status === "sent"
+                    ? "Aviso enviado"
+                    : githubNotification?.status === "partial"
+                      ? "Aviso parcial"
+                      : githubNotification?.status === "pending"
+                        ? "Enviando aviso"
+                        : githubNotification?.status === "failed"
+                          ? "Aviso fallido"
+                          : "Sin aviso"}
+                </span>
+                {githubNotification?.githubCommentUrl ? (
+                  <a
+                    href={githubNotification.githubCommentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Abrir aviso en GitHub"
+                    title="Abrir aviso en GitHub"
+                  >
+                    <Link2 aria-hidden="true" />
+                  </a>
+                ) : null}
+                {(!githubNotification || githubNotification.status === "failed") ? (
+                  <button
+                    type="button"
+                    aria-label={`Reintentar aviso de ${assignment.title}`}
+                    title="Reintentar aviso de GitHub"
+                    disabled={
+                      frontendOnly ||
+                      busyId === `notification-${assignment.id}`
+                    }
+                    onClick={() => void retryNotification(assignment.id)}
+                  >
+                    <RotateCw
+                      className={
+                        busyId === `notification-${assignment.id}` ? "spin" : ""
+                      }
+                      aria-hidden="true"
+                    />
+                  </button>
+                ) : null}
               </div>
               <div className="assignment-admin-actions">
                 <button
@@ -2449,7 +2546,8 @@ export function Component() {
     section === "ranking" ||
     section === "assignments" ||
     section === "missions" ||
-    section === "invitations"
+    section === "invitations" ||
+    section === "rewards"
       ? section
       : "overview";
   const tabPaths: Record<MentorTab, string> = {
@@ -2460,6 +2558,7 @@ export function Component() {
     assignments: "/admin/assignments",
     missions: "/admin/missions",
     invitations: "/admin/invitations",
+    rewards: "/admin/rewards",
   };
 
   const reviewCount = snapshot.progress.filter(
@@ -2489,6 +2588,7 @@ export function Component() {
           ["assignments", "Asignaciones", CalendarPlus],
           ["missions", "Misiones", BookCopy],
           ["invitations", "Invitaciones", MailPlus],
+          ["rewards", "Premios", Gift],
         ].map(([value, label, Icon]) => (
           <button
             type="button"
@@ -2518,6 +2618,7 @@ export function Component() {
         {tab === "assignments" ? <AssignmentsManager /> : null}
         {tab === "missions" ? <MissionManager /> : null}
         {tab === "invitations" ? <InvitationsManager /> : null}
+        {tab === "rewards" ? <RewardsManager /> : null}
       </div>
     </main>
   );

@@ -21,11 +21,13 @@ import type {
   InvitationInput,
   Language,
   Profile,
+  RewardInput,
   Review,
   UpdateAssignmentInput,
 } from "@/types";
 import {
   acceptPendingInvitation,
+  notifyAssignment,
   isSupabaseConfigured,
   provisionStudentRepository,
   signOutSupabase,
@@ -36,6 +38,7 @@ import {
   progressAfterReview,
 } from "@/models/progress";
 import { sanitizeAvatarConfig } from "@/lib/avatar";
+import { availableXpForStudent } from "@/models/rewards";
 
 const DEMO_SESSION_KEY = "tomatin.v2.demo-session";
 const DEMO_SNAPSHOT_KEY = "tomatin.v2.demo-classroom";
@@ -61,7 +64,8 @@ interface ClassroomContextValue {
     comment: string,
     details?: Pick<Review, "inlineComments" | "criteria">,
   ) => Promise<void>;
-  createAssignment: (input: CreateAssignmentInput) => void;
+  createAssignment: (input: CreateAssignmentInput) => Promise<void>;
+  retryAssignmentNotification: (assignmentId: string) => Promise<void>;
   updateAssignment: (id: string, input: UpdateAssignmentInput) => Promise<void>;
   deleteAssignment: (id: string) => Promise<void>;
   createInvitation: (input: InvitationInput) => Promise<void>;
@@ -72,7 +76,15 @@ interface ClassroomContextValue {
     avatarConfig: Profile["avatarConfig"];
   }) => Promise<void>;
   markNotificationRead: (id: string) => void;
-  dismissNotification: (id: string) => void;
+  dismissNotification: (id: string) => Promise<void>;
+  dismissAllNotifications: () => Promise<void>;
+  saveReward: (id: string | null, input: RewardInput) => Promise<void>;
+  deleteReward: (id: string) => Promise<void>;
+  redeemReward: (id: string) => Promise<void>;
+  updateRedemptionStatus: (
+    id: string,
+    status: "fulfilled" | "cancelled",
+  ) => Promise<void>;
   recordHint: (assignmentId: string, count: number) => void;
   recordActivity: (
     assignmentId: string,
@@ -106,6 +118,9 @@ function readDemoSnapshot(): ClassroomSnapshot {
             )?.missionVersion ??
             1,
         })),
+        rewards: parsed.rewards ?? [],
+        rewardRedemptions: parsed.rewardRedemptions ?? [],
+        githubNotifications: parsed.githubNotifications ?? [],
       };
     }
   } catch {
@@ -133,6 +148,15 @@ function mapProfile(row: Record<string, unknown>): Profile {
       : undefined,
     role: row.role as Profile["role"],
   };
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("No se pudo leer la imagen."));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function fetchClassAttempts(classId: string) {
@@ -196,6 +220,9 @@ async function fetchSupabaseSnapshot(session: Session) {
     notifications,
     invitations,
     repositories,
+    rewards,
+    rewardRedemptions,
+    githubNotifications,
   ] = await Promise.all([
     supabase.from("classes").select("*").eq("id", classId).single(),
     supabase
@@ -220,6 +247,23 @@ async function fetchSupabaseSnapshot(session: Session) {
           .order("created_at", { ascending: false }),
     supabase.from("invitations").select("*").eq("class_id", classId),
     supabase.from("student_repositories").select("*").eq("class_id", classId),
+    supabase
+      .from("rewards")
+      .select("*")
+      .eq("class_id", classId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("reward_redemptions")
+      .select("*")
+      .eq("class_id", classId)
+      .order("created_at", { ascending: false }),
+    isStaff
+      ? supabase
+          .from("assignment_github_notifications")
+          .select("*")
+          .eq("class_id", classId)
+          .order("updated_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const firstError = [
@@ -232,6 +276,9 @@ async function fetchSupabaseSnapshot(session: Session) {
     notifications,
     invitations,
     repositories,
+    rewards,
+    rewardRedemptions,
+    githubNotifications,
   ].find((query) => query.error)?.error;
   if (firstError) throw firstError;
 
@@ -329,6 +376,43 @@ async function fetchSupabaseSnapshot(session: Session) {
         studentPath: row.student_path ?? undefined,
         lastSyncedAt: row.last_synced_at ?? undefined,
         lastError: row.last_error ?? undefined,
+      })),
+      rewards: (rewards.data ?? []).map((row) => ({
+        id: row.id,
+        classId: row.class_id,
+        title: row.title,
+        description: row.description,
+        priceXp: row.price_xp,
+        imagePath: row.image_path ?? undefined,
+        stock: row.stock ?? undefined,
+        active: row.active,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      })),
+      rewardRedemptions: (rewardRedemptions.data ?? []).map((row) => ({
+        id: row.id,
+        rewardId: row.reward_id ?? undefined,
+        classId: row.class_id,
+        userId: row.user_id,
+        rewardTitle: row.reward_title,
+        rewardImagePath: row.reward_image_path ?? undefined,
+        costXp: row.cost_xp,
+        status: row.status,
+        createdAt: row.created_at,
+        fulfilledAt: row.fulfilled_at ?? undefined,
+        cancelledAt: row.cancelled_at ?? undefined,
+      })),
+      githubNotifications: (githubNotifications.data ?? []).map((row) => ({
+        assignmentId: row.assignment_id,
+        classId: row.class_id,
+        status: row.status,
+        mentionedLogins: row.mentioned_logins ?? [],
+        missingUserIds: row.missing_user_ids ?? [],
+        githubCommentUrl: row.github_comment_url ?? undefined,
+        attempts: row.attempts,
+        lastError: row.last_error ?? undefined,
+        sentAt: row.sent_at ?? undefined,
+        updatedAt: row.updated_at,
       })),
     },
   };
@@ -495,6 +579,36 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
           event: "*",
           schema: "public",
           table: "student_repositories",
+          filter: `class_id=eq.${snapshot.classroom.id}`,
+        },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "rewards",
+          filter: `class_id=eq.${snapshot.classroom.id}`,
+        },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "reward_redemptions",
+          filter: `class_id=eq.${snapshot.classroom.id}`,
+        },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "assignment_github_notifications",
           filter: `class_id=eq.${snapshot.classroom.id}`,
         },
         scheduleRefresh,
@@ -673,11 +787,11 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   );
 
   const createAssignment = useCallback(
-    (input: CreateAssignmentInput) => {
-      if (isFrontendOnly) return;
+    async (input: CreateAssignmentInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot) return;
       if (supabase) {
-        void supabase
+        const { data: assignmentId, error: assignmentError } = await supabase
           .rpc("create_assignment", {
             p_mission_id: input.missionId,
             p_title: input.title,
@@ -686,18 +800,34 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             p_points: input.points,
             p_allowed_languages: input.allowedLanguages,
             p_student_ids: input.studentIds,
-          })
-          .then(({ error: assignmentError }) => {
-            if (assignmentError) {
-              setError(assignmentError.message);
-              return;
-            }
-            void refresh();
           });
+        if (assignmentError) {
+          setError(assignmentError.message);
+          throw assignmentError;
+        }
+        await refresh();
+        try {
+          await notifyAssignment(String(assignmentId));
+          await refresh();
+        } catch (notificationError) {
+          setError(
+            `La tarea fue creada, pero el aviso de GitHub falló: ${
+              notificationError instanceof Error
+                ? notificationError.message
+                : "error desconocido"
+            }`,
+          );
+        }
         return;
       }
       const id = crypto.randomUUID();
       const missionVersion = getMissionById(input.missionId)?.version ?? 1;
+      const githubLogins = input.studentIds
+        .map(
+          (userId) =>
+            snapshot.profiles.find((entry) => entry.id === userId)?.githubLogin,
+        )
+        .filter((login): login is string => Boolean(login));
       persistDemo({
         ...snapshot,
         assignments: [
@@ -720,6 +850,69 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             hintsUsed: 0,
           })),
         ],
+        githubNotifications: [
+          {
+            assignmentId: id,
+            classId: snapshot.classroom.id,
+            status:
+              githubLogins.length === input.studentIds.length
+                ? "sent"
+                : githubLogins.length > 0
+                  ? "partial"
+                  : "failed",
+            mentionedLogins: githubLogins,
+            missingUserIds: input.studentIds.filter(
+              (userId) =>
+                !snapshot.profiles.find((entry) => entry.id === userId)
+                  ?.githubLogin,
+            ),
+            attempts: 1,
+            lastError:
+              githubLogins.length === 0
+                ? "Los estudiantes demo no tienen login de GitHub."
+                : undefined,
+            sentAt:
+              githubLogins.length > 0 ? new Date().toISOString() : undefined,
+            updatedAt: new Date().toISOString(),
+          },
+          ...snapshot.githubNotifications,
+        ],
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const retryAssignmentNotification = useCallback(
+    async (assignmentId: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        try {
+          await notifyAssignment(assignmentId);
+          await refresh();
+        } catch (notificationError) {
+          const message =
+            notificationError instanceof Error
+              ? notificationError.message
+              : "No se pudo reenviar el aviso.";
+          setError(message);
+          throw notificationError;
+        }
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        githubNotifications: snapshot.githubNotifications.map((entry) =>
+          entry.assignmentId === assignmentId
+            ? {
+                ...entry,
+                status:
+                  entry.mentionedLogins.length > 0 ? "sent" : "failed",
+                attempts: entry.attempts + 1,
+                updatedAt: new Date().toISOString(),
+              }
+            : entry,
+        ),
       });
     },
     [persistDemo, previewStudentId, refresh, snapshot],
@@ -1035,8 +1228,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   );
 
   const dismissNotification = useCallback(
-    (id: string) => {
-      if (isFrontendOnly) return;
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot) return;
       const dismissedAt = new Date().toISOString();
       if (supabase) {
@@ -1053,27 +1246,26 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
               }
             : current,
         );
-        void supabase
-          .from("notifications")
-          .update({ dismissed_at: dismissedAt })
-          .eq("id", id)
-          .then(({ error: notificationError }) => {
-            if (notificationError) {
-              if (previousNotification) {
-                setSnapshot((current) =>
-                  current
-                    ? {
-                        ...current,
-                        notifications: current.notifications.map((entry) =>
-                          entry.id === id ? previousNotification : entry,
-                        ),
-                      }
-                    : current,
-                );
-              }
-              setError(notificationError.message);
-            }
-          });
+        const { error: notificationError } = await supabase.rpc(
+          "dismiss_notifications",
+          { p_notification_ids: [id] },
+        );
+        if (notificationError) {
+          if (previousNotification) {
+            setSnapshot((current) =>
+              current
+                ? {
+                    ...current,
+                    notifications: current.notifications.map((entry) =>
+                      entry.id === id ? previousNotification : entry,
+                    ),
+                  }
+                : current,
+            );
+          }
+          setError(notificationError.message);
+          throw notificationError;
+        }
         return;
       }
       persistDemo({
@@ -1084,6 +1276,311 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       });
     },
     [persistDemo, previewStudentId, snapshot],
+  );
+
+  const dismissAllNotifications = useCallback(async () => {
+    if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+    if (previewStudentId || !snapshot || !viewProfile) return;
+    const dismissedAt = new Date().toISOString();
+    const previousNotifications = snapshot.notifications;
+    const dismissOwn = (notifications: ClassroomSnapshot["notifications"]) =>
+      notifications.map((entry) =>
+        entry.userId === viewProfile.id && !entry.dismissedAt
+          ? { ...entry, dismissedAt }
+          : entry,
+      );
+    if (supabase) {
+      setSnapshot((current) =>
+        current
+          ? { ...current, notifications: dismissOwn(current.notifications) }
+          : current,
+      );
+      const { error: notificationError } = await supabase.rpc(
+        "dismiss_notifications",
+        { p_notification_ids: null },
+      );
+      if (notificationError) {
+        setSnapshot((current) =>
+          current ? { ...current, notifications: previousNotifications } : current,
+        );
+        setError(notificationError.message);
+        throw notificationError;
+      }
+      return;
+    }
+    persistDemo({
+      ...snapshot,
+      notifications: dismissOwn(snapshot.notifications),
+    });
+  }, [persistDemo, previewStudentId, snapshot, viewProfile]);
+
+  const saveReward = useCallback(
+    async (id: string | null, input: RewardInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot || !profile) return;
+      const title = input.title.trim();
+      const description = input.description.trim();
+      if (!title || title.length > 100) {
+        throw new Error("El nombre debe tener entre 1 y 100 caracteres.");
+      }
+      if (description.length > 1200) {
+        throw new Error("La descripción no puede superar 1.200 caracteres.");
+      }
+      if (!Number.isInteger(input.priceXp) || input.priceXp < 1) {
+        throw new Error("El precio debe ser un número entero mayor que cero.");
+      }
+      if (
+        input.stock !== undefined &&
+        (!Number.isInteger(input.stock) || input.stock < 0)
+      ) {
+        throw new Error("El stock debe ser un entero positivo o quedar ilimitado.");
+      }
+      if (
+        input.imageFile &&
+        (![
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+        ].includes(input.imageFile.type) ||
+          input.imageFile.size > 2_097_152)
+      ) {
+        throw new Error("La imagen debe ser JPG, PNG o WebP y pesar hasta 2 MB.");
+      }
+
+      const existing = id
+        ? snapshot.rewards.find((entry) => entry.id === id)
+        : undefined;
+      const rewardId = id ?? crypto.randomUUID();
+      if (supabase) {
+        let uploadedPath: string | undefined;
+        let imagePath = input.removeImage ? undefined : existing?.imagePath;
+        if (input.imageFile) {
+          const extension =
+            input.imageFile.type === "image/png"
+              ? "png"
+              : input.imageFile.type === "image/webp"
+                ? "webp"
+                : "jpg";
+          uploadedPath = `${snapshot.classroom.id}/${rewardId}/${crypto.randomUUID()}.${extension}`;
+          const { error: uploadError } = await supabase.storage
+            .from("reward-images")
+            .upload(uploadedPath, input.imageFile, {
+              cacheControl: "3600",
+              contentType: input.imageFile.type,
+              upsert: false,
+            });
+          if (uploadError) {
+            setError(uploadError.message);
+            throw uploadError;
+          }
+          imagePath = uploadedPath;
+        }
+
+        const values = {
+          class_id: snapshot.classroom.id,
+          title,
+          description,
+          price_xp: input.priceXp,
+          image_path: imagePath ?? null,
+          stock: input.stock ?? null,
+          active: input.active,
+        };
+        const mutation = existing
+          ? supabase
+              .from("rewards")
+              .update(values)
+              .eq("id", rewardId)
+              .eq("class_id", snapshot.classroom.id)
+              .select("id")
+              .maybeSingle()
+          : supabase
+              .from("rewards")
+              .insert({ ...values, id: rewardId, created_by: profile.id })
+              .select("id")
+              .single();
+        const { data, error: rewardError } = await mutation;
+        if (rewardError || !data) {
+          if (uploadedPath) {
+            await supabase.storage.from("reward-images").remove([uploadedPath]);
+          }
+          const failure = rewardError ?? new Error("No se pudo guardar el premio.");
+          setError(failure.message);
+          throw failure;
+        }
+        if (
+          existing?.imagePath &&
+          existing.imagePath !== imagePath &&
+          !/^(https?:|data:|\/)/.test(existing.imagePath)
+        ) {
+          await supabase.storage
+            .from("reward-images")
+            .remove([existing.imagePath]);
+        }
+        await refresh();
+        return;
+      }
+
+      const imagePath = input.imageFile
+        ? await fileToDataUrl(input.imageFile)
+        : input.removeImage
+          ? undefined
+          : existing?.imagePath;
+      const now = new Date().toISOString();
+      const reward = {
+        id: rewardId,
+        classId: snapshot.classroom.id,
+        title,
+        description,
+        priceXp: input.priceXp,
+        imagePath,
+        stock: input.stock,
+        active: input.active,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      };
+      persistDemo({
+        ...snapshot,
+        rewards: existing
+          ? snapshot.rewards.map((entry) =>
+              entry.id === rewardId ? reward : entry,
+            )
+          : [reward, ...snapshot.rewards],
+      });
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
+  const deleteReward = useCallback(
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      const reward = snapshot.rewards.find((entry) => entry.id === id);
+      if (!reward) return;
+      if (supabase) {
+        const { data, error: rewardError } = await supabase
+          .from("rewards")
+          .delete()
+          .eq("id", id)
+          .eq("class_id", snapshot.classroom.id)
+          .select("id")
+          .maybeSingle();
+        if (rewardError || !data) {
+          const failure = rewardError ?? new Error("No se pudo eliminar el premio.");
+          setError(failure.message);
+          throw failure;
+        }
+        if (reward.imagePath && !/^(https?:|data:|\/)/.test(reward.imagePath)) {
+          await supabase.storage.from("reward-images").remove([reward.imagePath]);
+        }
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        rewards: snapshot.rewards.filter((entry) => entry.id !== id),
+        rewardRedemptions: snapshot.rewardRedemptions.map((entry) =>
+          entry.rewardId === id ? { ...entry, rewardId: undefined } : entry,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const redeemReward = useCallback(
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot || !profile) return;
+      if (supabase) {
+        const { error: redemptionError } = await supabase.rpc("redeem_reward", {
+          p_reward_id: id,
+        });
+        if (redemptionError) {
+          setError(redemptionError.message);
+          throw redemptionError;
+        }
+        await refresh();
+        return;
+      }
+      const reward = snapshot.rewards.find(
+        (entry) => entry.id === id && entry.active,
+      );
+      if (!reward) throw new Error("Este premio ya no está disponible.");
+      if (reward.stock !== undefined && reward.stock <= 0) {
+        throw new Error("Este premio está agotado.");
+      }
+      if (availableXpForStudent(snapshot, profile.id) < reward.priceXp) {
+        throw new Error("No tienes XP suficiente para este premio.");
+      }
+      persistDemo({
+        ...snapshot,
+        rewards: snapshot.rewards.map((entry) =>
+          entry.id === id && entry.stock !== undefined
+            ? { ...entry, stock: entry.stock - 1 }
+            : entry,
+        ),
+        rewardRedemptions: [
+          {
+            id: crypto.randomUUID(),
+            rewardId: reward.id,
+            classId: reward.classId,
+            userId: profile.id,
+            rewardTitle: reward.title,
+            rewardImagePath: reward.imagePath,
+            costXp: reward.priceXp,
+            status: "requested",
+            createdAt: new Date().toISOString(),
+          },
+          ...snapshot.rewardRedemptions,
+        ],
+      });
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
+  const updateRedemptionStatus = useCallback(
+    async (id: string, status: "fulfilled" | "cancelled") => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        const { error: redemptionError } = await supabase.rpc(
+          "update_reward_redemption_status",
+          { p_redemption_id: id, p_status: status },
+        );
+        if (redemptionError) {
+          setError(redemptionError.message);
+          throw redemptionError;
+        }
+        await refresh();
+        return;
+      }
+      const redemption = snapshot.rewardRedemptions.find(
+        (entry) => entry.id === id,
+      );
+      if (!redemption || redemption.status !== "requested") return;
+      const now = new Date().toISOString();
+      persistDemo({
+        ...snapshot,
+        rewards:
+          status === "cancelled" && redemption.rewardId
+            ? snapshot.rewards.map((entry) =>
+                entry.id === redemption.rewardId && entry.stock !== undefined
+                  ? { ...entry, stock: entry.stock + 1 }
+                  : entry,
+              )
+            : snapshot.rewards,
+        rewardRedemptions: snapshot.rewardRedemptions.map((entry) =>
+          entry.id === id
+            ? {
+                ...entry,
+                status,
+                fulfilledAt: status === "fulfilled" ? now : undefined,
+                cancelledAt: status === "cancelled" ? now : undefined,
+              }
+            : entry,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
   );
 
   const recordHint = useCallback(
@@ -1196,6 +1693,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       recordAttempt,
       reviewAttempt,
       createAssignment,
+      retryAssignmentNotification,
       updateAssignment,
       deleteAssignment,
       createInvitation,
@@ -1204,6 +1702,11 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       updateProfile,
       markNotificationRead,
       dismissNotification,
+      dismissAllNotifications,
+      saveReward,
+      deleteReward,
+      redeemReward,
+      updateRedemptionStatus,
       recordHint,
       recordActivity,
       startStudentPreview,
@@ -1215,6 +1718,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       createAssignment,
       createInvitation,
       deleteAssignment,
+      deleteReward,
+      dismissAllNotifications,
       dismissNotification,
       error,
       loading,
@@ -1229,13 +1734,17 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       recordAttempt,
       recordActivity,
       recordHint,
+      redeemReward,
       refresh,
+      retryAssignmentNotification,
       reviewAttempt,
+      saveReward,
       snapshot,
       startStudentPreview,
       stopStudentPreview,
       updateInvitation,
       updateAssignment,
+      updateRedemptionStatus,
       updateProfile,
     ],
   );

@@ -67,6 +67,26 @@ export async function provisionStudentRepository(): Promise<{
   return data;
 }
 
+export async function notifyAssignment(assignmentId: string) {
+  if (!supabase) throw new Error("Supabase no está configurado.");
+  const { data, error } = await supabase.functions.invoke<{
+    delivery?: {
+      status: "pending" | "sent" | "partial" | "failed";
+      githubCommentUrl?: string;
+    };
+    duplicate?: boolean;
+  }>("notify-assignment", { body: { assignmentId } });
+  if (error) throw error;
+  return data;
+}
+
+export function getRewardImageUrl(path?: string): string | undefined {
+  if (!path) return undefined;
+  if (/^(https?:|data:|\/)/.test(path)) return path;
+  return supabase?.storage.from("reward-images").getPublicUrl(path).data
+    .publicUrl;
+}
+
 export async function signOutSupabase() {
   if (!supabase) return;
   const { error } = await supabase.auth.signOut();

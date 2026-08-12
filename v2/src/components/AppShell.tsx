@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Eye,
   Gauge,
+  Gift,
   Info,
   LogOut,
   MailPlus,
@@ -34,6 +35,7 @@ const studentNavigation = [
   { to: "/missions", label: "Misiones", icon: BookOpen },
   { to: "/ranking", label: "Ranking", icon: Trophy },
   { to: "/feedback", label: "Feedback", icon: MessageSquareText },
+  { to: "/rewards", label: "Premios", icon: Gift },
 ];
 
 const adminNavigation = [
@@ -44,6 +46,7 @@ const adminNavigation = [
   { to: "/admin/assignments", label: "Tareas", icon: CalendarPlus },
   { to: "/admin/missions", label: "Misiones", icon: BookCopy },
   { to: "/admin/invitations", label: "Invitaciones", icon: MailPlus },
+  { to: "/admin/rewards", label: "Premios", icon: Gift },
 ];
 
 export function AppShell() {

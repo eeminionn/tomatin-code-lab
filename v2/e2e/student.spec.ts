@@ -195,6 +195,40 @@ test("feedback identifies its mission and can be dismissed", async ({ page }) =>
   await expect(page.locator(".feedback-item")).toHaveCount(before - 1);
 });
 
+test("feedback can be cleared in one confirmed action", async ({ page }) => {
+  await page.getByRole("link", { name: "Feedback" }).click();
+  await page.getByRole("button", { name: "Limpiar todo" }).click();
+  const dialog = page.getByRole("alertdialog", {
+    name: "¿Eliminar toda la bandeja?",
+  });
+  await expect(dialog).toContainText("2 mensajes");
+  await dialog.getByRole("button", { name: "Limpiar todo" }).click();
+  await expect(page.locator(".feedback-item")).toHaveCount(0);
+  await expect(page.getByText("No hay feedback todavía")).toBeVisible();
+});
+
+test("student redeems a reward without changing earned ranking XP", async ({
+  page,
+}) => {
+  await page.getByRole("link", { name: "Premios" }).click();
+  await expect(page.getByLabel("100 XP disponibles")).toBeVisible();
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  const reward = page.locator(".reward-card").filter({ hasText: "Pista extra" });
+  await reward.getByRole("button", { name: "Canjear" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Pista extra" });
+  await expect(dialog).toContainText("20 XP");
+  await dialog.getByRole("button", { name: "Confirmar canje" }).click();
+  await expect(page.getByLabel("20 XP disponibles")).toBeVisible();
+  await expect(page.locator(".redemption-row").first()).toContainText(
+    "Solicitado",
+  );
+
+  await page.getByRole("link", { name: "Ranking" }).click();
+  const camila = page.locator(".ranking-row").filter({ hasText: "Camila Rojas" });
+  await expect(camila.locator(".ranking-xp")).toHaveText("100");
+});
+
 test("ranking places the winner above the other podium positions", async ({
   page,
 }) => {

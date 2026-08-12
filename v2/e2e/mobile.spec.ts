@@ -40,3 +40,34 @@ test("mobile navigation and workspace remain inside the viewport", async ({
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBe(true);
 });
+
+test("mobile rewards keep cards and confirmation inside the viewport", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Entrar como estudiante" }).click();
+  await page.getByRole("button", { name: "Abrir navegación" }).click();
+  await page.getByRole("link", { name: "Premios" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Premios", exact: true }),
+  ).toBeVisible();
+  const featured = page.locator(".reward-card.is-featured");
+  await expect(featured).toHaveCount(3);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+
+  await page
+    .locator(".reward-card")
+    .filter({ hasText: "Pista extra" })
+    .getByRole("button", { name: "Canjear" })
+    .click();
+  await expect(page.getByRole("alertdialog", { name: "Pista extra" })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});

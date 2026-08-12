@@ -312,6 +312,56 @@ export interface InvitationInput {
   active: boolean;
 }
 
+export interface Reward {
+  id: string;
+  classId: string;
+  title: string;
+  description: string;
+  priceXp: number;
+  imagePath?: string;
+  stock?: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RewardInput {
+  title: string;
+  description: string;
+  priceXp: number;
+  stock?: number;
+  active: boolean;
+  imageFile?: File;
+  removeImage?: boolean;
+}
+
+export interface RewardRedemption {
+  id: string;
+  rewardId?: string;
+  classId: string;
+  userId: string;
+  rewardTitle: string;
+  rewardImagePath?: string;
+  costXp: number;
+  status: "requested" | "fulfilled" | "cancelled";
+  createdAt: string;
+  fulfilledAt?: string;
+  cancelledAt?: string;
+}
+
+export interface AssignmentGitHubNotification {
+  assignmentId: string;
+  classId: string;
+  status: "pending" | "sent" | "partial" | "failed";
+  mentionedLogins: string[];
+  missingUserIds: string[];
+  githubCommentUrl?: string;
+  attempts: number;
+  lastError?: string;
+  sentAt?: string;
+  updatedAt: string;
+}
+
 export interface ClassroomSnapshot {
   classroom: Classroom;
   profiles: Profile[];
@@ -322,6 +372,9 @@ export interface ClassroomSnapshot {
   notifications: AppNotification[];
   invitations: Invitation[];
   repositories: StudentRepository[];
+  rewards: Reward[];
+  rewardRedemptions: RewardRedemption[];
+  githubNotifications: AssignmentGitHubNotification[];
 }
 
 export interface RunnerRequest {

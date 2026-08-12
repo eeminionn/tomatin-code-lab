@@ -67,6 +67,49 @@ test("mentor creates an assignment for selected students", async ({ page }) => {
   await page.getByRole("button", { name: "Publicar tarea" }).click();
 
   await expect(page.getByText("Prueba de aula")).toBeVisible();
+  await expect(
+    page.locator(".assignment-admin-item").filter({ hasText: "Prueba de aula" }),
+  ).toContainText("Aviso fallido");
+});
+
+test("mentor creates a reward and fulfills a student redemption", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Entrar como estudiante" }).click();
+  await page.getByRole("link", { name: "Premios" }).click();
+  const reward = page.locator(".reward-card").filter({ hasText: "Pista extra" });
+  await reward.getByRole("button", { name: "Canjear" }).click();
+  await page
+    .getByRole("alertdialog", { name: "Pista extra" })
+    .getByRole("button", { name: "Confirmar canje" })
+    .click();
+  await page.locator(".profile-menu-trigger").click();
+  await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();
+
+  await page.getByRole("button", { name: "Entrar como eeminionn" }).click();
+  await page.getByRole("link", { name: "Premios", exact: true }).click();
+  const redemption = page
+    .locator(".redemption-admin-row")
+    .filter({ hasText: "Pista extra" });
+  await expect(redemption).toContainText("Camila Rojas");
+  await redemption
+    .getByRole("button", { name: /Marcar Pista extra.*como entregado/ })
+    .click();
+  await expect(redemption).toContainText("Entregado");
+
+  await page.getByRole("button", { name: "Nuevo premio" }).click();
+  await page.getByLabel("Nombre").fill("Sesión de Arduino");
+  await page
+    .getByLabel("Descripción")
+    .fill("Elige el sensor para una sesión práctica del curso.");
+  await page.getByLabel("Precio en XP").fill("240");
+  await page.getByLabel("Stock ilimitado").uncheck();
+  await page.getByLabel("Stock", { exact: true }).fill("3");
+  await page.getByRole("button", { name: "Guardar premio" }).click();
+  await expect(
+    page.locator(".reward-admin-card").filter({ hasText: "Sesión de Arduino" }),
+  ).toContainText("240 XP");
 });
 
 test("mentor edits and deletes an assignment with its ranking XP", async ({
