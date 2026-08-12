@@ -737,20 +737,17 @@ select is(
   'class staff reads every central repository mapping'
 );
 
-select is(
-  (
-    with updated as (
-      update public.assignments
-      set
-        title = 'Edited by owner',
-        instructions = 'Updated instructions',
-        due_at = now() + interval '2 days'
-      where id = '00000000-0000-0000-0000-000000000301'
-      returning id
-    )
-    select count(*) from updated
-  ),
-  1::bigint,
+select results_eq(
+  $$
+    update public.assignments
+    set
+      title = 'Edited by owner',
+      instructions = 'Updated instructions',
+      due_at = now() + interval '2 days'
+    where id = '00000000-0000-0000-0000-000000000301'
+    returning id::text
+  $$,
+  $$ values ('00000000-0000-0000-0000-000000000301') $$,
   'class staff can edit assignment presentation fields'
 );
 
@@ -765,17 +762,13 @@ select set_config(
   true
 );
 
-select is(
-  (
-    with updated as (
-      update public.assignments
-      set title = 'Student edit must fail'
-      where id = '00000000-0000-0000-0000-000000000301'
-      returning id
-    )
-    select count(*) from updated
-  ),
-  0::bigint,
+select is_empty(
+  $$
+    update public.assignments
+    set title = 'Student edit must fail'
+    where id = '00000000-0000-0000-0000-000000000301'
+    returning id
+  $$,
   'students cannot edit assignments'
 );
 
@@ -811,16 +804,13 @@ select set_config(
   true
 );
 
-select is(
-  (
-    with deleted as (
-      delete from public.assignments
-      where id = '00000000-0000-0000-0000-000000000301'
-      returning id
-    )
-    select count(*) from deleted
-  ),
-  1::bigint,
+select results_eq(
+  $$
+    delete from public.assignments
+    where id = '00000000-0000-0000-0000-000000000301'
+    returning id::text
+  $$,
+  $$ values ('00000000-0000-0000-0000-000000000301') $$,
   'class staff can delete an assignment'
 );
 
