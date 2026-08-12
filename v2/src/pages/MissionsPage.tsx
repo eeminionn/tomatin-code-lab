@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, isOverdue, relativeDueDate } from "@/lib/format";
+import { publishedAssignmentsForStudent } from "@/lib/mission-access";
 import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
 import { LANGUAGE_META, LANGUAGES, type Course } from "@/types";
@@ -26,10 +27,10 @@ export function Component() {
 
   if (!viewProfile || !snapshot) return null;
 
-  const assignments = snapshot.assignments.filter(
-    (assignment) =>
-      assignment.status === "published" &&
-      assignment.studentIds.includes(viewProfile.id),
+  const studentView = viewProfile.role === "student";
+  const assignments = publishedAssignmentsForStudent(
+    snapshot.assignments,
+    viewProfile.id,
   );
   const progressByAssignment = new Map(
     snapshot.progress
@@ -95,34 +96,40 @@ export function Component() {
   const assignedMissionIds = new Set(
     assignedJourney.map((entry) => entry.mission.id),
   );
-  const practiceEntries = missions
-    .filter(
-      (mission) =>
-        !assignedMissionIds.has(mission.id) &&
-        matchesCourse(mission.course) &&
-        matchesQuery([
-          mission.title,
-          mission.summary,
-          mission.module,
-          ...mission.tags,
-        ]),
-    )
-    .map((mission) => ({ kind: "practice" as const, mission }));
-  const displayEntries = onlyAssigned
-    ? assignedEntries
-    : [...assignedEntries, ...practiceEntries];
+  const practiceEntries = studentView
+    ? []
+    : missions
+        .filter(
+          (mission) =>
+            !assignedMissionIds.has(mission.id) &&
+            matchesCourse(mission.course) &&
+            matchesQuery([
+              mission.title,
+              mission.summary,
+              mission.module,
+              ...mission.tags,
+            ]),
+        )
+        .map((mission) => ({ kind: "practice" as const, mission }));
+  const displayEntries =
+    studentView || onlyAssigned
+      ? assignedEntries
+      : [...assignedEntries, ...practiceEntries];
 
   return (
     <main className="page missions-page">
       <header className="page-header">
         <div>
           <p className="eyebrow">
-            CATÁLOGO // {missions.length} MISIONES
+            {studentView
+              ? `RECORRIDO // ${assignedJourney.length} MISIONES ASIGNADAS`
+              : `CATÁLOGO // ${missions.length} MISIONES`}
           </p>
           <h1>Misiones</h1>
           <p>
-            Las tareas asignadas aparecen primero. Puedes practicar cualquier
-            otra misión sin afectar el ranking.
+            {studentView
+              ? "Aquí aparecen únicamente las misiones que eeminionn te asignó."
+              : "Las tareas asignadas aparecen primero. El equipo mentor puede revisar el catálogo completo."}
           </p>
         </div>
         <div className="language-key" aria-label="Lenguajes disponibles">
@@ -159,15 +166,17 @@ export function Component() {
             </button>
           ))}
         </div>
-        <label className="toggle-control">
-          <input
-            type="checkbox"
-            checked={onlyAssigned}
-            onChange={(event) => setOnlyAssigned(event.target.checked)}
-          />
-          <span aria-hidden="true" />
-          Solo asignadas
-        </label>
+        {!studentView ? (
+          <label className="toggle-control">
+            <input
+              type="checkbox"
+              checked={onlyAssigned}
+              onChange={(event) => setOnlyAssigned(event.target.checked)}
+            />
+            <span aria-hidden="true" />
+            Solo asignadas
+          </label>
+        ) : null}
       </section>
 
       <div className="catalog-summary">
@@ -181,7 +190,7 @@ export function Component() {
           onClick={() => {
             setCourse("all");
             setQuery("");
-            setOnlyAssigned(false);
+            if (!studentView) setOnlyAssigned(false);
           }}
         >
           Limpiar filtros
@@ -228,20 +237,25 @@ export function Component() {
         </section>
       ) : null}
 
-      <section className="mission-grid" aria-label="Misiones">
-        {displayEntries.map((entry) => {
-          const assignment = entry.kind === "assigned" ? entry.assignment : undefined;
-          const progress = entry.kind === "assigned" ? entry.progress : undefined;
-          const mission = entry.mission;
-          const status = progress?.status ?? "not_started";
-          const overdue = assignment
-            ? isOverdue(assignment.dueAt, status)
-            : false;
-          return (
-            <article
-              className={`mission-card ${assignment ? "is-assigned" : "is-practice"}`}
-              key={assignment?.id ?? `practice-${mission.id}`}
-            >
+      {displayEntries.length > 0 ? (
+        <section className="mission-grid" aria-label="Misiones">
+          {displayEntries.map((entry) => {
+            const assignment =
+              entry.kind === "assigned" ? entry.assignment : undefined;
+            const progress =
+              entry.kind === "assigned" ? entry.progress : undefined;
+            const mission = entry.mission;
+            const status = progress?.status ?? "not_started";
+            const overdue = assignment
+              ? isOverdue(assignment.dueAt, status)
+              : false;
+            return (
+              <article
+                className={`mission-card ${
+                  assignment ? "is-assigned" : "is-practice"
+                }`}
+                key={assignment?.id ?? `practice-${mission.id}`}
+              >
               <div className="mission-card-top">
                 <span className="mission-number">
                   {mission.course === "programming-1" ? "P1" : "P2"}.
@@ -312,10 +326,25 @@ export function Component() {
                 {assignment ? "Trabajar en la tarea" : "Abrir workspace"}
                 <ArrowRight aria-hidden="true" />
               </Link>
-            </article>
-          );
-        })}
-      </section>
+              </article>
+            );
+          })}
+        </section>
+      ) : (
+        <section className="empty-state mission-empty-state">
+          <BookOpenCheck aria-hidden="true" />
+          <h2>
+            {assignedJourney.length === 0
+              ? "Aún no tienes misiones asignadas"
+              : "No encontramos misiones con esos filtros"}
+          </h2>
+          <p>
+            {assignedJourney.length === 0
+              ? "Cuando eeminionn publique una tarea, aparecerá aquí."
+              : "Prueba otra búsqueda o limpia los filtros."}
+          </p>
+        </section>
+      )}
     </main>
   );
 }

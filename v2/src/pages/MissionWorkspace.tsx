@@ -43,6 +43,7 @@ import {
   languageContract,
   learningFeedback,
 } from "@/lib/learning-feedback";
+import { publishedAssignmentsForStudent } from "@/lib/mission-access";
 import {
   createDraftKey,
   loadDraft,
@@ -371,18 +372,42 @@ export function Component() {
   const assignmentId = searchParams.get("assignment") ?? undefined;
   const linkedAttemptId = searchParams.get("attempt") ?? undefined;
   const linkedReviewId = searchParams.get("review") ?? undefined;
-  const assignment = snapshot?.assignments.find(
+  const studentView = viewProfile?.role === "student";
+  const latestMission = slug ? getMissionBySlug(slug) : undefined;
+  const studentAssignments =
+    snapshot && viewProfile
+      ? publishedAssignmentsForStudent(snapshot.assignments, viewProfile.id)
+      : [];
+  const requestedAssignment = snapshot?.assignments.find(
     (entry) => entry.id === assignmentId,
   );
+  const fallbackAssignment =
+    studentView && !assignmentId && latestMission
+      ? studentAssignments.find(
+          (entry) => entry.missionId === latestMission.id,
+        )
+      : undefined;
+  const assignment = requestedAssignment ?? fallbackAssignment;
+  const assignmentIsAvailable =
+    assignment &&
+    (!studentView ||
+      (assignment.status === "published" &&
+        assignment.studentIds.includes(viewProfile?.id ?? "")));
   const progress = snapshot?.progress.find(
     (entry) =>
       entry.userId === viewProfile?.id &&
       entry.assignmentId === assignment?.id,
   );
   const missionVersion = progress?.missionVersion ?? assignment?.missionVersion;
-  const mission = slug ? getMissionBySlug(slug, missionVersion) : undefined;
+  const resolvedMission = slug
+    ? getMissionBySlug(slug, missionVersion)
+    : undefined;
   const validAssignment =
-    assignment && assignment.missionId === mission?.id ? assignment : undefined;
+    assignmentIsAvailable && assignment.missionId === resolvedMission?.id
+      ? assignment
+      : undefined;
+  const mission =
+    studentView && !validAssignment ? undefined : resolvedMission;
   const assignmentStatus = progress?.status ?? "not_started";
   const assignmentOverdue = validAssignment
     ? isOverdue(validAssignment.dueAt, assignmentStatus)
@@ -719,6 +744,18 @@ export function Component() {
   const visibleCall =
     activeMission.variants[language].publicTests[0]?.actualExpression ??
     activeMission.variants[language].publicTests[0]?.expression;
+  const visiblePrerequisites = activeMission.prerequisites
+    .map((missionId) => {
+      const prerequisite = getMissionById(missionId);
+      const prerequisiteAssignment = studentAssignments.find(
+        (entry) => entry.missionId === missionId,
+      );
+      if (studentView && !prerequisiteAssignment) return null;
+      return prerequisite
+        ? { mission: prerequisite, assignment: prerequisiteAssignment }
+        : null;
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 
   async function execute(kind: AttemptKind) {
     if (
@@ -1066,20 +1103,23 @@ export function Component() {
                     ))}
                   </ul>
                 </section>
-                {mission.prerequisites.length > 0 ? (
+                {visiblePrerequisites.length > 0 ? (
                   <section className="brief-section prerequisites">
                     <p className="eyebrow">ANTES DE ESTA MISIÓN</p>
-                    {mission.prerequisites.map((missionId) => {
-                      const prerequisite = getMissionById(missionId);
-                      return prerequisite ? (
+                    {visiblePrerequisites.map((entry) => {
+                      return (
                         <Link
-                          key={missionId}
-                          to={`/mission/${prerequisite.slug}`}
+                          key={entry.mission.id}
+                          to={`/mission/${entry.mission.slug}${
+                            entry.assignment
+                              ? `?assignment=${entry.assignment.id}`
+                              : ""
+                          }`}
                         >
-                          {prerequisite.title}
+                          {entry.mission.title}
                           <ChevronRight aria-hidden="true" />
                         </Link>
-                      ) : null;
+                      );
                     })}
                   </section>
                 ) : null}

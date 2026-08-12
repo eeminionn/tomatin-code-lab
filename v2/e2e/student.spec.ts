@@ -72,6 +72,10 @@ test("prioritizes pending tasks and shows the mentor brief before the mission", 
   await expect(approved).toContainText("Condiciones booleanas");
 
   await page.getByRole("link", { name: "Misiones" }).click();
+  await expect(page.locator(".mission-card")).toHaveCount(4);
+  await expect(page.locator(".mission-card.is-practice")).toHaveCount(0);
+  await expect(page.getByText("RECORRIDO // 4 MISIONES ASIGNADAS")).toBeVisible();
+  await expect(page.getByText("Solo asignadas")).toHaveCount(0);
   const firstTask = page.locator(".mission-card.is-assigned").first();
   await expect(firstTask).toContainText("Variables y acumuladores");
   await expect(firstTask).toContainText(
@@ -91,6 +95,18 @@ test("prioritizes pending tasks and shows the mentor brief before the mission", 
     "Resuelve la misión en cualquiera de los tres lenguajes.",
   );
   await expect(firstBriefBlock).toContainText("En revisión");
+});
+
+test("blocks direct links to unassigned missions", async ({ page }) => {
+  await page.goto("./#/mission/conversor-de-hallullas");
+  await expect(page.getByRole("heading", { name: "Misiones" })).toBeVisible();
+  await expect(page).toHaveURL(/#\/missions$/);
+
+  await page.goto("./#/mission/la-once-de-tomatin");
+  await expect(page.getByRole("heading", { name: "La once de Tomatin" })).toBeVisible();
+  await expect(page.locator(".assignment-note-priority")).toContainText(
+    "Variables y acumuladores",
+  );
 });
 
 test("celebrates when the student has no pending work", async ({ page }) => {
