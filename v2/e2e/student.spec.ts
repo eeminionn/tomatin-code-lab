@@ -19,8 +19,12 @@ test("opens an assigned mission in two actions and runs visible tests", async ({
   await expect(page.getByText("TU MISIÓN")).toBeVisible();
   await expect(page.getByText("IDEA CLAVE")).toBeVisible();
   await expect(page.getByText("PASOS SUGERIDOS")).toBeVisible();
+  await expect(page.getByText("ASÍ SE EVALÚA")).toBeVisible();
+  await expect(page.getByText("Los datos llegan solos a tu función")).toBeVisible();
+  await expect(page.getByText(/No uses prompt\(\)/)).toBeVisible();
+  await expect(page.getByText(/La respuesta sale por return/)).toBeVisible();
   await expect(
-    page.getByText("precios = [1200, 850], cantidades = [2, 3]"),
+    page.getByText("precios = [1200, 850], cantidades = [2, 3]").first(),
   ).toBeVisible();
   await expect(page.getByText(/1200 × 2 \+ 850 × 3 = 4950/)).toBeVisible();
   await expect
@@ -32,7 +36,24 @@ test("opens an assigned mission in two actions and runs visible tests", async ({
   await expect(
     page.getByText("El código corre, pero aún no pasa todos los tests"),
   ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Qué hacer ahora")).toBeVisible();
+  await expect(page.getByText("Compara un caso paso a paso")).toBeVisible();
   await expect(page.getByRole("button", { name: "Entregar" })).toBeEnabled();
+});
+
+test("explains that console output is not the function response", async ({ page }) => {
+  await page.getByRole("link", { name: "Continuar" }).click();
+  await expect.poll(() => page.evaluate(() => Boolean(window.__TOMATIN_EDITOR__))).toBe(true);
+  await page.evaluate(() => {
+    window.__TOMATIN_EDITOR__?.setValue(`function totalOnce(precios, cantidades) {
+  console.log(4950);
+}`);
+  });
+  await page.getByRole("button", { name: "Ejecutar" }).click();
+  await expect(
+    page.getByText("Tu función no devolvió la respuesta esperada"),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/imprimir no es devolver/)).toBeVisible();
 });
 
 test("prioritizes pending tasks and shows the mentor brief before the mission", async ({

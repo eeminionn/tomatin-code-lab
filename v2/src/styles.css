@@ -3287,6 +3287,79 @@ fieldset legend {
   line-height: 1.65;
 }
 
+.evaluation-flow {
+  padding: 14px;
+  border: 1px solid rgba(244, 201, 107, 0.28);
+  border-radius: 4px;
+  background: rgba(244, 201, 107, 0.035);
+}
+
+.assignment-note + .evaluation-flow {
+  margin-top: 14px;
+}
+
+.evaluation-flow h2 {
+  font-size: 16px;
+}
+
+.evaluation-flow-steps {
+  display: grid;
+  gap: 9px;
+}
+
+.evaluation-flow-steps article {
+  display: grid;
+  align-items: start;
+  gap: 9px;
+  grid-template-columns: 22px minmax(0, 1fr);
+}
+
+.evaluation-flow-steps article > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid rgba(244, 201, 107, 0.38);
+  border-radius: 50%;
+  color: var(--yellow);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.evaluation-flow-steps article > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.evaluation-flow-steps strong {
+  font-size: 10px;
+}
+
+.evaluation-flow-steps p,
+.evaluation-flow-steps code {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.evaluation-flow-steps article > div > code {
+  overflow-x: auto;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--cyan);
+  background: rgba(101, 201, 232, 0.04);
+  white-space: pre;
+}
+
+.evaluation-flow-steps p code {
+  color: var(--yellow);
+}
+
 .contract-section code,
 .solution-contract code {
   display: block;
@@ -4045,12 +4118,72 @@ fieldset legend {
 
 .diagnostic-list h3,
 .test-results h3,
+.learning-notices h3,
 .console-output h3 {
   margin-bottom: 8px;
   color: var(--muted);
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 9px;
   text-transform: uppercase;
+}
+
+.learning-notices {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.learning-notice {
+  display: grid;
+  align-items: start;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  background: rgba(101, 201, 232, 0.035);
+}
+
+.learning-notice > svg {
+  width: 15px;
+  color: var(--cyan);
+}
+
+.learning-notice > div {
+  display: grid;
+  gap: 3px;
+}
+
+.learning-notice strong {
+  color: var(--muted-strong);
+  font-size: 9px;
+}
+
+.learning-notice p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.learning-notice.tone-success {
+  border-color: rgba(103, 232, 165, 0.25);
+  background: rgba(103, 232, 165, 0.045);
+}
+
+.learning-notice.tone-success > svg {
+  color: var(--green);
+}
+
+.learning-notice.tone-warning,
+.learning-notice.tone-error {
+  border-color: rgba(240, 127, 124, 0.25);
+  background: rgba(240, 127, 124, 0.04);
+}
+
+.learning-notice.tone-warning > svg,
+.learning-notice.tone-error > svg {
+  color: var(--red);
 }
 
 .diagnostic {

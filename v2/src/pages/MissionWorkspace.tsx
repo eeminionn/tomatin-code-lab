@@ -40,6 +40,10 @@ import type { BeforeMount, OnMount } from "@monaco-editor/react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, isOverdue, relativeDueDate } from "@/lib/format";
 import {
+  languageContract,
+  learningFeedback,
+} from "@/lib/learning-feedback";
+import {
   createDraftKey,
   loadDraft,
   saveDraft,
@@ -154,10 +158,14 @@ const configureMonaco: BeforeMount = (monaco) => {
 function ResultSummary({
   result,
   testInputs,
+  language,
+  code,
   onDiagnosticLine,
 }: {
   result: RunResult | null;
   testInputs: Record<string, string>;
+  language: Language;
+  code: string;
   onDiagnosticLine: (line: number) => void;
 }) {
   if (!result) {
@@ -171,6 +179,7 @@ function ResultSummary({
   }
 
   const passed = result.tests.filter((test) => test.passed).length;
+  const learningNotices = learningFeedback(language, code, result);
   const statusLabel: Record<RunResult["status"], string> = {
     idle: "Sin ejecutar",
     queued: "En cola",
@@ -200,6 +209,25 @@ function ResultSummary({
           </span>
         </div>
       </div>
+
+      {learningNotices.length > 0 ? (
+        <section className="learning-notices" aria-labelledby="next-step-title">
+          <h3 id="next-step-title">Qué hacer ahora</h3>
+          {learningNotices.map((notice) => (
+            <article className={`learning-notice tone-${notice.tone}`} key={notice.title}>
+              {notice.tone === "success" ? (
+                <CheckCircle2 aria-hidden="true" />
+              ) : (
+                <Lightbulb aria-hidden="true" />
+              )}
+              <div>
+                <strong>{notice.title}</strong>
+                <p>{notice.detail}</p>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       {result.repositorySync &&
       result.repositorySync.status !== "not_applicable" ? (
@@ -277,15 +305,17 @@ function ResultSummary({
                       <dl>
                         {testInputs[test.id] ? (
                           <div>
-                            <dt>Entrada</dt>
-                            <dd>{testInputs[test.id]}</dd>
+                            <dt>Llamada</dt>
+                            <dd>
+                              <code>{testInputs[test.id]}</code>
+                            </dd>
                           </div>
                         ) : null}
                         <div>
                           <dt>Esperado</dt>
                           <dd>{test.expected}</dd>
                         </div>
-                        {test.actual ? (
+                        {test.actual !== undefined ? (
                           <div>
                             <dt>Obtenido</dt>
                             <dd>{test.actual}</dd>
@@ -297,7 +327,11 @@ function ResultSummary({
                         Un caso privado encontró un comportamiento pendiente.
                       </p>
                     )}
-                    {test.feedback ? <p>{test.feedback}</p> : null}
+                    {test.feedback ? (
+                      <p>
+                        <strong>Siguiente paso:</strong> {test.feedback}
+                      </p>
+                    ) : null}
                   </>
                 ) : null}
               </div>
@@ -680,6 +714,11 @@ export function Component() {
       testCase.actualExpression ?? testCase.expression,
     ]),
   );
+  const contractGuide = languageContract(language);
+  const visibleExample = activeMission.variants[language].examples[0];
+  const visibleCall =
+    activeMission.variants[language].publicTests[0]?.actualExpression ??
+    activeMission.variants[language].publicTests[0]?.expression;
 
   async function execute(kind: AttemptKind) {
     if (
@@ -907,6 +946,50 @@ export function Component() {
                     </div>
                   </section>
                 ) : null}
+                <section className="brief-section evaluation-flow">
+                  <p className="eyebrow">ASÍ SE EVALÚA</p>
+                  <h2>Los datos llegan solos a tu función</h2>
+                  <div className="evaluation-flow-steps">
+                    <article>
+                      <span>1</span>
+                      <div>
+                        <strong>El test prepara los valores</strong>
+                        <code>{visibleExample?.input ?? "Datos del caso de prueba"}</code>
+                      </div>
+                    </article>
+                    <article>
+                      <span>2</span>
+                      <div>
+                        <strong>Llama a tu función</strong>
+                        <code>
+                          {visibleCall ??
+                            activeMission.variants[language].expectedSignature}
+                        </code>
+                      </div>
+                    </article>
+                    <article>
+                      <span>3</span>
+                      <div>
+                        <strong>Tu código usa los parámetros</strong>
+                        <p>
+                          No uses <code>{contractGuide.manualInput}</code> ni
+                          escribas los valores del ejemplo dentro de la función.
+                        </p>
+                      </div>
+                    </article>
+                    <article>
+                      <span>4</span>
+                      <div>
+                        <strong>La respuesta sale por return</strong>
+                        <p>
+                          Termina con <code>{contractGuide.returnExample}</code>.
+                          <code>{contractGuide.consoleOutput}</code> solo muestra
+                          notas y no responde la misión.
+                        </p>
+                      </div>
+                    </article>
+                  </div>
+                </section>
                 <section className="brief-section">
                   <p className="eyebrow">CONTEXTO</p>
                   <p>{mission.context}</p>
@@ -1417,6 +1500,8 @@ export function Component() {
             <ResultSummary
               result={result}
               testInputs={testInputs}
+              language={language}
+              code={currentCode}
               onDiagnosticLine={(line) => {
                 setMobilePane("code");
                 window.setTimeout(() => {
