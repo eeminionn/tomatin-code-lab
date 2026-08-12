@@ -69,6 +69,47 @@ test("mentor creates an assignment for selected students", async ({ page }) => {
   await expect(page.getByText("Prueba de aula")).toBeVisible();
 });
 
+test("mentor edits and deletes an assignment with its ranking XP", async ({
+  page,
+}) => {
+  await loginAsMentor(page);
+  await page.getByRole("link", { name: "Ranking", exact: true }).click();
+  const diegoBefore = page.locator(".ranking-row").filter({ hasText: "Diego Soto" });
+  await expect(diegoBefore.locator(".ranking-xp")).toHaveText("100");
+
+  await page.getByRole("link", { name: "Tareas", exact: true }).click();
+  const assignment = page
+    .locator(".assignment-admin-item")
+    .filter({ hasText: "Variables y acumuladores" });
+  await assignment
+    .getByRole("button", { name: "Editar Variables y acumuladores" })
+    .click();
+  await assignment.getByLabel("Nombre de la tarea").fill("Acumuladores actualizados");
+  await assignment
+    .getByLabel("Descripción e instrucciones")
+    .fill("Usa un acumulador y explica el resultado.");
+  await assignment.getByRole("button", { name: "Guardar cambios" }).click();
+  const updatedAssignment = page
+    .locator(".assignment-admin-item")
+    .filter({ hasText: "Acumuladores actualizados" });
+  await expect(updatedAssignment).toBeVisible();
+
+  await updatedAssignment
+    .getByRole("button", { name: "Eliminar Acumuladores actualizados" })
+    .click();
+  await expect(updatedAssignment.getByRole("alertdialog")).toContainText(
+    "Los intentos históricos se conservarán",
+  );
+  await updatedAssignment
+    .getByRole("button", { name: "Eliminar definitivamente" })
+    .click();
+  await expect(updatedAssignment).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Ranking", exact: true }).click();
+  const diegoAfter = page.locator(".ranking-row").filter({ hasText: "Diego Soto" });
+  await expect(diegoAfter.locator(".ranking-xp")).toHaveText("0");
+});
+
 test("mentor duplicates and publishes a versioned mission", async ({ page }) => {
   await loginAsMentor(page);
   await page.getByRole("link", { name: "Misiones", exact: true }).click();

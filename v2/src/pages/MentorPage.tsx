@@ -24,7 +24,9 @@ import {
   Send,
   ShieldCheck,
   Timer,
+  Trash2,
   TrendingUp,
+  Trophy,
   Users,
   XCircle,
 } from "lucide-react";
@@ -35,6 +37,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
+import { RankingBoard } from "@/components/RankingBoard";
 import { formatDate, initials, isOverdue } from "@/lib/format";
 import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
@@ -56,6 +59,7 @@ type MentorTab =
   | "overview"
   | "reviews"
   | "students"
+  | "ranking"
   | "assignments"
   | "missions"
   | "invitations";
@@ -88,6 +92,12 @@ function formLines(value: FormDataEntryValue | null): string[] {
     .split("\n")
     .map((entry) => entry.trim())
     .filter(Boolean);
+}
+
+function toDateTimeLocal(value: string) {
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
 function MentorOverview({
@@ -1099,9 +1109,19 @@ function ReviewQueue() {
 }
 
 function AssignmentsManager() {
-  const { snapshot, frontendOnly, createAssignment } = useClassroom();
+  const {
+    snapshot,
+    frontendOnly,
+    createAssignment,
+    updateAssignment,
+    deleteAssignment,
+  } = useClassroom();
   const { missions, getMissionById } = useCatalog();
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
   const students = snapshot?.profiles.filter((entry) => entry.role === "student") ?? [];
   const [languageSelection, setLanguageSelection] = useState<Language[]>([
     ...LANGUAGES,
@@ -1130,6 +1150,49 @@ function AssignmentsManager() {
     createAssignment(input);
     setCreating(false);
     event.currentTarget.reset();
+  }
+
+  async function submitEdit(
+    event: FormEvent<HTMLFormElement>,
+    assignmentId: string,
+  ) {
+    event.preventDefault();
+    if (frontendOnly) return;
+    const data = new FormData(event.currentTarget);
+    setBusyId(assignmentId);
+    setActionError("");
+    try {
+      await updateAssignment(assignmentId, {
+        title: String(data.get("title") ?? ""),
+        instructions: String(data.get("instructions") ?? ""),
+        dueAt: new Date(String(data.get("dueAt"))).toISOString(),
+      });
+      setEditingId(null);
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "No se pudo editar la tarea.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function remove(assignmentId: string) {
+    if (frontendOnly) return;
+    setBusyId(assignmentId);
+    setActionError("");
+    try {
+      await deleteAssignment(assignmentId);
+      setDeletingId(null);
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo eliminar la tarea.",
+      );
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -1256,13 +1319,20 @@ function AssignmentsManager() {
       ) : null}
 
       <div className="admin-list">
+        {actionError ? (
+          <p className="form-error" role="alert">{actionError}</p>
+        ) : null}
         {snapshot.assignments.map((assignment) => {
           const mission = getMissionById(assignment.missionId);
           const assignmentProgress = snapshot.progress.filter(
             (entry) => entry.assignmentId === assignment.id,
           );
+          const approvedCount = assignmentProgress.filter(
+            (entry) => entry.status === "approved",
+          ).length;
           return (
-            <article className="admin-row" key={assignment.id}>
+            <div className="assignment-admin-item" key={assignment.id}>
+            <article className="admin-row assignment-admin-row">
               <div className="admin-row-main">
                 <span>{mission?.courseLabel}</span>
                 <strong>{assignment.title}</strong>
@@ -1275,7 +1345,7 @@ function AssignmentsManager() {
               <div>
                 <span>Aprobadas</span>
                 <strong>
-                  {assignmentProgress.filter((entry) => entry.status === "approved").length}/
+                  {approvedCount}/
                   {assignment.studentIds.length}
                 </strong>
               </div>
@@ -1284,17 +1354,158 @@ function AssignmentsManager() {
                   <span key={language}>{LANGUAGE_META[language].shortLabel}</span>
                 ))}
               </div>
-              <Link
-                className="icon-button"
-                to={`/mission/${mission?.slug}?assignment=${assignment.id}`}
-                aria-label={`Abrir ${assignment.title}`}
-              >
-                <ArrowRight aria-hidden="true" />
-              </Link>
+              <div className="assignment-admin-actions">
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={`Editar ${assignment.title}`}
+                  title="Editar tarea"
+                  disabled={frontendOnly || busyId === assignment.id}
+                  onClick={() => {
+                    setEditingId(
+                      editingId === assignment.id ? null : assignment.id,
+                    );
+                    setDeletingId(null);
+                    setActionError("");
+                  }}
+                >
+                  <Pencil aria-hidden="true" />
+                </button>
+                <button
+                  className="icon-button danger-button"
+                  type="button"
+                  aria-label={`Eliminar ${assignment.title}`}
+                  title="Eliminar tarea"
+                  disabled={frontendOnly || busyId === assignment.id}
+                  onClick={() => {
+                    setDeletingId(assignment.id);
+                    setEditingId(null);
+                    setActionError("");
+                  }}
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+                <Link
+                  className="icon-button"
+                  to={`/mission/${mission?.slug}?assignment=${assignment.id}`}
+                  aria-label={`Abrir ${assignment.title}`}
+                  title="Abrir workspace"
+                >
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+              </div>
             </article>
+            {editingId === assignment.id ? (
+              <form
+                className="assignment-edit-form"
+                onSubmit={(event) => submitEdit(event, assignment.id)}
+              >
+                <label>
+                  <span>Nombre de la tarea</span>
+                  <input name="title" required defaultValue={assignment.title} />
+                </label>
+                <label className="form-span-2">
+                  <span>Descripción e instrucciones</span>
+                  <textarea
+                    name="instructions"
+                    rows={4}
+                    defaultValue={assignment.instructions}
+                  />
+                </label>
+                <label>
+                  <span>Fecha de entrega</span>
+                  <input
+                    name="dueAt"
+                    type="datetime-local"
+                    required
+                    defaultValue={toDateTimeLocal(assignment.dueAt)}
+                  />
+                </label>
+                <div className="form-actions form-span-2">
+                  <span>La misión, estudiantes, lenguajes y XP no cambian.</span>
+                  <button
+                    className="button ghost"
+                    type="button"
+                    onClick={() => setEditingId(null)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="button primary"
+                    disabled={busyId === assignment.id}
+                  >
+                    {busyId === assignment.id ? (
+                      <LoaderCircle className="spin" aria-hidden="true" />
+                    ) : (
+                      <Save aria-hidden="true" />
+                    )}
+                    Guardar cambios
+                  </button>
+                </div>
+              </form>
+            ) : null}
+            {deletingId === assignment.id ? (
+              <div
+                className="assignment-delete-confirmation"
+                role="alertdialog"
+                aria-labelledby={`delete-title-${assignment.id}`}
+                aria-describedby={`delete-description-${assignment.id}`}
+              >
+                <Trash2 aria-hidden="true" />
+                <div>
+                  <strong id={`delete-title-${assignment.id}`}>
+                    Eliminar “{assignment.title}”
+                  </strong>
+                  <p id={`delete-description-${assignment.id}`}>
+                    Se eliminará para {assignment.studentIds.length} estudiantes
+                    y se retirarán {approvedCount * assignment.points} XP de {approvedCount}{" "}
+                    aprobaciones. Los intentos históricos se conservarán.
+                  </p>
+                </div>
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={() => setDeletingId(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="button danger"
+                  type="button"
+                  disabled={busyId === assignment.id}
+                  onClick={() => void remove(assignment.id)}
+                >
+                  {busyId === assignment.id ? (
+                    <LoaderCircle className="spin" aria-hidden="true" />
+                  ) : (
+                    <Trash2 aria-hidden="true" />
+                  )}
+                  Eliminar definitivamente
+                </button>
+              </div>
+            ) : null}
+            </div>
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function MentorRanking() {
+  const { snapshot } = useClassroom();
+  if (!snapshot) return null;
+
+  return (
+    <section className="mentor-section admin-ranking" aria-labelledby="admin-ranking-title">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">XP APROBADOS</p>
+          <h2 id="admin-ranking-title">Ranking del curso</h2>
+          <p>Se actualiza al aprobar, editar o eliminar tareas.</p>
+        </div>
+      </div>
+      <RankingBoard snapshot={snapshot} />
     </section>
   );
 }
@@ -2235,6 +2446,7 @@ export function Component() {
   const tab: MentorTab =
     section === "reviews" ||
     section === "students" ||
+    section === "ranking" ||
     section === "assignments" ||
     section === "missions" ||
     section === "invitations"
@@ -2244,6 +2456,7 @@ export function Component() {
     overview: "/admin",
     reviews: "/admin/reviews",
     students: "/admin/students",
+    ranking: "/admin/ranking",
     assignments: "/admin/assignments",
     missions: "/admin/missions",
     invitations: "/admin/invitations",
@@ -2272,6 +2485,7 @@ export function Component() {
           ["overview", "Resumen", Users],
           ["reviews", "Revisiones", ClipboardCheck],
           ["students", "Estudiantes", Users],
+          ["ranking", "Ranking", Trophy],
           ["assignments", "Asignaciones", CalendarPlus],
           ["missions", "Misiones", BookCopy],
           ["invitations", "Invitaciones", MailPlus],
@@ -2300,6 +2514,7 @@ export function Component() {
         {tab === "students" ? (
           <StudentDirectory selectedStudentId={selectedStudentId} />
         ) : null}
+        {tab === "ranking" ? <MentorRanking /> : null}
         {tab === "assignments" ? <AssignmentsManager /> : null}
         {tab === "missions" ? <MissionManager /> : null}
         {tab === "invitations" ? <InvitationsManager /> : null}

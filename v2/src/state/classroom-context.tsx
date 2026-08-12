@@ -22,6 +22,7 @@ import type {
   Language,
   Profile,
   Review,
+  UpdateAssignmentInput,
 } from "@/types";
 import {
   acceptPendingInvitation,
@@ -61,6 +62,8 @@ interface ClassroomContextValue {
     details?: Pick<Review, "inlineComments" | "criteria">,
   ) => Promise<void>;
   createAssignment: (input: CreateAssignmentInput) => void;
+  updateAssignment: (id: string, input: UpdateAssignmentInput) => Promise<void>;
+  deleteAssignment: (id: string) => Promise<void>;
   createInvitation: (input: InvitationInput) => Promise<void>;
   updateInvitation: (id: string, input: InvitationInput) => Promise<void>;
   getInvitationToken: (id: string) => Promise<string>;
@@ -722,6 +725,102 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     [persistDemo, previewStudentId, refresh, snapshot],
   );
 
+  const updateAssignment = useCallback(
+    async (id: string, input: UpdateAssignmentInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      const title = input.title.trim();
+      const instructions = input.instructions.trim();
+      const dueAt = new Date(input.dueAt);
+      if (!title || title.length > 120) {
+        throw new Error("El título debe tener entre 1 y 120 caracteres.");
+      }
+      if (instructions.length > 10_000) {
+        throw new Error("Las instrucciones no pueden superar 10.000 caracteres.");
+      }
+      if (Number.isNaN(dueAt.getTime())) {
+        throw new Error("La fecha de entrega no es válida.");
+      }
+      if (supabase) {
+        const { data, error: assignmentError } = await supabase
+          .from("assignments")
+          .update({
+            title,
+            instructions,
+            due_at: dueAt.toISOString(),
+          })
+          .eq("id", id)
+          .eq("class_id", snapshot.classroom.id)
+          .select("id")
+          .maybeSingle();
+        if (assignmentError) {
+          setError(assignmentError.message);
+          throw assignmentError;
+        }
+        if (!data) throw new Error("No tienes permiso para editar esta tarea.");
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        assignments: snapshot.assignments.map((assignment) =>
+          assignment.id === id
+            ? {
+                ...assignment,
+                title,
+                instructions,
+                dueAt: dueAt.toISOString(),
+              }
+            : assignment,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const deleteAssignment = useCallback(
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        const { data, error: assignmentError } = await supabase
+          .from("assignments")
+          .delete()
+          .eq("id", id)
+          .eq("class_id", snapshot.classroom.id)
+          .select("id")
+          .maybeSingle();
+        if (assignmentError) {
+          setError(assignmentError.message);
+          throw assignmentError;
+        }
+        if (!data) throw new Error("No tienes permiso para eliminar esta tarea.");
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        assignments: snapshot.assignments.filter(
+          (assignment) => assignment.id !== id,
+        ),
+        progress: snapshot.progress.filter(
+          (entry) => entry.assignmentId !== id,
+        ),
+        attempts: snapshot.attempts.map((attempt) =>
+          attempt.assignmentId === id
+            ? { ...attempt, assignmentId: undefined }
+            : attempt,
+        ),
+        notifications: snapshot.notifications.map((notification) =>
+          notification.assignmentId === id
+            ? { ...notification, assignmentId: undefined }
+            : notification,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
   const createInvitation = useCallback(
     async (input: InvitationInput) => {
       if (isFrontendOnly) throw new Error(frontendOnlyMessage);
@@ -1074,6 +1173,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       recordAttempt,
       reviewAttempt,
       createAssignment,
+      updateAssignment,
+      deleteAssignment,
       createInvitation,
       updateInvitation,
       getInvitationToken,
@@ -1090,6 +1191,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       clearError,
       createAssignment,
       createInvitation,
+      deleteAssignment,
       dismissNotification,
       error,
       loading,
@@ -1110,6 +1212,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       startStudentPreview,
       stopStudentPreview,
       updateInvitation,
+      updateAssignment,
       updateProfile,
     ],
   );

@@ -4763,6 +4763,72 @@ fieldset legend {
   background: var(--panel);
 }
 
+.assignment-admin-item + .assignment-admin-item {
+  border-top: 1px solid var(--line);
+}
+
+.assignment-admin-item .admin-row {
+  border-top: 0;
+}
+
+.admin-row.assignment-admin-row {
+  grid-template-columns: minmax(220px, 1fr) 110px 90px 110px 116px;
+}
+
+.assignment-admin-actions {
+  display: flex !important;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.danger-button:hover:not(:disabled),
+.danger-button:focus-visible {
+  color: var(--red);
+  border-color: rgba(240, 127, 124, 0.38);
+  background: rgba(240, 127, 124, 0.07);
+}
+
+.assignment-edit-form {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border-top: 1px solid rgba(101, 201, 232, 0.25);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  background: rgba(101, 201, 232, 0.035);
+}
+
+.assignment-delete-confirmation {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  border-top: 1px solid rgba(240, 127, 124, 0.28);
+  grid-template-columns: 24px minmax(0, 1fr) auto auto;
+  background: rgba(240, 127, 124, 0.045);
+}
+
+.assignment-delete-confirmation > svg {
+  width: 20px;
+  color: var(--red);
+}
+
+.assignment-delete-confirmation strong {
+  font-size: 11px;
+}
+
+.assignment-delete-confirmation p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.admin-ranking .section-header p:last-child {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .admin-row {
   display: grid;
   min-height: 68px;
@@ -5847,6 +5913,24 @@ fieldset legend {
     grid-template-columns: 1fr;
   }
 
+  .assignment-edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .assignment-edit-form .form-span-2 {
+    grid-column: auto;
+  }
+
+  .assignment-delete-confirmation {
+    align-items: stretch;
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .assignment-delete-confirmation .button {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+
   .form-span-2 {
     grid-column: auto;
   }
@@ -5886,6 +5970,10 @@ fieldset legend {
   .mission-admin-row,
   .invitation-row {
     min-width: 760px;
+  }
+
+  .assignment-admin-row {
+    min-width: 820px;
   }
 
   .draft-section .mission-admin-row {

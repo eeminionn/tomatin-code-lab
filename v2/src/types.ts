@@ -342,6 +342,12 @@ export interface CreateAssignmentInput {
   studentIds: string[];
 }
 
+export interface UpdateAssignmentInput {
+  title: string;
+  instructions: string;
+  dueAt: string;
+}
+
 export interface MissionDraftInput {
   missionId?: string;
   title: string;

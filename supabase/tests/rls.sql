@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(39);
+select plan(45);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -735,6 +735,121 @@ select is(
   (select count(*) from public.student_repositories),
   2::bigint,
   'class staff reads every central repository mapping'
+);
+
+select is(
+  (
+    with updated as (
+      update public.assignments
+      set
+        title = 'Edited by owner',
+        instructions = 'Updated instructions',
+        due_at = now() + interval '2 days'
+      where id = '00000000-0000-0000-0000-000000000301'
+      returning id
+    )
+    select count(*) from updated
+  ),
+  1::bigint,
+  'class staff can edit assignment presentation fields'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000102',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000102","role":"authenticated"}',
+  true
+);
+
+select is(
+  (
+    with updated as (
+      update public.assignments
+      set title = 'Student edit must fail'
+      where id = '00000000-0000-0000-0000-000000000301'
+      returning id
+    )
+    select count(*) from updated
+  ),
+  0::bigint,
+  'students cannot edit assignments'
+);
+
+set local role service_role;
+
+update public.student_progress
+set status = 'approved', approved_at = now()
+where user_id = '00000000-0000-0000-0000-000000000102'
+  and assignment_id = '00000000-0000-0000-0000-000000000301';
+
+insert into public.xp_ledger (
+  class_id,
+  user_id,
+  assignment_id,
+  amount
+)
+values (
+  '00000000-0000-0000-0000-000000000201',
+  '00000000-0000-0000-0000-000000000102',
+  '00000000-0000-0000-0000-000000000301',
+  100
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000101',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000101","role":"authenticated"}',
+  true
+);
+
+select is(
+  (
+    with deleted as (
+      delete from public.assignments
+      where id = '00000000-0000-0000-0000-000000000301'
+      returning id
+    )
+    select count(*) from deleted
+  ),
+  1::bigint,
+  'class staff can delete an assignment'
+);
+
+set local role service_role;
+
+select is(
+  (
+    select count(*) from public.xp_ledger
+    where assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  0::bigint,
+  'deleting an assignment removes its awarded XP'
+);
+
+select is(
+  (
+    select count(*) from public.student_progress
+    where assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  0::bigint,
+  'deleting an assignment removes its student progress'
+);
+
+select ok(
+  (
+    select assignment_id is null from public.attempts
+    where id = '00000000-0000-0000-0000-000000000401'
+  ),
+  'deleting an assignment preserves and detaches historical attempts'
 );
 
 select * from finish();

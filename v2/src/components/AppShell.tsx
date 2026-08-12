@@ -40,6 +40,7 @@ const adminNavigation = [
   { to: "/admin", label: "Resumen", icon: Gauge, end: true },
   { to: "/admin/reviews", label: "Revisiones", icon: ClipboardCheck },
   { to: "/admin/students", label: "Estudiantes", icon: Users },
+  { to: "/admin/ranking", label: "Ranking", icon: Trophy },
   { to: "/admin/assignments", label: "Tareas", icon: CalendarPlus },
   { to: "/admin/missions", label: "Misiones", icon: BookCopy },
   { to: "/admin/invitations", label: "Invitaciones", icon: MailPlus },
