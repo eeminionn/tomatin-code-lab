@@ -21,10 +21,15 @@ import type {
   InvitationInput,
   Language,
   Profile,
+  ProfileUpdateInput,
+  RewardInput,
   Review,
+  ReviewRubricInput,
+  UpdateAssignmentInput,
 } from "@/types";
 import {
   acceptPendingInvitation,
+  notifyAssignment,
   isSupabaseConfigured,
   provisionStudentRepository,
   signOutSupabase,
@@ -35,6 +40,7 @@ import {
   progressAfterReview,
 } from "@/models/progress";
 import { sanitizeAvatarConfig } from "@/lib/avatar";
+import { availableXpForStudent } from "@/models/rewards";
 
 const DEMO_SESSION_KEY = "tomatin.v2.demo-session";
 const DEMO_SNAPSHOT_KEY = "tomatin.v2.demo-classroom";
@@ -60,16 +66,27 @@ interface ClassroomContextValue {
     comment: string,
     details?: Pick<Review, "inlineComments" | "criteria">,
   ) => Promise<void>;
-  createAssignment: (input: CreateAssignmentInput) => void;
+  approveAttempts: (attemptIds: string[]) => Promise<number>;
+  createAssignment: (input: CreateAssignmentInput) => Promise<void>;
+  retryAssignmentNotification: (assignmentId: string) => Promise<void>;
+  updateAssignment: (id: string, input: UpdateAssignmentInput) => Promise<void>;
+  saveReviewRubric: (id: string | null, input: ReviewRubricInput) => Promise<void>;
+  deleteReviewRubric: (id: string) => Promise<void>;
+  deleteAssignment: (id: string) => Promise<void>;
   createInvitation: (input: InvitationInput) => Promise<void>;
   updateInvitation: (id: string, input: InvitationInput) => Promise<void>;
   getInvitationToken: (id: string) => Promise<string>;
-  updateProfile: (input: {
-    displayName: string;
-    avatarConfig: Profile["avatarConfig"];
-  }) => Promise<void>;
+  updateProfile: (input: ProfileUpdateInput) => Promise<void>;
   markNotificationRead: (id: string) => void;
-  dismissNotification: (id: string) => void;
+  dismissNotification: (id: string) => Promise<void>;
+  dismissAllNotifications: () => Promise<void>;
+  saveReward: (id: string | null, input: RewardInput) => Promise<void>;
+  deleteReward: (id: string) => Promise<void>;
+  redeemReward: (id: string) => Promise<void>;
+  updateRedemptionStatus: (
+    id: string,
+    status: "fulfilled" | "cancelled",
+  ) => Promise<void>;
   recordHint: (assignmentId: string, count: number) => void;
   recordActivity: (
     assignmentId: string,
@@ -103,6 +120,10 @@ function readDemoSnapshot(): ClassroomSnapshot {
             )?.missionVersion ??
             1,
         })),
+        rewards: parsed.rewards ?? [],
+        rewardRedemptions: parsed.rewardRedemptions ?? [],
+        githubNotifications: parsed.githubNotifications ?? [],
+        reviewRubrics: parsed.reviewRubrics ?? [],
       };
     }
   } catch {
@@ -125,11 +146,42 @@ function mapProfile(row: Record<string, unknown>): Profile {
     email: String(row.email ?? ""),
     githubLogin: row.github_login ? String(row.github_login) : undefined,
     avatarUrl: row.avatar_url ? String(row.avatar_url) : undefined,
+    profileImagePath: row.profile_image_path
+      ? String(row.profile_image_path)
+      : undefined,
     avatarConfig: hasAvatarConfig
       ? sanitizeAvatarConfig(rawAvatarConfig, id)
       : undefined,
     role: row.role as Profile["role"],
   };
+}
+
+async function createProfileImageUrls(rows: Array<Record<string, unknown>>) {
+  if (!supabase) return new Map<string, string>();
+  const paths = [...new Set(
+    rows
+      .map((row) => row.profile_image_path)
+      .filter((path): path is string => typeof path === "string" && Boolean(path)),
+  )];
+  if (paths.length === 0) return new Map<string, string>();
+  const { data, error } = await supabase.storage
+    .from("profile-images")
+    .createSignedUrls(paths, 60 * 60);
+  if (error) throw error;
+  const urls = new Map<string, string>();
+  for (const entry of data ?? []) {
+    if (entry.path && entry.signedUrl) urls.set(entry.path, entry.signedUrl);
+  }
+  return urls;
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("No se pudo leer la imagen."));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function fetchClassAttempts(classId: string) {
@@ -193,6 +245,10 @@ async function fetchSupabaseSnapshot(session: Session) {
     notifications,
     invitations,
     repositories,
+    rewards,
+    rewardRedemptions,
+    githubNotifications,
+    reviewRubrics,
   ] = await Promise.all([
     supabase.from("classes").select("*").eq("id", classId).single(),
     supabase
@@ -217,6 +273,30 @@ async function fetchSupabaseSnapshot(session: Session) {
           .order("created_at", { ascending: false }),
     supabase.from("invitations").select("*").eq("class_id", classId),
     supabase.from("student_repositories").select("*").eq("class_id", classId),
+    supabase
+      .from("rewards")
+      .select("*")
+      .eq("class_id", classId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("reward_redemptions")
+      .select("*")
+      .eq("class_id", classId)
+      .order("created_at", { ascending: false }),
+    isStaff
+      ? supabase
+          .from("assignment_github_notifications")
+          .select("*")
+          .eq("class_id", classId)
+          .order("updated_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    isStaff
+      ? supabase
+          .from("review_rubrics")
+          .select("*")
+          .eq("class_id", classId)
+          .order("updated_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const firstError = [
@@ -229,11 +309,30 @@ async function fetchSupabaseSnapshot(session: Session) {
     notifications,
     invitations,
     repositories,
+    rewards,
+    rewardRedemptions,
+    githubNotifications,
+    reviewRubrics,
   ].find((query) => query.error)?.error;
   if (firstError) throw firstError;
 
+  const profileRows = [
+    profileQuery.data,
+    ...((profiles.data ?? []) as Array<Record<string, unknown>>),
+  ];
+  const signedProfileImages = await createProfileImageUrls(profileRows);
+
+  const mapProfileWithImage = (row: Record<string, unknown>) => {
+    const mapped = mapProfile(row);
+    const path = mapped.profileImagePath;
+    return {
+      ...mapped,
+      avatarUrl: path ? signedProfileImages.get(path) : mapped.avatarUrl,
+    };
+  };
+
   return {
-    profile: mapProfile(profileQuery.data),
+    profile: mapProfileWithImage(profileQuery.data),
     snapshot: {
       classroom: {
         id: classroom.data.id,
@@ -241,7 +340,7 @@ async function fetchSupabaseSnapshot(session: Session) {
         timezone: classroom.data.timezone,
         ownerId: classroom.data.owner_id,
       },
-      profiles: (profiles.data ?? []).map(mapProfile),
+      profiles: (profiles.data ?? []).map(mapProfileWithImage),
       assignments: (assignments.data ?? []).map((row) => ({
         id: row.id,
         missionId: row.mission_id,
@@ -253,6 +352,7 @@ async function fetchSupabaseSnapshot(session: Session) {
         allowedLanguages: row.allowed_languages,
         studentIds: row.student_ids ?? [],
         status: row.status,
+        rubricId: row.rubric_id ?? undefined,
       })),
       progress: (progress.data ?? []).map((row) => ({
         userId: row.user_id,
@@ -326,6 +426,51 @@ async function fetchSupabaseSnapshot(session: Session) {
         studentPath: row.student_path ?? undefined,
         lastSyncedAt: row.last_synced_at ?? undefined,
         lastError: row.last_error ?? undefined,
+      })),
+      rewards: (rewards.data ?? []).map((row) => ({
+        id: row.id,
+        classId: row.class_id,
+        title: row.title,
+        description: row.description,
+        priceXp: row.price_xp,
+        imagePath: row.image_path ?? undefined,
+        stock: row.stock ?? undefined,
+        active: row.active,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      })),
+      rewardRedemptions: (rewardRedemptions.data ?? []).map((row) => ({
+        id: row.id,
+        rewardId: row.reward_id ?? undefined,
+        classId: row.class_id,
+        userId: row.user_id,
+        rewardTitle: row.reward_title,
+        rewardImagePath: row.reward_image_path ?? undefined,
+        costXp: row.cost_xp,
+        status: row.status,
+        createdAt: row.created_at,
+        fulfilledAt: row.fulfilled_at ?? undefined,
+        cancelledAt: row.cancelled_at ?? undefined,
+      })),
+      githubNotifications: (githubNotifications.data ?? []).map((row) => ({
+        assignmentId: row.assignment_id,
+        classId: row.class_id,
+        status: row.status,
+        mentionedLogins: row.mentioned_logins ?? [],
+        missingUserIds: row.missing_user_ids ?? [],
+        githubCommentUrl: row.github_comment_url ?? undefined,
+        attempts: row.attempts,
+        lastError: row.last_error ?? undefined,
+        sentAt: row.sent_at ?? undefined,
+        updatedAt: row.updated_at,
+      })),
+      reviewRubrics: (reviewRubrics.data ?? []).map((row) => ({
+        id: row.id,
+        classId: row.class_id,
+        title: row.title,
+        criteria: row.criteria ?? [],
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
       })),
     },
   };
@@ -492,6 +637,36 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
           event: "*",
           schema: "public",
           table: "student_repositories",
+          filter: `class_id=eq.${snapshot.classroom.id}`,
+        },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "rewards",
+          filter: `class_id=eq.${snapshot.classroom.id}`,
+        },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "reward_redemptions",
+          filter: `class_id=eq.${snapshot.classroom.id}`,
+        },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "assignment_github_notifications",
           filter: `class_id=eq.${snapshot.classroom.id}`,
         },
         scheduleRefresh,
@@ -669,12 +844,78 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     [persistDemo, previewStudentId, profile, refresh, snapshot],
   );
 
+  const approveAttempts = useCallback(
+    async (attemptIds: string[]) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot || !profile) return 0;
+      const uniqueIds = [...new Set(attemptIds)].slice(0, 25);
+      if (supabase) {
+        let approved = 0;
+        for (const attemptId of uniqueIds) {
+          const { error: reviewError } = await supabase.rpc("review_submission", {
+            p_attempt_id: attemptId,
+            p_decision: "approved",
+            p_comment: "Buen trabajo. La entrega cumple los objetivos de la misión.",
+            p_inline_comments: [],
+            p_criteria: [],
+          });
+          if (reviewError) throw new Error(`${approved} aprobadas. ${reviewError.message}`);
+          approved += 1;
+        }
+        await refresh();
+        return approved;
+      }
+
+      const now = new Date().toISOString();
+      const attempts = snapshot.attempts.filter((entry) => uniqueIds.includes(entry.id));
+      const reviews = attempts.map((attempt) => ({
+        id: crypto.randomUUID(),
+        attemptId: attempt.id,
+        mentorId: profile.id,
+        decision: "approved" as const,
+        comment: "Buen trabajo. La entrega cumple los objetivos de la misión.",
+        inlineComments: [],
+        criteria: [],
+        createdAt: now,
+      }));
+      persistDemo({
+        ...snapshot,
+        reviews: [...reviews, ...snapshot.reviews],
+        progress: snapshot.progress.map((entry) => {
+          const attempt = attempts.find(
+            (item) => item.userId === entry.userId && item.assignmentId === entry.assignmentId,
+          );
+          const review = attempt
+            ? reviews.find((item) => item.attemptId === attempt.id)
+            : undefined;
+          return review ? progressAfterReview(entry, review) : entry;
+        }),
+        notifications: [
+          ...snapshot.notifications,
+          ...attempts.map((attempt) => ({
+            id: crypto.randomUUID(),
+            userId: attempt.userId,
+            classId: snapshot.classroom.id,
+            assignmentId: attempt.assignmentId,
+            attemptId: attempt.id,
+            reviewId: reviews.find((entry) => entry.attemptId === attempt.id)?.id,
+            title: "Entrega aprobada",
+            body: "Buen trabajo. La entrega cumple los objetivos de la misión.",
+            createdAt: now,
+          })),
+        ],
+      });
+      return attempts.length;
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
   const createAssignment = useCallback(
-    (input: CreateAssignmentInput) => {
-      if (isFrontendOnly) return;
+    async (input: CreateAssignmentInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot) return;
       if (supabase) {
-        void supabase
+        const { data: assignmentId, error: assignmentError } = await supabase
           .rpc("create_assignment", {
             p_mission_id: input.missionId,
             p_title: input.title,
@@ -683,18 +924,42 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             p_points: input.points,
             p_allowed_languages: input.allowedLanguages,
             p_student_ids: input.studentIds,
-          })
-          .then(({ error: assignmentError }) => {
-            if (assignmentError) {
-              setError(assignmentError.message);
-              return;
-            }
-            void refresh();
           });
+        if (assignmentError) {
+          setError(assignmentError.message);
+          throw assignmentError;
+        }
+        if (input.rubricId) {
+          const { error: rubricError } = await supabase
+            .from("assignments")
+            .update({ rubric_id: input.rubricId })
+            .eq("id", assignmentId)
+            .eq("class_id", snapshot.classroom.id);
+          if (rubricError) throw rubricError;
+        }
+        await refresh();
+        try {
+          await notifyAssignment(String(assignmentId));
+          await refresh();
+        } catch (notificationError) {
+          setError(
+            `La tarea fue creada, pero el aviso de GitHub falló: ${
+              notificationError instanceof Error
+                ? notificationError.message
+                : "error desconocido"
+            }`,
+          );
+        }
         return;
       }
       const id = crypto.randomUUID();
       const missionVersion = getMissionById(input.missionId)?.version ?? 1;
+      const githubLogins = input.studentIds
+        .map(
+          (userId) =>
+            snapshot.profiles.find((entry) => entry.id === userId)?.githubLogin,
+        )
+        .filter((login): login is string => Boolean(login));
       persistDemo({
         ...snapshot,
         assignments: [
@@ -704,6 +969,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             id,
             missionVersion,
             status: "published",
+            rubricId: input.rubricId,
           },
         ],
         progress: [
@@ -717,6 +983,246 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             hintsUsed: 0,
           })),
         ],
+        githubNotifications: [
+          {
+            assignmentId: id,
+            classId: snapshot.classroom.id,
+            status:
+              githubLogins.length === input.studentIds.length
+                ? "sent"
+                : githubLogins.length > 0
+                  ? "partial"
+                  : "failed",
+            mentionedLogins: githubLogins,
+            missingUserIds: input.studentIds.filter(
+              (userId) =>
+                !snapshot.profiles.find((entry) => entry.id === userId)
+                  ?.githubLogin,
+            ),
+            attempts: 1,
+            lastError:
+              githubLogins.length === 0
+                ? "Los estudiantes demo no tienen login de GitHub."
+                : undefined,
+            sentAt:
+              githubLogins.length > 0 ? new Date().toISOString() : undefined,
+            updatedAt: new Date().toISOString(),
+          },
+          ...snapshot.githubNotifications,
+        ],
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const retryAssignmentNotification = useCallback(
+    async (assignmentId: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        try {
+          await notifyAssignment(assignmentId);
+          await refresh();
+        } catch (notificationError) {
+          const message =
+            notificationError instanceof Error
+              ? notificationError.message
+              : "No se pudo reenviar el aviso.";
+          setError(message);
+          throw notificationError;
+        }
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        githubNotifications: snapshot.githubNotifications.map((entry) =>
+          entry.assignmentId === assignmentId
+            ? {
+                ...entry,
+                status:
+                  entry.mentionedLogins.length > 0 ? "sent" : "failed",
+                attempts: entry.attempts + 1,
+                updatedAt: new Date().toISOString(),
+              }
+            : entry,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const updateAssignment = useCallback(
+    async (id: string, input: UpdateAssignmentInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      const title = input.title.trim();
+      const instructions = input.instructions.trim();
+      const dueAt = new Date(input.dueAt);
+      if (!title || title.length > 120) {
+        throw new Error("El título debe tener entre 1 y 120 caracteres.");
+      }
+      if (instructions.length > 10_000) {
+        throw new Error("Las instrucciones no pueden superar 10.000 caracteres.");
+      }
+      if (Number.isNaN(dueAt.getTime())) {
+        throw new Error("La fecha de entrega no es válida.");
+      }
+      if (supabase) {
+        const { data, error: assignmentError } = await supabase
+          .from("assignments")
+          .update({
+            title,
+            instructions,
+            due_at: dueAt.toISOString(),
+            rubric_id: input.rubricId ?? null,
+          })
+          .eq("id", id)
+          .eq("class_id", snapshot.classroom.id)
+          .select("id")
+          .maybeSingle();
+        if (assignmentError) {
+          setError(assignmentError.message);
+          throw assignmentError;
+        }
+        if (!data) throw new Error("No tienes permiso para editar esta tarea.");
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        assignments: snapshot.assignments.map((assignment) =>
+          assignment.id === id
+            ? {
+                ...assignment,
+                title,
+                instructions,
+                dueAt: dueAt.toISOString(),
+                rubricId: input.rubricId,
+              }
+            : assignment,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const saveReviewRubric = useCallback(
+    async (id: string | null, input: ReviewRubricInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot || !profile) return;
+      const title = input.title.trim();
+      const labels = input.criteria.map((entry) => entry.trim()).filter(Boolean);
+      if (!title || labels.length === 0 || labels.length > 10) {
+        throw new Error("Escribe un nombre y entre 1 y 10 preguntas.");
+      }
+      const criteria = labels.map((label, index) => ({
+        id: `${index + 1}-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 36)}`,
+        label,
+      }));
+      if (supabase) {
+        const payload = {
+          class_id: snapshot.classroom.id,
+          title,
+          criteria,
+          updated_at: new Date().toISOString(),
+        };
+        const query = id
+          ? supabase.from("review_rubrics").update(payload).eq("id", id)
+          : supabase.from("review_rubrics").insert({
+              ...payload,
+              created_by: profile.id,
+            });
+        const { error: rubricError } = await query;
+        if (rubricError) throw rubricError;
+        await refresh();
+        return;
+      }
+      const now = new Date().toISOString();
+      persistDemo({
+        ...snapshot,
+        reviewRubrics: id
+          ? snapshot.reviewRubrics.map((entry) =>
+              entry.id === id ? { ...entry, title, criteria, updatedAt: now } : entry,
+            )
+          : [
+              {
+                id: crypto.randomUUID(),
+                classId: snapshot.classroom.id,
+                title,
+                criteria,
+                createdAt: now,
+                updatedAt: now,
+              },
+              ...snapshot.reviewRubrics,
+            ],
+      });
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
+  const deleteReviewRubric = useCallback(
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        const { error: rubricError } = await supabase
+          .from("review_rubrics")
+          .delete()
+          .eq("id", id)
+          .eq("class_id", snapshot.classroom.id);
+        if (rubricError) throw rubricError;
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        reviewRubrics: snapshot.reviewRubrics.filter((entry) => entry.id !== id),
+        assignments: snapshot.assignments.map((entry) =>
+          entry.rubricId === id ? { ...entry, rubricId: undefined } : entry,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const deleteAssignment = useCallback(
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        const { data, error: assignmentError } = await supabase
+          .from("assignments")
+          .delete()
+          .eq("id", id)
+          .eq("class_id", snapshot.classroom.id)
+          .select("id")
+          .maybeSingle();
+        if (assignmentError) {
+          setError(assignmentError.message);
+          throw assignmentError;
+        }
+        if (!data) throw new Error("No tienes permiso para eliminar esta tarea.");
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        assignments: snapshot.assignments.filter(
+          (assignment) => assignment.id !== id,
+        ),
+        progress: snapshot.progress.filter(
+          (entry) => entry.assignmentId !== id,
+        ),
+        attempts: snapshot.attempts.map((attempt) =>
+          attempt.assignmentId === id
+            ? { ...attempt, assignmentId: undefined }
+            : attempt,
+        ),
+        notifications: snapshot.notifications.map((notification) =>
+          notification.assignmentId === id
+            ? { ...notification, assignmentId: undefined }
+            : notification,
+        ),
       });
     },
     [persistDemo, previewStudentId, refresh, snapshot],
@@ -864,10 +1370,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (input: {
-      displayName: string;
-      avatarConfig: Profile["avatarConfig"];
-    }) => {
+    async (input: ProfileUpdateInput) => {
       if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot || !profile) return;
       const displayName = input.displayName.trim();
@@ -875,16 +1378,43 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         throw new Error("El nombre visible debe tener entre 1 y 80 caracteres.");
       }
       if (supabase) {
+        let profileImagePath = profile.profileImagePath ?? null;
+        if (input.imageFile) {
+          const extension = input.imageFile.type === "image/gif" ? "gif" : "webp";
+          const nextPath = `${profile.id}/${crypto.randomUUID()}.${extension}`;
+          const { error: uploadError } = await supabase.storage
+            .from("profile-images")
+            .upload(nextPath, input.imageFile, {
+              contentType: input.imageFile.type,
+              upsert: false,
+            });
+          if (uploadError) throw uploadError;
+          profileImagePath = nextPath;
+        } else if (input.removeImage) {
+          profileImagePath = null;
+        }
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
             display_name: displayName,
             avatar_config: input.avatarConfig ?? null,
+            profile_image_path: profileImagePath,
           })
           .eq("id", profile.id);
         if (profileError) {
+          if (profileImagePath && profileImagePath !== profile.profileImagePath) {
+            await supabase.storage.from("profile-images").remove([profileImagePath]);
+          }
           setError(profileError.message);
           throw profileError;
+        }
+        if (
+          profile.profileImagePath &&
+          profile.profileImagePath !== profileImagePath
+        ) {
+          await supabase.storage
+            .from("profile-images")
+            .remove([profile.profileImagePath]);
         }
         await refresh();
         return;
@@ -893,6 +1423,11 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         ...profile,
         displayName,
         avatarConfig: input.avatarConfig,
+        avatarUrl: input.imageFile
+          ? URL.createObjectURL(input.imageFile)
+          : input.removeImage
+            ? undefined
+            : profile.avatarUrl,
       };
       setProfile(nextProfile);
       persistDemo({
@@ -936,28 +1471,355 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   );
 
   const dismissNotification = useCallback(
-    (id: string) => {
-      if (isFrontendOnly) return;
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
       if (previewStudentId || !snapshot) return;
       const dismissedAt = new Date().toISOString();
       if (supabase) {
-        void supabase
-          .from("notifications")
-          .update({ dismissed_at: dismissedAt })
-          .eq("id", id)
-          .then(({ error: notificationError }) => {
-            if (notificationError) {
-              setError(notificationError.message);
-              return;
-            }
-            void refresh();
-          });
+        const previousNotification = snapshot.notifications.find(
+          (entry) => entry.id === id,
+        );
+        setSnapshot((current) =>
+          current
+            ? {
+                ...current,
+                notifications: current.notifications.map((entry) =>
+                  entry.id === id ? { ...entry, dismissedAt } : entry,
+                ),
+              }
+            : current,
+        );
+        const { error: notificationError } = await supabase.rpc(
+          "dismiss_notifications",
+          { p_notification_ids: [id] },
+        );
+        if (notificationError) {
+          if (previousNotification) {
+            setSnapshot((current) =>
+              current
+                ? {
+                    ...current,
+                    notifications: current.notifications.map((entry) =>
+                      entry.id === id ? previousNotification : entry,
+                    ),
+                  }
+                : current,
+            );
+          }
+          setError(notificationError.message);
+          throw notificationError;
+        }
         return;
       }
       persistDemo({
         ...snapshot,
         notifications: snapshot.notifications.map((entry) =>
           entry.id === id ? { ...entry, dismissedAt } : entry,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, snapshot],
+  );
+
+  const dismissAllNotifications = useCallback(async () => {
+    if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+    if (previewStudentId || !snapshot || !viewProfile) return;
+    const dismissedAt = new Date().toISOString();
+    const previousNotifications = snapshot.notifications;
+    const dismissOwn = (notifications: ClassroomSnapshot["notifications"]) =>
+      notifications.map((entry) =>
+        entry.userId === viewProfile.id && !entry.dismissedAt
+          ? { ...entry, dismissedAt }
+          : entry,
+      );
+    if (supabase) {
+      setSnapshot((current) =>
+        current
+          ? { ...current, notifications: dismissOwn(current.notifications) }
+          : current,
+      );
+      const { error: notificationError } = await supabase.rpc(
+        "dismiss_notifications",
+        { p_notification_ids: null },
+      );
+      if (notificationError) {
+        setSnapshot((current) =>
+          current ? { ...current, notifications: previousNotifications } : current,
+        );
+        setError(notificationError.message);
+        throw notificationError;
+      }
+      return;
+    }
+    persistDemo({
+      ...snapshot,
+      notifications: dismissOwn(snapshot.notifications),
+    });
+  }, [persistDemo, previewStudentId, snapshot, viewProfile]);
+
+  const saveReward = useCallback(
+    async (id: string | null, input: RewardInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot || !profile) return;
+      const title = input.title.trim();
+      const description = input.description.trim();
+      if (!title || title.length > 100) {
+        throw new Error("El nombre debe tener entre 1 y 100 caracteres.");
+      }
+      if (description.length > 1200) {
+        throw new Error("La descripción no puede superar 1.200 caracteres.");
+      }
+      if (!Number.isInteger(input.priceXp) || input.priceXp < 1) {
+        throw new Error("El precio debe ser un número entero mayor que cero.");
+      }
+      if (
+        input.stock !== undefined &&
+        (!Number.isInteger(input.stock) || input.stock < 0)
+      ) {
+        throw new Error("El stock debe ser un entero positivo o quedar ilimitado.");
+      }
+      if (
+        input.imageFile &&
+        (![
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+        ].includes(input.imageFile.type) ||
+          input.imageFile.size > 2_097_152)
+      ) {
+        throw new Error("La imagen debe ser JPG, PNG o WebP y pesar hasta 2 MB.");
+      }
+
+      const existing = id
+        ? snapshot.rewards.find((entry) => entry.id === id)
+        : undefined;
+      const rewardId = id ?? crypto.randomUUID();
+      if (supabase) {
+        let uploadedPath: string | undefined;
+        let imagePath = input.removeImage ? undefined : existing?.imagePath;
+        if (input.imageFile) {
+          const extension =
+            input.imageFile.type === "image/png"
+              ? "png"
+              : input.imageFile.type === "image/webp"
+                ? "webp"
+                : "jpg";
+          uploadedPath = `${snapshot.classroom.id}/${rewardId}/${crypto.randomUUID()}.${extension}`;
+          const { error: uploadError } = await supabase.storage
+            .from("reward-images")
+            .upload(uploadedPath, input.imageFile, {
+              cacheControl: "3600",
+              contentType: input.imageFile.type,
+              upsert: false,
+            });
+          if (uploadError) {
+            setError(uploadError.message);
+            throw uploadError;
+          }
+          imagePath = uploadedPath;
+        }
+
+        const values = {
+          class_id: snapshot.classroom.id,
+          title,
+          description,
+          price_xp: input.priceXp,
+          image_path: imagePath ?? null,
+          stock: input.stock ?? null,
+          active: input.active,
+        };
+        const mutation = existing
+          ? supabase
+              .from("rewards")
+              .update(values)
+              .eq("id", rewardId)
+              .eq("class_id", snapshot.classroom.id)
+              .select("id")
+              .maybeSingle()
+          : supabase
+              .from("rewards")
+              .insert({ ...values, id: rewardId, created_by: profile.id })
+              .select("id")
+              .single();
+        const { data, error: rewardError } = await mutation;
+        if (rewardError || !data) {
+          if (uploadedPath) {
+            await supabase.storage.from("reward-images").remove([uploadedPath]);
+          }
+          const failure = rewardError ?? new Error("No se pudo guardar el premio.");
+          setError(failure.message);
+          throw failure;
+        }
+        if (
+          existing?.imagePath &&
+          existing.imagePath !== imagePath &&
+          !/^(https?:|data:|\/)/.test(existing.imagePath)
+        ) {
+          await supabase.storage
+            .from("reward-images")
+            .remove([existing.imagePath]);
+        }
+        await refresh();
+        return;
+      }
+
+      const imagePath = input.imageFile
+        ? await fileToDataUrl(input.imageFile)
+        : input.removeImage
+          ? undefined
+          : existing?.imagePath;
+      const now = new Date().toISOString();
+      const reward = {
+        id: rewardId,
+        classId: snapshot.classroom.id,
+        title,
+        description,
+        priceXp: input.priceXp,
+        imagePath,
+        stock: input.stock,
+        active: input.active,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      };
+      persistDemo({
+        ...snapshot,
+        rewards: existing
+          ? snapshot.rewards.map((entry) =>
+              entry.id === rewardId ? reward : entry,
+            )
+          : [reward, ...snapshot.rewards],
+      });
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
+  const deleteReward = useCallback(
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      const reward = snapshot.rewards.find((entry) => entry.id === id);
+      if (!reward) return;
+      if (supabase) {
+        const { data, error: rewardError } = await supabase
+          .from("rewards")
+          .delete()
+          .eq("id", id)
+          .eq("class_id", snapshot.classroom.id)
+          .select("id")
+          .maybeSingle();
+        if (rewardError || !data) {
+          const failure = rewardError ?? new Error("No se pudo eliminar el premio.");
+          setError(failure.message);
+          throw failure;
+        }
+        if (reward.imagePath && !/^(https?:|data:|\/)/.test(reward.imagePath)) {
+          await supabase.storage.from("reward-images").remove([reward.imagePath]);
+        }
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        rewards: snapshot.rewards.filter((entry) => entry.id !== id),
+        rewardRedemptions: snapshot.rewardRedemptions.map((entry) =>
+          entry.rewardId === id ? { ...entry, rewardId: undefined } : entry,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const redeemReward = useCallback(
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot || !profile) return;
+      if (supabase) {
+        const { error: redemptionError } = await supabase.rpc("redeem_reward", {
+          p_reward_id: id,
+        });
+        if (redemptionError) {
+          setError(redemptionError.message);
+          throw redemptionError;
+        }
+        await refresh();
+        return;
+      }
+      const reward = snapshot.rewards.find(
+        (entry) => entry.id === id && entry.active,
+      );
+      if (!reward) throw new Error("Este premio ya no está disponible.");
+      if (reward.stock !== undefined && reward.stock <= 0) {
+        throw new Error("Este premio está agotado.");
+      }
+      if (availableXpForStudent(snapshot, profile.id) < reward.priceXp) {
+        throw new Error("No tienes XP suficiente para este premio.");
+      }
+      persistDemo({
+        ...snapshot,
+        rewards: snapshot.rewards.map((entry) =>
+          entry.id === id && entry.stock !== undefined
+            ? { ...entry, stock: entry.stock - 1 }
+            : entry,
+        ),
+        rewardRedemptions: [
+          {
+            id: crypto.randomUUID(),
+            rewardId: reward.id,
+            classId: reward.classId,
+            userId: profile.id,
+            rewardTitle: reward.title,
+            rewardImagePath: reward.imagePath,
+            costXp: reward.priceXp,
+            status: "requested",
+            createdAt: new Date().toISOString(),
+          },
+          ...snapshot.rewardRedemptions,
+        ],
+      });
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
+  const updateRedemptionStatus = useCallback(
+    async (id: string, status: "fulfilled" | "cancelled") => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        const { error: redemptionError } = await supabase.rpc(
+          "update_reward_redemption_status",
+          { p_redemption_id: id, p_status: status },
+        );
+        if (redemptionError) {
+          setError(redemptionError.message);
+          throw redemptionError;
+        }
+        await refresh();
+        return;
+      }
+      const redemption = snapshot.rewardRedemptions.find(
+        (entry) => entry.id === id,
+      );
+      if (!redemption || redemption.status !== "requested") return;
+      const now = new Date().toISOString();
+      persistDemo({
+        ...snapshot,
+        rewards:
+          status === "cancelled" && redemption.rewardId
+            ? snapshot.rewards.map((entry) =>
+                entry.id === redemption.rewardId && entry.stock !== undefined
+                  ? { ...entry, stock: entry.stock + 1 }
+                  : entry,
+              )
+            : snapshot.rewards,
+        rewardRedemptions: snapshot.rewardRedemptions.map((entry) =>
+          entry.id === id
+            ? {
+                ...entry,
+                status,
+                fulfilledAt: status === "fulfilled" ? now : undefined,
+                cancelledAt: status === "cancelled" ? now : undefined,
+              }
+            : entry,
         ),
       });
     },
@@ -1067,6 +1929,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       error,
       clearError,
       backendMode,
+      approveAttempts,
       frontendOnly: isFrontendOnly,
       loginDemo,
       logout,
@@ -1074,12 +1937,22 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       recordAttempt,
       reviewAttempt,
       createAssignment,
+      retryAssignmentNotification,
+      updateAssignment,
+      deleteAssignment,
+      deleteReviewRubric,
       createInvitation,
       updateInvitation,
       getInvitationToken,
       updateProfile,
       markNotificationRead,
       dismissNotification,
+      dismissAllNotifications,
+      saveReward,
+      saveReviewRubric,
+      deleteReward,
+      redeemReward,
+      updateRedemptionStatus,
       recordHint,
       recordActivity,
       startStudentPreview,
@@ -1090,6 +1963,9 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       clearError,
       createAssignment,
       createInvitation,
+      deleteAssignment,
+      deleteReward,
+      dismissAllNotifications,
       dismissNotification,
       error,
       loading,
@@ -1104,12 +1980,17 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       recordAttempt,
       recordActivity,
       recordHint,
+      redeemReward,
       refresh,
+      retryAssignmentNotification,
       reviewAttempt,
+      saveReward,
       snapshot,
       startStudentPreview,
       stopStudentPreview,
       updateInvitation,
+      updateAssignment,
+      updateRedemptionStatus,
       updateProfile,
     ],
   );

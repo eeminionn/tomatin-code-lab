@@ -1,8 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
+import { createDemoSnapshot } from "../src/data/demo-classroom";
 
 async function loginAsMentor(page: Page) {
   await page.goto("./");
   await page.getByRole("button", { name: "Entrar como eeminionn" }).click();
+  const guide = page.getByRole("dialog", { name: "Lo esencial está en un solo lugar" });
+  if (await guide.waitFor({ state: "visible", timeout: 2_000 }).then(() => true).catch(() => false)) {
+    await guide.getByRole("button", { name: "Entendido" }).click();
+  }
   await expect(
     page.getByRole("heading", { name: "Panel de eeminionn" }),
   ).toBeVisible();
@@ -18,8 +23,8 @@ test("mentor reviews a pending submission and awards XP once", async ({ page }) 
     .getByLabel("Comentario en línea 2")
     .fill("El acumulador debe actualizarse dentro del bucle.");
   await page.getByRole("button", { name: "Agregar" }).click();
-  await page.getByLabel("Correctitud").check();
-  await page.getByRole("button", { name: "Aprobar y asignar XP" }).click();
+  await page.getByLabel("Da la respuesta correcta").check();
+  await page.getByRole("button", { name: /Aprobar \(\+\d+ XP\)/ }).click();
   await expect(page.getByText("Cola al día")).toBeVisible();
 
   await page.getByRole("button", { name: "Ver como estudiante" }).click();
@@ -56,6 +61,47 @@ test("mentor creates and edits a configurable invitation", async ({ page }) => {
   await expect(invitation.getByRole("button", { name: "Copiar" })).toBeDisabled();
 });
 
+test("mentor overview prioritizes actions without duplicate navigation", async ({
+  page,
+}) => {
+  await loginAsMentor(page);
+  await expect(
+    page.getByRole("button", { name: /entrega espera revisión/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Estado de las tareas" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Resumen", exact: true }),
+  ).toHaveCount(1);
+  await expect(page.getByText("Ver más indicadores")).toBeVisible();
+});
+
+test("mentor opens an explained alert and exports the course summary", async ({
+  page,
+}) => {
+  await loginAsMentor(page);
+  await expect(page.getByRole("heading", { name: "Necesitan atención" })).toBeVisible();
+  const firstAlert = page.locator(".classroom-alert").first();
+  await expect(firstAlert).toContainText(/intentos|cambios solicitados|vence/i);
+  await expect(firstAlert).toHaveAttribute("href", /\/admin\/students\//);
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Exportar CSV" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^tomatin-curso-\d{4}-\d{2}-\d{2}\.csv$/);
+});
+
+test("mentor can reopen the classroom preparation summary", async ({ page }) => {
+  await loginAsMentor(page);
+  await page.getByRole("button", { name: "Abrir guía rápida" }).click();
+  const guide = page.getByRole("dialog", {
+    name: "Lo esencial está en un solo lugar",
+  });
+  await expect(guide.getByText("Hay estudiantes en el curso")).toBeVisible();
+  await expect(guide.getByText("Hay al menos una tarea publicada")).toBeVisible();
+});
+
 test("mentor creates an assignment for selected students", async ({ page }) => {
   await loginAsMentor(page);
   await page.getByRole("link", { name: "Tareas", exact: true }).click();
@@ -67,6 +113,144 @@ test("mentor creates an assignment for selected students", async ({ page }) => {
   await page.getByRole("button", { name: "Publicar tarea" }).click();
 
   await expect(page.getByText("Prueba de aula")).toBeVisible();
+  await expect(
+    page.locator(".assignment-admin-item").filter({ hasText: "Prueba de aula" }),
+  ).toContainText("Aviso fallido");
+});
+
+test("mentor creates a reusable review guide and assigns it to a task", async ({
+  page,
+}) => {
+  await loginAsMentor(page);
+  await page.getByRole("link", { name: "Tareas", exact: true }).click();
+  await page.getByRole("button", { name: "Nueva pauta" }).click();
+  await page.getByLabel("Nombre").fill("Funciones simples");
+  await page
+    .getByLabel("Una pregunta por línea")
+    .fill("Devuelve el valor pedido\nNo imprime la respuesta");
+  await page.getByRole("button", { name: "Guardar pauta" }).click();
+  await expect(page.getByText("Funciones simples")).toBeVisible();
+
+  await page.getByRole("button", { name: "Nueva tarea" }).click();
+  await page.getByLabel("Misión").selectOption({ index: 1 });
+  await page.getByLabel("Título de la tarea").fill("Tarea con pauta");
+  await page.getByLabel("Pauta de corrección (opcional)").selectOption({
+    label: "Funciones simples",
+  });
+  await page.getByRole("button", { name: "Publicar tarea" }).click();
+  await expect(page.getByText("Tarea con pauta")).toBeVisible();
+});
+
+test("mentor can approve several available submissions", async ({ page }) => {
+  await loginAsMentor(page);
+  await page.evaluate((baseSnapshot) => {
+    const key = "tomatin.v2.demo-classroom";
+    const snapshot = JSON.parse(
+      window.localStorage.getItem(key) ?? JSON.stringify(baseSnapshot),
+    );
+    const sourceAttempt = snapshot.attempts[0];
+    snapshot.progress = snapshot.progress.map((entry: { userId: string; assignmentId: string; status: string }) =>
+      entry.userId === "student-03" && entry.assignmentId === "assignment-once"
+        ? { ...entry, status: "awaiting_review", submittedAt: new Date().toISOString() }
+        : entry,
+    );
+    snapshot.attempts.push({
+      ...sourceAttempt,
+      id: "attempt-antonia-once",
+      userId: "student-03",
+      createdAt: new Date().toISOString(),
+    });
+    window.localStorage.setItem(key, JSON.stringify(snapshot));
+  }, createDemoSnapshot());
+  await page.reload();
+  await page.getByRole("link", { name: /^Revisiones/ }).click();
+  await page.getByLabel("Seleccionar entrega de Camila Rojas").check();
+  await page.getByLabel("Seleccionar entrega de Antonia Pérez").check();
+  await page.getByRole("button", { name: "Aprobar 2" }).click();
+  await expect(page.getByText("Cola al día")).toBeVisible();
+});
+
+test("mentor creates a reward and fulfills a student redemption", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Entrar como estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
+  await page.getByRole("link", { name: "Premios" }).click();
+  const reward = page.locator(".reward-card").filter({ hasText: "Pista extra" });
+  await reward.getByRole("button", { name: "Canjear" }).click();
+  await page
+    .getByRole("alertdialog", { name: "Pista extra" })
+    .getByRole("button", { name: "Confirmar canje" })
+    .click();
+  await page.locator(".profile-menu-trigger").click();
+  await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();
+
+  await page.getByRole("button", { name: "Entrar como eeminionn" }).click();
+  await page.getByRole("button", { name: "Entendido" }).click();
+  await page.getByRole("link", { name: "Premios", exact: true }).click();
+  const redemption = page
+    .locator(".redemption-admin-row")
+    .filter({ hasText: "Pista extra" });
+  await expect(redemption).toContainText("Camila Rojas");
+  await redemption
+    .getByRole("button", { name: /Marcar Pista extra.*como entregado/ })
+    .click();
+  await expect(redemption).toContainText("Entregado");
+
+  await page.getByRole("button", { name: "Nuevo premio" }).click();
+  await page.getByLabel("Nombre").fill("Sesión de Arduino");
+  await page
+    .getByLabel("Descripción")
+    .fill("Elige el sensor para una sesión práctica del curso.");
+  await page.getByLabel("Precio en XP").fill("240");
+  await page.getByLabel("Stock ilimitado").uncheck();
+  await page.getByLabel("Stock", { exact: true }).fill("3");
+  await page.getByRole("button", { name: "Guardar premio" }).click();
+  await expect(
+    page.locator(".reward-admin-card").filter({ hasText: "Sesión de Arduino" }),
+  ).toContainText("240 XP");
+});
+
+test("mentor edits and deletes an assignment with its ranking XP", async ({
+  page,
+}) => {
+  await loginAsMentor(page);
+  await page.getByRole("link", { name: "Ranking", exact: true }).click();
+  const diegoBefore = page.locator(".ranking-row").filter({ hasText: "Diego Soto" });
+  await expect(diegoBefore.locator(".ranking-xp")).toHaveText("100");
+
+  await page.getByRole("link", { name: "Tareas", exact: true }).click();
+  const assignment = page
+    .locator(".assignment-admin-item")
+    .filter({ hasText: "Variables y acumuladores" });
+  await assignment
+    .getByRole("button", { name: "Editar Variables y acumuladores" })
+    .click();
+  await assignment.getByLabel("Nombre de la tarea").fill("Acumuladores actualizados");
+  await assignment
+    .getByLabel("Descripción e instrucciones")
+    .fill("Usa un acumulador y explica el resultado.");
+  await assignment.getByRole("button", { name: "Guardar cambios" }).click();
+  const updatedAssignment = page
+    .locator(".assignment-admin-item")
+    .filter({ hasText: "Acumuladores actualizados" });
+  await expect(updatedAssignment).toBeVisible();
+
+  await updatedAssignment
+    .getByRole("button", { name: "Eliminar Acumuladores actualizados" })
+    .click();
+  await expect(updatedAssignment.getByRole("alertdialog")).toContainText(
+    "Los intentos históricos se conservarán",
+  );
+  await updatedAssignment
+    .getByRole("button", { name: "Eliminar definitivamente" })
+    .click();
+  await expect(updatedAssignment).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Ranking", exact: true }).click();
+  const diegoAfter = page.locator(".ranking-row").filter({ hasText: "Diego Soto" });
+  await expect(diegoAfter.locator(".ranking-xp")).toHaveText("0");
 });
 
 test("mentor duplicates and publishes a versioned mission", async ({ page }) => {

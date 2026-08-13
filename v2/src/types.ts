@@ -116,11 +116,13 @@ export interface Profile {
   email: string;
   githubLogin?: string;
   avatarUrl?: string;
+  profileImagePath?: string;
   avatarConfig?: AvatarConfig;
   role: Role;
 }
 
 export interface AvatarConfig {
+  style: "avataaars" | "mini";
   seed: string;
   top: string;
   hairColor: string;
@@ -134,6 +136,21 @@ export interface AvatarConfig {
   clothing: string;
   clothesColor: string;
   earrings: "none" | "stud" | "hoop";
+  miniBody: "round" | "square" | "bean";
+  miniEyes: "bright" | "happy" | "focused" | "wink";
+  miniMouth: "smile" | "grin" | "calm" | "surprised";
+  miniHair: "sprout" | "tuft" | "side" | "cap" | "none";
+  miniAccessory: "none" | "glasses" | "visor" | "headphones";
+  miniOutfit: "hoodie" | "apron" | "jacket" | "tee";
+  miniBodyColor: string;
+  miniAccentColor: string;
+}
+
+export interface ProfileUpdateInput {
+  displayName: string;
+  avatarConfig?: AvatarConfig;
+  imageFile?: File;
+  removeImage?: boolean;
 }
 
 export interface Classroom {
@@ -154,6 +171,16 @@ export interface Assignment {
   allowedLanguages: Language[];
   studentIds: string[];
   status: "draft" | "published" | "archived";
+  rubricId?: string;
+}
+
+export interface ReviewRubric {
+  id: string;
+  classId: string;
+  title: string;
+  criteria: Array<{ id: string; label: string }>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StudentProgress {
@@ -324,6 +351,56 @@ export interface InvitationInput {
   active: boolean;
 }
 
+export interface Reward {
+  id: string;
+  classId: string;
+  title: string;
+  description: string;
+  priceXp: number;
+  imagePath?: string;
+  stock?: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RewardInput {
+  title: string;
+  description: string;
+  priceXp: number;
+  stock?: number;
+  active: boolean;
+  imageFile?: File;
+  removeImage?: boolean;
+}
+
+export interface RewardRedemption {
+  id: string;
+  rewardId?: string;
+  classId: string;
+  userId: string;
+  rewardTitle: string;
+  rewardImagePath?: string;
+  costXp: number;
+  status: "requested" | "fulfilled" | "cancelled";
+  createdAt: string;
+  fulfilledAt?: string;
+  cancelledAt?: string;
+}
+
+export interface AssignmentGitHubNotification {
+  assignmentId: string;
+  classId: string;
+  status: "pending" | "sent" | "partial" | "failed";
+  mentionedLogins: string[];
+  missingUserIds: string[];
+  githubCommentUrl?: string;
+  attempts: number;
+  lastError?: string;
+  sentAt?: string;
+  updatedAt: string;
+}
+
 export interface ClassroomSnapshot {
   classroom: Classroom;
   profiles: Profile[];
@@ -334,6 +411,10 @@ export interface ClassroomSnapshot {
   notifications: AppNotification[];
   invitations: Invitation[];
   repositories: StudentRepository[];
+  rewards: Reward[];
+  rewardRedemptions: RewardRedemption[];
+  githubNotifications: AssignmentGitHubNotification[];
+  reviewRubrics: ReviewRubric[];
 }
 
 export interface RunnerRequest {
@@ -352,6 +433,19 @@ export interface CreateAssignmentInput {
   points: number;
   allowedLanguages: Language[];
   studentIds: string[];
+  rubricId?: string;
+}
+
+export interface UpdateAssignmentInput {
+  title: string;
+  instructions: string;
+  dueAt: string;
+  rubricId?: string;
+}
+
+export interface ReviewRubricInput {
+  title: string;
+  criteria: string[];
 }
 
 export interface MissionDraftInput {

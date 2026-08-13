@@ -1,8 +1,10 @@
+import { useState } from "react";
 import {
   Check,
   CheckCircle2,
   CircleDot,
   MessageSquareText,
+  LoaderCircle,
   Trash2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -18,7 +20,10 @@ export function Component() {
     snapshot,
     markNotificationRead,
     dismissNotification,
+    dismissAllNotifications,
   } = useClassroom();
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [busy, setBusy] = useState(false);
   const { getMissionById } = useCatalog();
   if (!viewProfile || !snapshot) return null;
 
@@ -32,6 +37,18 @@ export function Component() {
     );
   const unread = notifications.filter((entry) => !entry.readAt).length;
 
+  async function clearAll() {
+    setBusy(true);
+    try {
+      await dismissAllNotifications();
+      setConfirmClear(false);
+    } catch {
+      // The classroom error banner reports the backend failure.
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="page feedback-page">
       <header className="page-header">
@@ -42,10 +59,23 @@ export function Component() {
             Entregas recibidas, revisiones del mentor y cambios solicitados.
           </p>
         </div>
-        <div className="feedback-count">
-          <MessageSquareText aria-hidden="true" />
-          <strong>{unread}</strong>
-          <span>sin leer</span>
+        <div className="feedback-header-actions">
+          <div className="feedback-count">
+            <MessageSquareText aria-hidden="true" />
+            <strong>{unread}</strong>
+            <span>sin leer</span>
+          </div>
+          {!isStudentPreview && notifications.length > 0 ? (
+            <button
+              className="button secondary"
+              type="button"
+              disabled={frontendOnly || busy}
+              onClick={() => setConfirmClear(true)}
+            >
+              <Trash2 aria-hidden="true" />
+              Limpiar todo
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -171,7 +201,7 @@ export function Component() {
                     title="Eliminar de Feedback"
                     disabled={frontendOnly}
                     aria-label={`Eliminar feedback ${entry.title}`}
-                    onClick={() => dismissNotification(entry.id)}
+                    onClick={() => void dismissNotification(entry.id)}
                   >
                     <Trash2 aria-hidden="true" />
                   </button>
@@ -188,6 +218,53 @@ export function Component() {
           </div>
         ) : null}
       </section>
+
+      {confirmClear ? (
+        <div className="dialog-backdrop" role="presentation">
+          <section
+            className="confirmation-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="clear-feedback-title"
+            aria-describedby="clear-feedback-description"
+          >
+            <span className="confirmation-dialog-icon danger">
+              <Trash2 aria-hidden="true" />
+            </span>
+            <div>
+              <p className="eyebrow">LIMPIAR FEEDBACK</p>
+              <h2 id="clear-feedback-title">¿Eliminar toda la bandeja?</h2>
+              <p id="clear-feedback-description">
+                Se ocultarán {notifications.length} mensajes de tu cuenta. Esta
+                acción no elimina entregas ni comentarios del mentor.
+              </p>
+            </div>
+            <div className="confirmation-dialog-actions">
+              <button
+                className="button ghost"
+                type="button"
+                disabled={busy}
+                onClick={() => setConfirmClear(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="button danger"
+                type="button"
+                disabled={busy}
+                onClick={() => void clearAll()}
+              >
+                {busy ? (
+                  <LoaderCircle className="spin" aria-hidden="true" />
+                ) : (
+                  <Trash2 aria-hidden="true" />
+                )}
+                Limpiar todo
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { describe, expect, it } from "vitest";
-import { edgeFunctionErrorMessage } from "@/services/runner";
+import { edgeFunctionErrorMessage } from "@/lib/edge-function-error";
 
 describe("edge function errors", () => {
   it("uses the backend JSON error instead of the generic SDK message", async () => {
@@ -34,5 +34,11 @@ describe("edge function errors", () => {
     await expect(edgeFunctionErrorMessage(error)).resolves.toBe(
       "Servicio temporalmente no disponible",
     );
+  });
+
+  it("uses the caller fallback for non-error values", async () => {
+    await expect(
+      edgeFunctionErrorMessage(null, "No se pudo enviar el aviso."),
+    ).resolves.toBe("No se pudo enviar el aviso.");
   });
 });

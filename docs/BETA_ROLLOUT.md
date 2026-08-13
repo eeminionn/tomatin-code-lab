@@ -13,6 +13,12 @@ versión estable de la raíz no se reemplaza todavía.
 - GitHub Pages falla si faltan las variables públicas de Supabase.
 - Supabase falla si faltan los secretos de despliegue o de sincronización con
   el repositorio privado de resoluciones.
+- El deploy comprueba el acceso al issue de avisos. El secret de Actions
+  `NOTIFICATION_REPOSITORY_TOKEN` debe seleccionar únicamente
+  `eeminionn/tomatin-code-lab` y conceder `Issues: Read and write` junto con
+  `Metadata: Read-only`; el workflow lo copia como
+  `GITHUB_NOTIFICATION_TOKEN` a la Edge Function sin exponerlo. El nombre de
+  Actions evita el prefijo `GITHUB_`, reservado por GitHub.
 - Después de publicar, Pages comprueba que `/beta/` responda y sirva la versión
   3.0 desde la ruta correcta.
 

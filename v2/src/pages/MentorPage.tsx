@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Activity,
+  AlertTriangle,
   ArrowRight,
+  BarChart3,
   BookCopy,
   CalendarPlus,
   Check,
@@ -11,20 +13,25 @@ import {
   Clock3,
   Code2,
   Copy,
+  Download,
   Eye,
   FilePlus2,
+  Gift,
   Link2,
   LoaderCircle,
   MailPlus,
   MessageSquareText,
   Pencil,
   Plus,
+  RotateCw,
   Save,
   Search,
   Send,
   ShieldCheck,
   Timer,
+  Trash2,
   TrendingUp,
+  Trophy,
   Users,
   XCircle,
 } from "lucide-react";
@@ -34,8 +41,16 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import {
+  buildClassroomAlerts,
+  buildClassroomCsv,
+  buildWeeklyTrends,
+} from "@/models/classroom-insights";
 import { StatusBadge } from "@/components/StatusBadge";
+import { RankingBoard } from "@/components/RankingBoard";
+import { RewardsManager } from "@/components/RewardsManager";
 import { formatDate, initials, isOverdue } from "@/lib/format";
+import { getPendingReviews } from "@/models/reviews";
 import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
 import {
@@ -56,9 +71,11 @@ type MentorTab =
   | "overview"
   | "reviews"
   | "students"
+  | "ranking"
   | "assignments"
   | "missions"
-  | "invitations";
+  | "invitations"
+  | "rewards";
 
 interface LocalMissionDraft extends MissionDraftInput {
   id: string;
@@ -70,9 +87,9 @@ interface LocalMissionDraft extends MissionDraftInput {
 
 const MISSION_DRAFTS_KEY = "tomatin.v2.mission-drafts";
 const REVIEW_CRITERIA = [
-  { id: "correctness", label: "Correctitud" },
-  { id: "readability", label: "Claridad del código" },
-  { id: "edge-cases", label: "Casos límite" },
+  { id: "correctness", label: "Da la respuesta correcta" },
+  { id: "readability", label: "Se entiende cómo lo resolvió" },
+  { id: "edge-cases", label: "Funciona también con otros casos" },
 ] as const;
 
 function readMissionDrafts(): LocalMissionDraft[] {
@@ -90,6 +107,22 @@ function formLines(value: FormDataEntryValue | null): string[] {
     .filter(Boolean);
 }
 
+function toDateTimeLocal(value: string) {
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function downloadCsv(contents: string) {
+  const blob = new Blob(["\uFEFF", contents], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `tomatin-curso-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function MentorOverview({
   onOpenReviews,
 }: {
@@ -101,9 +134,8 @@ function MentorOverview({
   if (!snapshot) return null;
   const students = snapshot.profiles.filter((entry) => entry.role === "student");
   const now = Date.now();
-  const reviewCount = snapshot.progress.filter(
-    (entry) => entry.status === "awaiting_review",
-  ).length;
+  const pendingReviews = getPendingReviews(snapshot);
+  const reviewCount = pendingReviews.length;
   const overdueCount = snapshot.progress.filter((entry) => {
     const assignment = snapshot.assignments.find(
       (item) => item.id === entry.assignmentId,
@@ -143,12 +175,11 @@ function MentorOverview({
   ).length;
   const approvalRate =
     startedCount > 0 ? Math.round((approvedCount / startedCount) * 100) : 0;
-  const reviewWaits = snapshot.progress
-    .filter(
-      (entry) =>
-        entry.status === "awaiting_review" && Boolean(entry.submittedAt),
-    )
-    .map((entry) => now - new Date(entry.submittedAt!).getTime());
+  const reviewWaits = pendingReviews
+    .filter((entry) => Boolean(entry.progress.submittedAt))
+    .map(
+      (entry) => now - new Date(entry.progress.submittedAt!).getTime(),
+    );
   const averageReviewHours =
     reviewWaits.length > 0
       ? Math.round(
@@ -191,6 +222,16 @@ function MentorOverview({
         new Date(a.lastActivityAt!).getTime(),
     )
     .slice(0, 8);
+  const classroomAlerts = buildClassroomAlerts(snapshot).slice(0, 8);
+  const weeklyTrends = buildWeeklyTrends(snapshot);
+  const trendMax = Math.max(
+    1,
+    ...weeklyTrends.flatMap((entry) => [
+      entry.activity,
+      entry.submissions,
+      entry.approvals,
+    ]),
+  );
   const eventLabels = {
     opened: "abrió",
     editing: "está editando",
@@ -201,62 +242,147 @@ function MentorOverview({
 
   return (
     <>
+      {reviewCount > 0 ? (
+        <button className="review-callout" type="button" onClick={onOpenReviews}>
+          <span className="review-callout-icon"><ClipboardCheck /></span>
+          <span>
+            <strong>
+              {reviewCount} {reviewCount === 1 ? "entrega espera" : "entregas esperan"} revisión
+            </strong>
+            <small>
+              La más antigua espera {oldestReviewHours}{" "}
+              {oldestReviewHours === 1 ? "hora" : "horas"}.
+            </small>
+          </span>
+          <ArrowRight aria-hidden="true" />
+        </button>
+      ) : (
+        <div className="review-callout is-clear" role="status">
+          <span className="review-callout-icon"><CheckCircle2 /></span>
+          <span>
+            <strong>No hay entregas por revisar</strong>
+            <small>Puedes seguir con el estado de las tareas.</small>
+          </span>
+        </div>
+      )}
+
       <section className="metrics-strip mentor-metrics" aria-label="Resumen del curso">
         <article>
-          <span className="metric-icon info"><Users /></span>
-          <div><strong>{students.length}</strong><span>estudiantes</span></div>
-        </article>
-        <article>
-          <span className="metric-icon success"><Activity /></span>
-          <div><strong>{activeNow}</strong><span>activos ahora</span></div>
-        </article>
-        <article>
-          <span className="metric-icon info"><Code2 /></span>
-          <div><strong>{activeToday}</strong><span>activos hoy</span></div>
+          <span className="metric-icon warning"><ClipboardCheck /></span>
+          <div><strong>{reviewCount}</strong><span>por revisar</span></div>
         </article>
         <article>
           <span className="metric-icon danger"><Clock3 /></span>
           <div><strong>{overdueCount}</strong><span>atrasos</span></div>
         </article>
         <article>
-          <span className="metric-icon warning"><ClipboardCheck /></span>
-          <div><strong>{reviewCount}</strong><span>por revisar</span></div>
+          <span className="metric-icon info"><Code2 /></span>
+          <div><strong>{activeToday}</strong><span>activos hoy</span></div>
         </article>
         <article>
-          <span className="metric-icon success"><TrendingUp /></span>
-          <div><strong>{approvalRate}%</strong><span>aprobación</span></div>
-        </article>
-        <article>
-          <span className="metric-icon warning"><Timer /></span>
-          <div><strong>{averageReviewHours} h</strong><span>espera media</span></div>
-        </article>
-        <article>
-          <span className="metric-icon neutral"><Users /></span>
-          <div><strong>{inactiveSevenDays}</strong><span>inactivos 7 días</span></div>
+          <span className="metric-icon info"><Users /></span>
+          <div><strong>{students.length}</strong><span>estudiantes</span></div>
         </article>
       </section>
 
-      {reviewCount > 0 ? (
-        <button className="review-callout" type="button" onClick={onOpenReviews}>
-          <span className="review-callout-icon"><ClipboardCheck /></span>
-          <span>
-            <strong>{reviewCount} entregas esperan revisión</strong>
-            <small>
-              La entrega más antigua espera {oldestReviewHours}{" "}
-              {oldestReviewHours === 1 ? "hora" : "horas"}.
-            </small>
-          </span>
-          <ArrowRight aria-hidden="true" />
-        </button>
-      ) : null}
+      <details className="mentor-more-metrics">
+        <summary>Ver más indicadores</summary>
+        <div className="metrics-strip">
+          <article>
+            <span className="metric-icon success"><Activity /></span>
+            <div><strong>{activeNow}</strong><span>activos ahora</span></div>
+          </article>
+          <article>
+            <span className="metric-icon success"><TrendingUp /></span>
+            <div><strong>{approvalRate}%</strong><span>aprobación</span></div>
+          </article>
+          <article>
+            <span className="metric-icon warning"><Timer /></span>
+            <div><strong>{averageReviewHours} h</strong><span>espera media</span></div>
+          </article>
+          <article>
+            <span className="metric-icon neutral"><Users /></span>
+            <div><strong>{inactiveSevenDays}</strong><span>inactivos 7 días</span></div>
+          </article>
+        </div>
+      </details>
+
+      <div className="insights-grid">
+        <section className="mentor-section insight-panel" aria-labelledby="alerts-title">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">PARA MIRAR</p>
+              <h2 id="alerts-title">Necesitan atención</h2>
+            </div>
+            <span className="section-note">El motivo siempre está visible</span>
+          </div>
+          {classroomAlerts.length > 0 ? (
+            <div className="classroom-alerts">
+              {classroomAlerts.map((alert) => (
+                <Link
+                  className={`classroom-alert is-${alert.priority}`}
+                  key={alert.id}
+                  to={`/admin/students/${alert.studentId}?assignment=${alert.assignmentId}`}
+                >
+                  <AlertTriangle aria-hidden="true" />
+                  <span>
+                    <strong>{alert.studentName}</strong>
+                    <small>{alert.assignmentTitle} · {alert.reason}</small>
+                  </span>
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="insight-empty">
+              <CheckCircle2 aria-hidden="true" />
+              <span><strong>Sin alertas por ahora</strong><small>No hay atrasos ni señales que requieran una revisión rápida.</small></span>
+            </div>
+          )}
+        </section>
+
+        <section className="mentor-section insight-panel" aria-labelledby="trends-title">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">ÚLTIMAS 6 SEMANAS</p>
+              <h2 id="trends-title">Movimiento del curso</h2>
+            </div>
+            <button
+              className="button secondary compact-button"
+              type="button"
+              onClick={() => downloadCsv(buildClassroomCsv(snapshot))}
+            >
+              <Download aria-hidden="true" /> Exportar CSV
+            </button>
+          </div>
+          <div className="trend-legend" aria-hidden="true">
+            <span><i className="activity" />Ejecuciones</span>
+            <span><i className="submissions" />Entregas</span>
+            <span><i className="approvals" />Aprobaciones</span>
+          </div>
+          <div className="weekly-trends" role="img" aria-label="Ejecuciones, entregas y aprobaciones de las últimas seis semanas">
+            {weeklyTrends.map((week) => (
+              <div className="trend-week" key={week.key}>
+                <div className="trend-bars">
+                  <i className="activity" style={{ height: `${Math.max(3, (week.activity / trendMax) * 100)}%` }} title={`${week.activity} ejecuciones`} />
+                  <i className="submissions" style={{ height: `${Math.max(3, (week.submissions / trendMax) * 100)}%` }} title={`${week.submissions} entregas`} />
+                  <i className="approvals" style={{ height: `${Math.max(3, (week.approvals / trendMax) * 100)}%` }} title={`${week.approvals} aprobaciones`} />
+                </div>
+                <span>{week.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="trend-note"><BarChart3 aria-hidden="true" />Los datos describen actividad real; no califican a los estudiantes.</p>
+        </section>
+      </div>
 
       <section className="mentor-section" aria-labelledby="matrix-title">
         <div className="section-header">
           <div>
             <p className="eyebrow">SEGUIMIENTO</p>
-            <h2 id="matrix-title">Matriz del curso</h2>
+            <h2 id="matrix-title">Estado de las tareas</h2>
           </div>
-          <span className="section-note">Próximas 4 tareas</span>
+          <span className="section-note">Abre un estado para ver el detalle</span>
         </div>
         <div className="mentor-filters">
           <label className="search-field">
@@ -743,7 +869,7 @@ function StudentDirectory({
 }
 
 function ReviewQueue() {
-  const { profile, snapshot, frontendOnly, reviewAttempt } = useClassroom();
+  const { profile, snapshot, frontendOnly, reviewAttempt, approveAttempts } = useClassroom();
   const { getMissionById } = useCatalog();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
@@ -756,38 +882,33 @@ function ReviewQueue() {
   >([]);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewMessage, setReviewMessage] = useState("");
-  const [criteria, setCriteria] = useState(() =>
+  const [selectedBatch, setSelectedBatch] = useState<string[]>([]);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [criteria, setCriteria] = useState<Array<{ id: string; label: string; met: boolean }>>(() =>
     REVIEW_CRITERIA.map((entry) => ({ ...entry, met: false })),
   );
+  useEffect(() => {
+    if (!snapshot) return;
+    const queueEntry =
+      getPendingReviews(snapshot).find(
+        (entry) => entry.attempt.id === selectedId,
+      ) ?? getPendingReviews(snapshot)[0];
+    const rubric = snapshot.reviewRubrics.find(
+      (entry) => entry.id === queueEntry?.assignment.rubricId,
+    );
+    setCriteria(
+      (rubric?.criteria ?? REVIEW_CRITERIA).map((entry) => ({
+        ...entry,
+        met: false,
+      })),
+    );
+  }, [selectedId, snapshot?.assignments, snapshot?.reviewRubrics]);
   if (!profile || !snapshot) return null;
 
-  const queue = snapshot.progress
-    .filter((entry) => entry.status === "awaiting_review")
-    .map((progress) => {
-      const attempts = snapshot.attempts
-        .filter(
-          (attempt) =>
-            attempt.userId === progress.userId &&
-            attempt.assignmentId === progress.assignmentId &&
-            attempt.kind === "submit",
-        )
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-      return {
-        progress,
-        attempt: attempts[0],
-        student: snapshot.profiles.find((entry) => entry.id === progress.userId),
-        assignment: snapshot.assignments.find(
-          (entry) => entry.id === progress.assignmentId,
-        ),
-      };
-    })
-    .filter((entry) => entry.attempt && entry.assignment && entry.student);
+  const queue = getPendingReviews(snapshot);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleQueue = queue.filter((entry) => {
-    if (language !== "all" && entry.attempt?.language !== language) {
+    if (language !== "all" && entry.attempt.language !== language) {
       return false;
     }
     if (!normalizedQuery) return true;
@@ -798,8 +919,27 @@ function ReviewQueue() {
       .includes(normalizedQuery);
   });
   const selected =
-    visibleQueue.find((entry) => entry.attempt?.id === selectedId) ??
+    visibleQueue.find((entry) => entry.attempt.id === selectedId) ??
     visibleQueue[0];
+  const selectedMission = selected
+    ? getMissionById(
+        selected.assignment.missionId,
+        selected.progress.missionVersion,
+      )
+    : undefined;
+  const selectedRubric = selected
+    ? snapshot.reviewRubrics.find(
+        (entry) => entry.id === selected.assignment.rubricId,
+      )
+    : undefined;
+
+  function criteriaFor(rubricId?: string) {
+    const rubric = snapshot!.reviewRubrics.find((entry) => entry.id === rubricId);
+    return (rubric?.criteria ?? REVIEW_CRITERIA).map((entry) => ({
+      ...entry,
+      met: false,
+    }));
+  }
 
   async function decide(decision: "approved" | "changes_requested") {
     if (frontendOnly) return;
@@ -845,7 +985,25 @@ function ReviewQueue() {
     setInlineComments([]);
     setInlineBody("");
     setInlineLine(1);
-    setCriteria(REVIEW_CRITERIA.map((entry) => ({ ...entry, met: false })));
+    const entry = queue.find((item) => item.attempt.id === attemptId);
+    setCriteria(criteriaFor(entry?.assignment.rubricId));
+  }
+
+  async function approveSelected() {
+    if (frontendOnly || selectedBatch.length === 0) return;
+    setBatchBusy(true);
+    setReviewMessage("");
+    try {
+      const approved = await approveAttempts(selectedBatch);
+      setSelectedBatch([]);
+      setReviewMessage(`${approved} ${approved === 1 ? "entrega aprobada" : "entregas aprobadas"}.`);
+    } catch (error) {
+      setReviewMessage(
+        error instanceof Error ? error.message : "Una entrega no pudo procesarse.",
+      );
+    } finally {
+      setBatchBusy(false);
+    }
   }
 
   function addInlineComment(event: FormEvent<HTMLFormElement>) {
@@ -864,8 +1022,22 @@ function ReviewQueue() {
         <div className="review-list-heading">
           <div>
             <p className="eyebrow">COLA</p>
-            <h2>{visibleQueue.length} entregas</h2>
+            <h2>
+              {visibleQueue.length}{" "}
+              {visibleQueue.length === 1 ? "entrega" : "entregas"}
+            </h2>
           </div>
+          {visibleQueue.length > 1 ? (
+            <button
+              className="button secondary compact-button"
+              type="button"
+              disabled={selectedBatch.length === 0 || batchBusy || frontendOnly}
+              onClick={() => void approveSelected()}
+            >
+              {batchBusy ? <LoaderCircle className="spin" aria-hidden="true" /> : <Check aria-hidden="true" />}
+              Aprobar {selectedBatch.length || "selección"}
+            </button>
+          ) : null}
         </div>
         <div className="review-list-filters">
           <label className="search-field">
@@ -893,24 +1065,35 @@ function ReviewQueue() {
           </select>
         </div>
         {visibleQueue.map((entry) => (
-          <button
-            className={`review-list-item ${selected?.attempt?.id === entry.attempt?.id ? "is-active" : ""}`}
-            type="button"
-            key={entry.attempt?.id}
-            onClick={() => selectReview(entry.attempt?.id ?? null)}
-          >
-            <span className="avatar">{initials(entry.student?.displayName ?? "?")}</span>
-            <span>
-              <strong>{entry.student?.displayName}</strong>
-              <small>{entry.assignment?.title}</small>
-              <em>
-                {entry.attempt
-                  ? `${LANGUAGE_META[entry.attempt.language].shortLabel} · ${formatDate(entry.attempt.createdAt, true)}`
-                  : ""}
-              </em>
-            </span>
-            <ArrowRight aria-hidden="true" />
-          </button>
+          <div className="review-select-row" key={entry.attempt.id}>
+            {visibleQueue.length > 1 ? (
+              <input
+                type="checkbox"
+                aria-label={`Seleccionar entrega de ${entry.student.displayName}`}
+                checked={selectedBatch.includes(entry.attempt.id)}
+                onChange={(event) =>
+                  setSelectedBatch((current) =>
+                    event.target.checked
+                      ? [...current, entry.attempt.id]
+                      : current.filter((id) => id !== entry.attempt.id),
+                  )
+                }
+              />
+            ) : null}
+            <button
+              className={`review-list-item ${selected?.attempt.id === entry.attempt.id ? "is-active" : ""}`}
+              type="button"
+              onClick={() => selectReview(entry.attempt.id)}
+            >
+              <span className="avatar">{initials(entry.student.displayName)}</span>
+              <span>
+                <strong>{entry.student.displayName}</strong>
+                <small>{entry.assignment.title}</small>
+                <em>{`${LANGUAGE_META[entry.attempt.language].shortLabel} · ${formatDate(entry.attempt.createdAt, true)}`}</em>
+              </span>
+              <ArrowRight aria-hidden="true" />
+            </button>
+          </div>
         ))}
         {visibleQueue.length === 0 ? (
           <div className="empty-state compact-empty">
@@ -936,25 +1119,22 @@ function ReviewQueue() {
                 {LANGUAGE_META[selected.attempt.language].label}
               </span>
             </div>
-            <Link
-              className="button secondary"
-              to={`/mission/${
-                getMissionById(
-                  selected.assignment.missionId,
-                  selected.progress.missionVersion,
-                )?.slug
-              }?assignment=${selected.assignment.id}`}
-            >
-              <Eye aria-hidden="true" />
-              Ver misión
-            </Link>
+            {selectedMission ? (
+              <Link
+                className="button secondary"
+                to={`/mission/${selectedMission.slug}?assignment=${selected.assignment.id}`}
+              >
+                <Eye aria-hidden="true" />
+                Ver misión
+              </Link>
+            ) : null}
           </header>
 
           <div className="review-result-strip">
             <span className="tone-success">
               <CheckCircle2 aria-hidden="true" />
-              {selected.attempt.result.tests.filter((entry) => entry.passed).length}/
-              {selected.attempt.result.tests.length} tests
+              {selected.attempt.result.tests.filter((entry) => entry.passed).length}{" "}
+              de {selected.attempt.result.tests.length} pruebas
             </span>
             <span>{selected.attempt.result.durationMs ?? "—"} ms</span>
             <span>{selected.progress.attempts} intentos</span>
@@ -1040,7 +1220,9 @@ function ReviewQueue() {
               </ul>
             ) : null}
             <fieldset className="review-criteria">
-              <legend>Criterios de revisión</legend>
+              <legend>
+                {selectedRubric ? selectedRubric.title : "Lista rápida"} (opcional)
+              </legend>
               {criteria.map((entry) => (
                 <label key={entry.id}>
                   <input
@@ -1059,6 +1241,9 @@ function ReviewQueue() {
                   {entry.label}
                 </label>
               ))}
+              <p>
+                Úsala como apoyo. Para terminar, elige pedir cambios o aprobar.
+              </p>
             </fieldset>
             <label htmlFor="mentor-comment">Comentario para {selected.student.displayName}</label>
             <textarea
@@ -1076,7 +1261,7 @@ function ReviewQueue() {
                 onClick={() => void decide("changes_requested")}
               >
                 <XCircle aria-hidden="true" />
-                Solicitar cambios
+                Pedir cambios
               </button>
               <button
                 className="button primary"
@@ -1085,7 +1270,7 @@ function ReviewQueue() {
                 onClick={() => void decide("approved")}
               >
                 <Check aria-hidden="true" />
-                Aprobar y asignar XP
+                Aprobar (+{selected.assignment.points} XP)
               </button>
             </div>
             <p className="editor-message" role="status">
@@ -1098,10 +1283,80 @@ function ReviewQueue() {
   );
 }
 
+function ReviewRubricsManager() {
+  const { snapshot, frontendOnly, saveReviewRubric, deleteReviewRubric } = useClassroom();
+  const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  if (!snapshot) return null;
+  const editing = snapshot.reviewRubrics.find((entry) => entry.id === editingId);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setBusy(true);
+    setMessage("");
+    try {
+      await saveReviewRubric(editingId, {
+        title: String(data.get("rubricTitle") ?? ""),
+        criteria: formLines(data.get("rubricCriteria")),
+      });
+      setOpen(false);
+      setEditingId(null);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar la pauta.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rubrics-manager" aria-labelledby="rubrics-title">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">CORRECCIÓN</p>
+          <h2 id="rubrics-title">Pautas reutilizables</h2>
+          <p className="section-description">Preguntas breves que puedes asociar a cualquier tarea.</p>
+        </div>
+        <button className="button secondary" type="button" disabled={frontendOnly} onClick={() => { setEditingId(null); setOpen(true); }}>
+          <Plus aria-hidden="true" /> Nueva pauta
+        </button>
+      </div>
+      {open ? (
+        <form className="rubric-form" onSubmit={submit}>
+          <label><span>Nombre</span><input name="rubricTitle" required maxLength={80} defaultValue={editing?.title ?? ""} placeholder="Ej. Funciones y retornos" /></label>
+          <label><span>Una pregunta por línea</span><textarea name="rubricCriteria" required rows={4} defaultValue={editing?.criteria.map((entry) => entry.label).join("\n") ?? ""} placeholder={"Devuelve el valor correcto\nSe entiende cómo lo resolvió"} /></label>
+          <div className="form-actions"><span>Entre 1 y 10 preguntas.</span><button className="button ghost" type="button" onClick={() => { setOpen(false); setEditingId(null); }}>Cancelar</button><button className="button primary" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : <Save />} Guardar pauta</button></div>
+          {message ? <p className="form-error" role="alert">{message}</p> : null}
+        </form>
+      ) : null}
+      <div className="rubric-list">
+        {snapshot.reviewRubrics.map((rubric) => {
+          const useCount = snapshot.assignments.filter((entry) => entry.rubricId === rubric.id).length;
+          return <article key={rubric.id}><span><strong>{rubric.title}</strong><small>{rubric.criteria.length} preguntas · {useCount} tareas</small></span><button className="icon-button" type="button" aria-label={`Editar pauta ${rubric.title}`} disabled={frontendOnly} onClick={() => { setEditingId(rubric.id); setOpen(true); }}><Pencil /></button><button className="icon-button danger-button" type="button" aria-label={`Eliminar pauta ${rubric.title}`} disabled={frontendOnly || useCount > 0} title={useCount > 0 ? "Quita la pauta de sus tareas antes de eliminarla" : "Eliminar pauta"} onClick={() => void deleteReviewRubric(rubric.id)}><Trash2 /></button></article>;
+        })}
+      </div>
+    </section>
+  );
+}
+
 function AssignmentsManager() {
-  const { snapshot, frontendOnly, createAssignment } = useClassroom();
+  const {
+    snapshot,
+    frontendOnly,
+    createAssignment,
+    retryAssignmentNotification,
+    updateAssignment,
+    deleteAssignment,
+  } = useClassroom();
   const { missions, getMissionById } = useCatalog();
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
   const students = snapshot?.profiles.filter((entry) => entry.role === "student") ?? [];
   const [languageSelection, setLanguageSelection] = useState<Language[]>([
     ...LANGUAGES,
@@ -1111,10 +1366,11 @@ function AssignmentsManager() {
   );
   if (!snapshot) return null;
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (frontendOnly) return;
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const missionId = String(data.get("missionId"));
     const selectedMission = getMissionById(missionId);
     if (!selectedMission) return;
@@ -1126,14 +1382,86 @@ function AssignmentsManager() {
       points: Number(data.get("points") || selectedMission.points),
       allowedLanguages: languageSelection,
       studentIds: studentSelection,
+      rubricId: String(data.get("rubricId") || "") || undefined,
     };
-    createAssignment(input);
-    setCreating(false);
-    event.currentTarget.reset();
+    setBusyId("create");
+    setActionError("");
+    try {
+      await createAssignment(input);
+      setCreating(false);
+      form.reset();
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "No se pudo crear la tarea.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function retryNotification(assignmentId: string) {
+    setBusyId(`notification-${assignmentId}`);
+    setActionError("");
+    try {
+      await retryAssignmentNotification(assignmentId);
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo reenviar el aviso de GitHub.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function submitEdit(
+    event: FormEvent<HTMLFormElement>,
+    assignmentId: string,
+  ) {
+    event.preventDefault();
+    if (frontendOnly) return;
+    const data = new FormData(event.currentTarget);
+    setBusyId(assignmentId);
+    setActionError("");
+    try {
+      await updateAssignment(assignmentId, {
+        title: String(data.get("title") ?? ""),
+        instructions: String(data.get("instructions") ?? ""),
+        dueAt: new Date(String(data.get("dueAt"))).toISOString(),
+        rubricId: String(data.get("rubricId") || "") || undefined,
+      });
+      setEditingId(null);
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "No se pudo editar la tarea.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function remove(assignmentId: string) {
+    if (frontendOnly) return;
+    setBusyId(assignmentId);
+    setActionError("");
+    try {
+      await deleteAssignment(assignmentId);
+      setDeletingId(null);
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo eliminar la tarea.",
+      );
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
     <section className="mentor-section" aria-labelledby="assignments-manager-title">
+      <ReviewRubricsManager />
       <div className="section-header">
         <div>
           <p className="eyebrow">PLANIFICACIÓN</p>
@@ -1180,6 +1508,13 @@ function AssignmentsManager() {
           <label>
             <span>XP</span>
             <input name="points" type="number" min="10" max="2000" step="10" defaultValue="100" required />
+          </label>
+          <label className="form-span-2">
+            <span>Pauta de corrección (opcional)</span>
+            <select name="rubricId" defaultValue="">
+              <option value="">Lista general</option>
+              {snapshot.reviewRubrics.map((rubric) => <option value={rubric.id} key={rubric.id}>{rubric.title}</option>)}
+            </select>
           </label>
           <fieldset className="language-fieldset form-span-2">
             <legend>Lenguajes permitidos</legend>
@@ -1243,26 +1578,41 @@ function AssignmentsManager() {
               className="button primary"
               disabled={
                 frontendOnly ||
+                busyId === "create" ||
                 languageSelection.length === 0 ||
                 studentSelection.length === 0
               }
               title={frontendOnly ? "Publicar requiere el backend oficial" : undefined}
             >
-              <Send aria-hidden="true" />
-              Publicar tarea
+              {busyId === "create" ? (
+                <LoaderCircle className="spin" aria-hidden="true" />
+              ) : (
+                <Send aria-hidden="true" />
+              )}
+              {busyId === "create" ? "Publicando..." : "Publicar tarea"}
             </button>
           </div>
         </form>
       ) : null}
 
       <div className="admin-list">
+        {actionError ? (
+          <p className="form-error" role="alert">{actionError}</p>
+        ) : null}
         {snapshot.assignments.map((assignment) => {
           const mission = getMissionById(assignment.missionId);
           const assignmentProgress = snapshot.progress.filter(
             (entry) => entry.assignmentId === assignment.id,
           );
+          const approvedCount = assignmentProgress.filter(
+            (entry) => entry.status === "approved",
+          ).length;
+          const githubNotification = snapshot.githubNotifications.find(
+            (entry) => entry.assignmentId === assignment.id,
+          );
           return (
-            <article className="admin-row" key={assignment.id}>
+            <div className="assignment-admin-item" key={assignment.id}>
+            <article className="admin-row assignment-admin-row">
               <div className="admin-row-main">
                 <span>{mission?.courseLabel}</span>
                 <strong>{assignment.title}</strong>
@@ -1275,7 +1625,7 @@ function AssignmentsManager() {
               <div>
                 <span>Aprobadas</span>
                 <strong>
-                  {assignmentProgress.filter((entry) => entry.status === "approved").length}/
+                  {approvedCount}/
                   {assignment.studentIds.length}
                 </strong>
               </div>
@@ -1284,17 +1634,222 @@ function AssignmentsManager() {
                   <span key={language}>{LANGUAGE_META[language].shortLabel}</span>
                 ))}
               </div>
-              <Link
-                className="icon-button"
-                to={`/mission/${mission?.slug}?assignment=${assignment.id}`}
-                aria-label={`Abrir ${assignment.title}`}
+              <div
+                className={`github-delivery ${
+                  githubNotification?.status ?? "missing"
+                }`}
+                title={githubNotification?.lastError}
               >
-                <ArrowRight aria-hidden="true" />
-              </Link>
+                {githubNotification?.status === "sent" ? (
+                  <CheckCircle2 aria-hidden="true" />
+                ) : githubNotification?.status === "partial" ? (
+                  <Clock3 aria-hidden="true" />
+                ) : githubNotification?.status === "pending" ? (
+                  <LoaderCircle className="spin" aria-hidden="true" />
+                ) : (
+                  <XCircle aria-hidden="true" />
+                )}
+                <span>
+                  {githubNotification?.status === "sent"
+                    ? "Aviso enviado"
+                    : githubNotification?.status === "partial"
+                      ? "Aviso parcial"
+                      : githubNotification?.status === "pending"
+                        ? "Enviando aviso"
+                        : githubNotification?.status === "failed"
+                          ? "Aviso fallido"
+                          : "Sin aviso"}
+                </span>
+                {githubNotification?.githubCommentUrl ? (
+                  <a
+                    href={githubNotification.githubCommentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Abrir aviso en GitHub"
+                    title="Abrir aviso en GitHub"
+                  >
+                    <Link2 aria-hidden="true" />
+                  </a>
+                ) : null}
+                {(!githubNotification || githubNotification.status === "failed") ? (
+                  <button
+                    type="button"
+                    aria-label={`Reintentar aviso de ${assignment.title}`}
+                    title="Reintentar aviso de GitHub"
+                    disabled={
+                      frontendOnly ||
+                      busyId === `notification-${assignment.id}`
+                    }
+                    onClick={() => void retryNotification(assignment.id)}
+                  >
+                    <RotateCw
+                      className={
+                        busyId === `notification-${assignment.id}` ? "spin" : ""
+                      }
+                      aria-hidden="true"
+                    />
+                  </button>
+                ) : null}
+              </div>
+              <div className="assignment-admin-actions">
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={`Editar ${assignment.title}`}
+                  title="Editar tarea"
+                  disabled={frontendOnly || busyId === assignment.id}
+                  onClick={() => {
+                    setEditingId(
+                      editingId === assignment.id ? null : assignment.id,
+                    );
+                    setDeletingId(null);
+                    setActionError("");
+                  }}
+                >
+                  <Pencil aria-hidden="true" />
+                </button>
+                <button
+                  className="icon-button danger-button"
+                  type="button"
+                  aria-label={`Eliminar ${assignment.title}`}
+                  title="Eliminar tarea"
+                  disabled={frontendOnly || busyId === assignment.id}
+                  onClick={() => {
+                    setDeletingId(assignment.id);
+                    setEditingId(null);
+                    setActionError("");
+                  }}
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+                <Link
+                  className="icon-button"
+                  to={`/mission/${mission?.slug}?assignment=${assignment.id}`}
+                  aria-label={`Abrir ${assignment.title}`}
+                  title="Abrir workspace"
+                >
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+              </div>
             </article>
+            {editingId === assignment.id ? (
+              <form
+                className="assignment-edit-form"
+                onSubmit={(event) => submitEdit(event, assignment.id)}
+              >
+                <label>
+                  <span>Nombre de la tarea</span>
+                  <input name="title" required defaultValue={assignment.title} />
+                </label>
+                <label className="form-span-2">
+                  <span>Descripción e instrucciones</span>
+                  <textarea
+                    name="instructions"
+                    rows={4}
+                    defaultValue={assignment.instructions}
+                  />
+                </label>
+                <label>
+                  <span>Fecha de entrega</span>
+                  <input
+                    name="dueAt"
+                    type="datetime-local"
+                    required
+                    defaultValue={toDateTimeLocal(assignment.dueAt)}
+                  />
+                </label>
+                <label>
+                  <span>Pauta de corrección</span>
+                  <select name="rubricId" defaultValue={assignment.rubricId ?? ""}>
+                    <option value="">Lista general</option>
+                    {snapshot.reviewRubrics.map((rubric) => <option value={rubric.id} key={rubric.id}>{rubric.title}</option>)}
+                  </select>
+                </label>
+                <div className="form-actions form-span-2">
+                  <span>La misión, estudiantes, lenguajes y XP no cambian.</span>
+                  <button
+                    className="button ghost"
+                    type="button"
+                    onClick={() => setEditingId(null)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="button primary"
+                    disabled={busyId === assignment.id}
+                  >
+                    {busyId === assignment.id ? (
+                      <LoaderCircle className="spin" aria-hidden="true" />
+                    ) : (
+                      <Save aria-hidden="true" />
+                    )}
+                    Guardar cambios
+                  </button>
+                </div>
+              </form>
+            ) : null}
+            {deletingId === assignment.id ? (
+              <div
+                className="assignment-delete-confirmation"
+                role="alertdialog"
+                aria-labelledby={`delete-title-${assignment.id}`}
+                aria-describedby={`delete-description-${assignment.id}`}
+              >
+                <Trash2 aria-hidden="true" />
+                <div>
+                  <strong id={`delete-title-${assignment.id}`}>
+                    Eliminar “{assignment.title}”
+                  </strong>
+                  <p id={`delete-description-${assignment.id}`}>
+                    Se eliminará para {assignment.studentIds.length} estudiantes
+                    y se retirarán {approvedCount * assignment.points} XP de {approvedCount}{" "}
+                    aprobaciones. Los intentos históricos se conservarán.
+                  </p>
+                </div>
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={() => setDeletingId(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="button danger"
+                  type="button"
+                  disabled={busyId === assignment.id}
+                  onClick={() => void remove(assignment.id)}
+                >
+                  {busyId === assignment.id ? (
+                    <LoaderCircle className="spin" aria-hidden="true" />
+                  ) : (
+                    <Trash2 aria-hidden="true" />
+                  )}
+                  Eliminar definitivamente
+                </button>
+              </div>
+            ) : null}
+            </div>
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function MentorRanking() {
+  const { snapshot } = useClassroom();
+  if (!snapshot) return null;
+
+  return (
+    <section className="mentor-section admin-ranking" aria-labelledby="admin-ranking-title">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">XP APROBADOS</p>
+          <h2 id="admin-ranking-title">Ranking del curso</h2>
+          <p>Se actualiza al aprobar, editar o eliminar tareas.</p>
+        </div>
+      </div>
+      <RankingBoard snapshot={snapshot} />
     </section>
   );
 }
@@ -2235,62 +2790,26 @@ export function Component() {
   const tab: MentorTab =
     section === "reviews" ||
     section === "students" ||
+    section === "ranking" ||
     section === "assignments" ||
     section === "missions" ||
-    section === "invitations"
+    section === "invitations" ||
+    section === "rewards"
       ? section
       : "overview";
-  const tabPaths: Record<MentorTab, string> = {
-    overview: "/admin",
-    reviews: "/admin/reviews",
-    students: "/admin/students",
-    assignments: "/admin/assignments",
-    missions: "/admin/missions",
-    invitations: "/admin/invitations",
-  };
-
-  const reviewCount = snapshot.progress.filter(
-    (entry) => entry.status === "awaiting_review",
-  ).length;
-
   return (
     <main className="page mentor-page">
       <header className="page-header compact-header">
         <div>
-          <p className="eyebrow">MENTOR // {snapshot.classroom.timezone}</p>
+          <p className="eyebrow">PROFESOR // {snapshot.classroom.timezone}</p>
           <h1>Panel de eeminionn</h1>
-          <p>Seguimiento, revisiones, tareas y contenido del curso.</p>
+          <p>Lo importante del curso, ordenado por prioridad.</p>
         </div>
         <span className="mentor-role">
           <ShieldCheck aria-hidden="true" />
-          Propietario
+          Profesor
         </span>
       </header>
-
-      <nav className="mentor-tabs" aria-label="Secciones del panel mentor">
-        {[
-          ["overview", "Resumen", Users],
-          ["reviews", "Revisiones", ClipboardCheck],
-          ["students", "Estudiantes", Users],
-          ["assignments", "Asignaciones", CalendarPlus],
-          ["missions", "Misiones", BookCopy],
-          ["invitations", "Invitaciones", MailPlus],
-        ].map(([value, label, Icon]) => (
-          <button
-            type="button"
-            className={tab === value ? "is-active" : ""}
-            aria-current={tab === value ? "page" : undefined}
-            key={value as string}
-            onClick={() => navigate(tabPaths[value as MentorTab])}
-          >
-            <Icon aria-hidden="true" />
-            {label as string}
-            {value === "reviews" && reviewCount > 0 ? (
-              <span>{reviewCount}</span>
-            ) : null}
-          </button>
-        ))}
-      </nav>
 
       <div className="mentor-content">
         {tab === "overview" ? (
@@ -2300,9 +2819,11 @@ export function Component() {
         {tab === "students" ? (
           <StudentDirectory selectedStudentId={selectedStudentId} />
         ) : null}
+        {tab === "ranking" ? <MentorRanking /> : null}
         {tab === "assignments" ? <AssignmentsManager /> : null}
         {tab === "missions" ? <MissionManager /> : null}
         {tab === "invitations" ? <InvitationsManager /> : null}
+        {tab === "rewards" ? <RewardsManager /> : null}
       </div>
     </main>
   );

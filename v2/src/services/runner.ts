@@ -8,6 +8,7 @@ import type {
   TestResult,
 } from "@/types";
 import { frontendOnlyMessage, isFrontendOnly } from "@/config/runtime";
+import { edgeFunctionErrorMessage } from "@/lib/edge-function-error";
 import { runWithJudge0 } from "./judge0";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
@@ -18,44 +19,6 @@ interface WorkerResponse {
   manual?: ManualRunResult | { expression: string; value?: string } | null;
   error?: string;
   stack?: string;
-}
-
-interface ManualRunnerRequest {
-  language: Exclude<Language, "cpp">;
-  code: string;
-  expression: string;
-}
-
-export async function edgeFunctionErrorMessage(
-  error: unknown,
-): Promise<string> {
-  const fallback =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : "El ejecutor remoto no respondió.";
-  const context =
-    typeof error === "object" && error !== null && "context" in error
-      ? error.context
-      : null;
-  if (!(context instanceof Response)) return fallback;
-
-  try {
-    const payload = (await context.clone().json()) as {
-      error?: unknown;
-      message?: unknown;
-    };
-    if (typeof payload.error === "string" && payload.error.trim()) {
-      return payload.error;
-    }
-    if (typeof payload.message === "string" && payload.message.trim()) {
-      return payload.message;
-    }
-  } catch {
-    // Keep the SDK message when the function did not return JSON.
-  }
-  return fallback;
 }
 
 function localRunStatus(response: WorkerResponse): RunStatus {

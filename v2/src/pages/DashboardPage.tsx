@@ -1,19 +1,22 @@
 import {
   ArrowRight,
+  BellRing,
   CalendarClock,
   CheckCircle2,
   CircleDot,
+  ChevronDown,
   Clock3,
-  Code2,
   ExternalLink,
   Github,
   MessageSquareText,
+  PartyPopper,
   ShieldCheck,
   Trophy,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, isOverdue, relativeDueDate } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
+import { groupStudentAssignments } from "@/models/assignments";
 import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
 
@@ -32,11 +35,16 @@ export function Component() {
     !isStudentPreview &&
     (profile.role === "owner" || profile.role === "mentor");
   const subjectProfile = isStudentPreview ? viewProfile : profile;
-  const assignments = snapshot.assignments.filter(
-    (assignment) =>
-      assignment.status === "published" &&
-      (isMentor || assignment.studentIds.includes(subjectProfile.id)),
+  const groupedAssignments = groupStudentAssignments(
+    snapshot.assignments,
+    snapshot.progress,
+    subjectProfile.id,
   );
+  const assignments = isMentor
+    ? snapshot.assignments.filter((assignment) => assignment.status === "published")
+    : [...groupedAssignments.pending, ...groupedAssignments.approved].map(
+        (entry) => entry.assignment,
+      );
   const progress = snapshot.progress.filter((entry) =>
     isMentor ? true : entry.userId === subjectProfile.id,
   );
@@ -68,15 +76,11 @@ export function Component() {
   const reviewCount = progress.filter(
     (entry) => entry.status === "awaiting_review",
   ).length;
-  const nextAssignment = assignments
-    .filter(
-      (assignment) =>
-        isMentor ||
-        ownProgress.get(assignment.id)?.status !== "approved",
-    )
-    .sort(
-      (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
-    )[0];
+  const nextAssignment = isMentor
+    ? [...assignments].sort(
+        (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
+      )[0]
+    : groupedAssignments.pending[0]?.assignment;
   const nextMission = nextAssignment
     ? getMissionById(
         nextAssignment.missionId,
@@ -94,6 +98,58 @@ export function Component() {
     (entry) => entry.userId === subjectProfile.id,
   );
 
+  const renderAssignmentRows = (
+    entries: typeof groupedAssignments.pending,
+  ) => (
+    <div className="assignment-list">
+      {entries.map(({ assignment, progress: state }) => {
+        const mission = getMissionById(
+          assignment.missionId,
+          state?.missionVersion ?? assignment.missionVersion,
+        );
+        const status = state?.status ?? "not_started";
+        const overdue = isOverdue(assignment.dueAt, status);
+        const content = (
+          <>
+            <div className="assignment-order">
+              {String(mission?.order ?? 0).padStart(2, "0")}
+            </div>
+            <div className="assignment-main">
+              <span>{mission?.courseLabel}</span>
+              <strong>{assignment.title}</strong>
+              <small>{assignment.instructions || mission?.title}</small>
+            </div>
+            <div className={`assignment-due ${overdue ? "is-overdue" : ""}`}>
+              <CalendarClock aria-hidden="true" />
+              <span>{relativeDueDate(assignment.dueAt)}</span>
+              <small>{formatDate(assignment.dueAt)}</small>
+            </div>
+            <StatusBadge status={status} overdue={overdue} />
+            {mission ? (
+              <span className="icon-button" aria-hidden="true">
+                <ArrowRight aria-hidden="true" />
+              </span>
+            ) : null}
+          </>
+        );
+        return mission ? (
+          <Link
+            className="assignment-row"
+            key={assignment.id}
+            to={`/mission/${mission.slug}?assignment=${assignment.id}`}
+            aria-label={`Abrir ${assignment.title}`}
+          >
+            {content}
+          </Link>
+        ) : (
+          <article className="assignment-row" key={assignment.id}>
+            {content}
+          </article>
+        );
+      })}
+    </div>
+  );
+
   return (
     <main className="page dashboard-page">
       <header className="page-header compact-header">
@@ -109,7 +165,7 @@ export function Component() {
           <p>
             {isMentor
               ? "Revisa entregas, atrasos y actividad desde un solo lugar."
-              : "Tareas asignadas primero; el resto del catálogo queda disponible para practicar."}
+              : "Aquí aparecen solamente las tareas que te asignó tu profesor."}
           </p>
         </div>
         {isMentor ? (
@@ -117,16 +173,55 @@ export function Component() {
             <ShieldCheck aria-hidden="true" />
             Abrir panel mentor
           </Link>
-        ) : nextMission ? (
-          <Link
-            className="button primary"
-            to={`/mission/${nextMission.slug}?assignment=${nextAssignment?.id}`}
-          >
-            <Code2 aria-hidden="true" />
-            Continuar
-          </Link>
         ) : null}
       </header>
+
+      {!isMentor ? (
+        <section
+          className={`student-work-alert ${
+            groupedAssignments.pending.length > 0 ? "has-pending" : "all-clear"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="student-work-alert-icon">
+            {groupedAssignments.pending.length > 0 ? (
+              <BellRing aria-hidden="true" />
+            ) : (
+              <PartyPopper aria-hidden="true" />
+            )}
+          </span>
+          <div>
+            <p className="eyebrow">
+              {groupedAssignments.pending.length > 0
+                ? "ATENCIÓN REQUERIDA"
+                : "TODO LISTO"}
+            </p>
+            <h2>
+              {groupedAssignments.pending.length > 0
+                ? `Tienes ${groupedAssignments.pending.length} ${
+                    groupedAssignments.pending.length === 1
+                      ? "tarea pendiente"
+                      : "tareas pendientes"
+                  }`
+                : "Estás al día"}
+            </h2>
+            <p>
+              {nextAssignment
+                ? `${nextAssignment.title} ${relativeDueDate(nextAssignment.dueAt).toLowerCase()}.`
+                : "No tienes entregas pendientes. Buen trabajo."}
+            </p>
+          </div>
+          {nextMission && nextAssignment ? (
+            <Link
+              className="button primary"
+              to={`/mission/${nextMission.slug}?assignment=${nextAssignment.id}`}
+            >
+              Continuar <ArrowRight aria-hidden="true" />
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="metrics-strip" aria-label="Resumen">
         <article>
@@ -181,57 +276,38 @@ export function Component() {
             </Link>
           </div>
 
-          <div className="assignment-list">
-            {assignments.slice(0, 5).map((assignment) => {
-              const state = ownProgress.get(assignment.id);
-              const mission = getMissionById(
-                assignment.missionId,
-                state?.missionVersion ?? assignment.missionVersion,
-              );
-              const status = state?.status ?? "not_started";
-              const overdue = isOverdue(assignment.dueAt, status);
-              return (
-                <article className="assignment-row" key={assignment.id}>
-                  <div className="assignment-order">
-                    {String(mission?.order ?? 0).padStart(2, "0")}
-                  </div>
-                  <div className="assignment-main">
-                    <span>{mission?.courseLabel}</span>
-                    <strong>{assignment.title}</strong>
-                    <small>{mission?.title}</small>
-                  </div>
-                  <div className="assignment-due">
-                    <CalendarClock aria-hidden="true" />
-                    <span>{relativeDueDate(assignment.dueAt)}</span>
-                    <small>{formatDate(assignment.dueAt)}</small>
-                  </div>
-                  {!isMentor ? (
-                    <StatusBadge status={status} overdue={overdue} />
-                  ) : (
-                    <span className="submission-count">
-                      {
-                        progress.filter(
-                          (entry) =>
-                            entry.assignmentId === assignment.id &&
-                            entry.status === "awaiting_review",
-                        ).length
-                      }{" "}
-                      por revisar
-                    </span>
-                  )}
-                  {mission ? (
-                    <Link
-                      className="icon-button"
-                      to={`/mission/${mission.slug}?assignment=${assignment.id}`}
-                      aria-label={`Abrir ${assignment.title}`}
-                    >
-                      <ArrowRight aria-hidden="true" />
-                    </Link>
-                  ) : null}
-                </article>
-              );
-            })}
-          </div>
+          {isMentor ? null : (
+            <div className="task-groups">
+              <details className="task-group pending" open>
+                <summary>
+                  <span>
+                    <strong>Pendientes</strong>
+                    <small>{groupedAssignments.pending.length}</small>
+                  </span>
+                  <ChevronDown aria-hidden="true" />
+                </summary>
+                {groupedAssignments.pending.length > 0 ? (
+                  renderAssignmentRows(groupedAssignments.pending)
+                ) : (
+                  <p className="task-group-empty">No tienes tareas pendientes.</p>
+                )}
+              </details>
+              <details className="task-group approved">
+                <summary>
+                  <span>
+                    <strong>Aprobadas</strong>
+                    <small>{groupedAssignments.approved.length}</small>
+                  </span>
+                  <ChevronDown aria-hidden="true" />
+                </summary>
+                {groupedAssignments.approved.length > 0 ? (
+                  renderAssignmentRows(groupedAssignments.approved)
+                ) : (
+                  <p className="task-group-empty">Aún no hay tareas aprobadas.</p>
+                )}
+              </details>
+            </div>
+          )}
         </section>
 
         <aside className="dashboard-side">
@@ -303,10 +379,17 @@ export function Component() {
             <section className="next-task" aria-labelledby="next-task-title">
               <div className="next-task-top">
                 <CircleDot aria-hidden="true" />
-                <span>PRÓXIMA</span>
+                <span>PRÓXIMA ENTREGA</span>
               </div>
-              <h2 id="next-task-title">{nextMission.title}</h2>
-              <p>{nextMission.summary}</p>
+              <div className="next-task-due">
+                <CalendarClock aria-hidden="true" />
+                <strong>{relativeDueDate(nextAssignment.dueAt)}</strong>
+              </div>
+              <h2 id="next-task-title">{nextAssignment.title}</h2>
+              <p>{nextAssignment.instructions || nextMission.summary}</p>
+              <small className="next-task-mission">
+                Misión base: {nextMission.title}
+              </small>
               <div className="next-task-meta">
                 <span>{nextMission.duration} min</span>
                 <span>{nextAssignment.points} XP</span>

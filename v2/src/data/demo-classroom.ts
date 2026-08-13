@@ -4,6 +4,8 @@ import type {
   ClassroomSnapshot,
   Invitation,
   Profile,
+  Reward,
+  RewardRedemption,
   StudentProgress,
 } from "@/types";
 import { getMissionById } from "./missions";
@@ -166,6 +168,53 @@ const notifications: AppNotification[] = [
   },
 ];
 
+const rewards: Reward[] = [
+  {
+    id: "reward-snack",
+    classId: "class-tomatin-2026",
+    title: "Snack para la clase",
+    description: "Elige un snack para la próxima sesión presencial.",
+    priceXp: 180,
+    stock: 6,
+    active: true,
+    createdAt: dateAgo(5),
+    updatedAt: dateAgo(5),
+  },
+  {
+    id: "reward-project",
+    classId: "class-tomatin-2026",
+    title: "Elige el mini proyecto",
+    description: "Propón el tema del próximo ejercicio corto del curso.",
+    priceXp: 350,
+    stock: 2,
+    active: true,
+    createdAt: dateAgo(4),
+    updatedAt: dateAgo(4),
+  },
+  {
+    id: "reward-hint",
+    classId: "class-tomatin-2026",
+    title: "Pista extra",
+    description: "Recibe una pista adicional del mentor en una misión.",
+    priceXp: 80,
+    active: true,
+    createdAt: dateAgo(3),
+    updatedAt: dateAgo(3),
+  },
+  {
+    id: "reward-archive",
+    classId: "class-tomatin-2026",
+    title: "Premio archivado",
+    description: "Visible únicamente para el mentor.",
+    priceXp: 50,
+    active: false,
+    createdAt: dateAgo(8),
+    updatedAt: dateAgo(2),
+  },
+];
+
+const rewardRedemptions: RewardRedemption[] = [];
+
 const invitations: Invitation[] = Array.from({ length: 3 }, (_, index) => {
   const token = `${crypto.randomUUID().replaceAll("-", "")}${String(
     index + 1,
@@ -239,6 +288,36 @@ export function createDemoSnapshot(): ClassroomSnapshot {
     notifications,
     invitations,
     repositories: [],
+    rewards,
+    rewardRedemptions,
+    githubNotifications: [
+      {
+        assignmentId: "assignment-once",
+        classId: "class-tomatin-2026",
+        status: "sent",
+        mentionedLogins: ["camila-rojas"],
+        missingUserIds: [],
+        githubCommentUrl:
+          "https://github.com/eeminionn/tomatin-code-lab/issues/59",
+        attempts: 1,
+        sentAt: dateAgo(1),
+        updatedAt: dateAgo(1),
+      },
+    ],
+    reviewRubrics: [
+      {
+        id: "rubric-default",
+        classId: "class-tomatin-2026",
+        title: "Revisión general",
+        criteria: [
+          { id: "correctness", label: "Da la respuesta correcta" },
+          { id: "readability", label: "Se entiende cómo lo resolvió" },
+          { id: "edge-cases", label: "Funciona también con otros casos" },
+        ],
+        createdAt: dateAgo(5),
+        updatedAt: dateAgo(5),
+      },
+    ],
   };
 }
 

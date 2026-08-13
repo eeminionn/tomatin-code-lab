@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   BookCopy,
   BookOpen,
   CalendarPlus,
+  CircleHelp,
   ChevronDown,
   ClipboardCheck,
   Eye,
   Gauge,
+  Gift,
   Info,
   LogOut,
   MailPlus,
@@ -27,6 +29,11 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import {
+  GettingStarted,
+  shouldOpenGettingStarted,
+} from "@/components/GettingStarted";
+import { getPendingReviews } from "@/models/reviews";
 import { useClassroom } from "@/state/classroom-context";
 
 const studentNavigation = [
@@ -34,15 +41,18 @@ const studentNavigation = [
   { to: "/missions", label: "Misiones", icon: BookOpen },
   { to: "/ranking", label: "Ranking", icon: Trophy },
   { to: "/feedback", label: "Feedback", icon: MessageSquareText },
+  { to: "/rewards", label: "Premios", icon: Gift },
 ];
 
 const adminNavigation = [
   { to: "/admin", label: "Resumen", icon: Gauge, end: true },
   { to: "/admin/reviews", label: "Revisiones", icon: ClipboardCheck },
   { to: "/admin/students", label: "Estudiantes", icon: Users },
+  { to: "/admin/ranking", label: "Ranking", icon: Trophy },
   { to: "/admin/assignments", label: "Tareas", icon: CalendarPlus },
   { to: "/admin/missions", label: "Misiones", icon: BookCopy },
   { to: "/admin/invitations", label: "Invitaciones", icon: MailPlus },
+  { to: "/admin/rewards", label: "Premios", icon: Gift },
 ];
 
 export function AppShell() {
@@ -63,6 +73,7 @@ export function AppShell() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const unread =
@@ -77,6 +88,13 @@ export function AppShell() {
   const isMentor = isActorStaff && !isStudentPreview;
   const students =
     snapshot?.profiles.filter((entry) => entry.role === "student") ?? [];
+  const pendingReviews = snapshot ? getPendingReviews(snapshot).length : 0;
+
+  useEffect(() => {
+    if (profile && !isStudentPreview && shouldOpenGettingStarted(profile.id)) {
+      setGuideOpen(true);
+    }
+  }, [isStudentPreview, profile]);
 
   return (
     <div className={`app-shell ${frontendOnly ? "frontend-only" : ""}`}>
@@ -105,7 +123,7 @@ export function AppShell() {
         <nav className="sidebar-nav">
           {isMentor ? (
             <>
-              <p className="nav-label mentor-label">ADMINISTRACIÓN</p>
+              <p className="nav-label mentor-label">AULA</p>
               {adminNavigation.map(({ to, label, icon: Icon, end }) => (
                 <NavLink
                   key={to}
@@ -118,15 +136,8 @@ export function AppShell() {
                 >
                   <Icon aria-hidden="true" />
                   <span>{label}</span>
-                  {label === "Revisiones" &&
-                  (snapshot?.progress.filter(
-                    (entry) => entry.status === "awaiting_review",
-                  ).length ?? 0) > 0 ? (
-                    <span className="nav-count">
-                      {snapshot?.progress.filter(
-                        (entry) => entry.status === "awaiting_review",
-                      ).length ?? 0}
-                    </span>
+                  {label === "Revisiones" && pendingReviews > 0 ? (
+                    <span className="nav-count">{pendingReviews}</span>
                   ) : null}
                 </NavLink>
               ))}
@@ -178,8 +189,8 @@ export function AppShell() {
                 {frontendOnly
                   ? "Backend desactivado"
                   : backendMode === "supabase"
-                    ? "Supabase + Judge0"
-                    : "Datos en este navegador"}
+                    ? "Todo funcionando"
+                    : "Datos de ejemplo"}
               </small>
             </span>
           </div>
@@ -216,6 +227,17 @@ export function AppShell() {
             </span>
           </div>
           <div className="topbar-actions">
+            {!isStudentPreview ? (
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Abrir guía rápida"
+                title="Guía rápida"
+                onClick={() => setGuideOpen(true)}
+              >
+                <CircleHelp aria-hidden="true" />
+              </button>
+            ) : null}
             {isStudentPreview ? (
               <div className="preview-indicator" role="status">
                 <Eye aria-hidden="true" />
@@ -370,6 +392,7 @@ export function AppShell() {
         ) : null}
         <Outlet />
       </div>
+      <GettingStarted open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }

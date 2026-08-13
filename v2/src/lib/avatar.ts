@@ -109,6 +109,66 @@ export const AVATAR_HAT_COLORS = [
 
 const AVATAR_EARRINGS = ["none", "stud", "hoop"] as const;
 
+export const MINI_BODIES = [
+  ["round", "Redondo"],
+  ["square", "Cuadrado"],
+  ["bean", "Porotito"],
+] as const;
+
+export const MINI_EYES = [
+  ["bright", "Atentos"],
+  ["happy", "Felices"],
+  ["focused", "Concentrados"],
+  ["wink", "Guiño"],
+] as const;
+
+export const MINI_MOUTHS = [
+  ["smile", "Sonrisa"],
+  ["grin", "Contento"],
+  ["calm", "Tranquilo"],
+  ["surprised", "Sorpresa"],
+] as const;
+
+export const MINI_HAIR = [
+  ["sprout", "Puntas"],
+  ["tuft", "Mechón"],
+  ["side", "Al lado"],
+  ["cap", "Gorro"],
+  ["none", "Sin pelo"],
+] as const;
+
+export const MINI_ACCESSORIES = [
+  ["none", "Sin accesorio"],
+  ["glasses", "Lentes"],
+  ["visor", "Visor"],
+  ["headphones", "Audífonos"],
+] as const;
+
+export const MINI_OUTFITS = [
+  ["hoodie", "Polerón"],
+  ["apron", "Delantal"],
+  ["jacket", "Chaqueta"],
+  ["tee", "Polera"],
+] as const;
+
+export const MINI_BODY_COLORS = [
+  "f4c96b",
+  "67e8a5",
+  "65c9e8",
+  "e78276",
+  "d6b370",
+  "b9a7e8",
+] as const;
+
+export const MINI_ACCENT_COLORS = [
+  "15332a",
+  "255c78",
+  "7a3f55",
+  "5d4a8a",
+  "8a572f",
+  "dce7e1",
+] as const;
+
 function hashSeed(seed: string) {
   return [...seed].reduce(
     (total, character) => (total * 31 + character.charCodeAt(0)) >>> 0,
@@ -123,6 +183,7 @@ function pick<T>(items: readonly T[], hash: number, offset: number) {
 export function defaultAvatarConfig(seed: string): AvatarConfig {
   const hash = hashSeed(seed);
   return {
+    style: "avataaars",
     seed: seed.slice(0, 80),
     top: pick(AVATAR_TOPS, hash, 1)[0],
     hairColor: pick(AVATAR_HAIR_COLORS, hash, 2),
@@ -136,6 +197,14 @@ export function defaultAvatarConfig(seed: string): AvatarConfig {
     clothing: pick(AVATAR_CLOTHING, hash, 7)[0],
     clothesColor: pick(AVATAR_CLOTHES_COLORS, hash, 8),
     earrings: "none",
+    miniBody: pick(MINI_BODIES, hash, 9)[0],
+    miniEyes: pick(MINI_EYES, hash, 10)[0],
+    miniMouth: pick(MINI_MOUTHS, hash, 11)[0],
+    miniHair: pick(MINI_HAIR, hash, 12)[0],
+    miniAccessory: pick(MINI_ACCESSORIES, hash, 13)[0],
+    miniOutfit: pick(MINI_OUTFITS, hash, 14)[0],
+    miniBodyColor: pick(MINI_BODY_COLORS, hash, 15),
+    miniAccentColor: pick(MINI_ACCENT_COLORS, hash, 16),
   };
 }
 
@@ -170,6 +239,7 @@ export function sanitizeAvatarConfig(
   }
   const input = value as Record<string, unknown>;
   return {
+    style: input.style === "mini" ? "mini" : "avataaars",
     seed:
       typeof input.seed === "string" && input.seed.trim()
         ? input.seed.trim().slice(0, 80)
@@ -224,5 +294,45 @@ export function sanitizeAvatarConfig(
       )
         ? (input.earrings as AvatarConfig["earrings"])
         : fallback.earrings,
+    miniBody: optionValue(
+      input.miniBody,
+      MINI_BODIES,
+      fallback.miniBody,
+    ) as AvatarConfig["miniBody"],
+    miniEyes: optionValue(
+      input.miniEyes,
+      MINI_EYES,
+      fallback.miniEyes,
+    ) as AvatarConfig["miniEyes"],
+    miniMouth: optionValue(
+      input.miniMouth,
+      MINI_MOUTHS,
+      fallback.miniMouth,
+    ) as AvatarConfig["miniMouth"],
+    miniHair: optionValue(
+      input.miniHair,
+      MINI_HAIR,
+      fallback.miniHair,
+    ) as AvatarConfig["miniHair"],
+    miniAccessory: optionValue(
+      input.miniAccessory,
+      MINI_ACCESSORIES,
+      fallback.miniAccessory,
+    ) as AvatarConfig["miniAccessory"],
+    miniOutfit: optionValue(
+      input.miniOutfit,
+      MINI_OUTFITS,
+      fallback.miniOutfit,
+    ) as AvatarConfig["miniOutfit"],
+    miniBodyColor: colorValue(
+      input.miniBodyColor,
+      MINI_BODY_COLORS,
+      fallback.miniBodyColor,
+    ),
+    miniAccentColor: colorValue(
+      input.miniAccentColor,
+      MINI_ACCENT_COLORS,
+      fallback.miniAccentColor,
+    ),
   };
 }

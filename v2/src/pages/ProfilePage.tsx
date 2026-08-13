@@ -1,14 +1,18 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   Check,
   Glasses,
   Github,
+  ImageUp,
   LoaderCircle,
   Save,
   Scissors,
   Shirt,
   Shuffle,
   Smile,
+  Sparkles,
+  UserRound,
+  X,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -25,12 +29,26 @@ import {
   AVATAR_SKIN_COLORS,
   AVATAR_TOPS,
   defaultAvatarConfig,
+  MINI_ACCESSORIES,
+  MINI_ACCENT_COLORS,
+  MINI_BODIES,
+  MINI_BODY_COLORS,
+  MINI_EYES,
+  MINI_HAIR,
+  MINI_MOUTHS,
+  MINI_OUTFITS,
   sanitizeAvatarConfig,
 } from "@/lib/avatar";
+import {
+  prepareProfileImage,
+  PROFILE_IMAGE_ACCEPT,
+  validateProfileImage,
+} from "@/lib/profile-image";
 import { useClassroom } from "@/state/classroom-context";
 import type { AvatarConfig, Profile } from "@/types";
 
 type EditorTab = "hair" | "face" | "accessories" | "clothing";
+type ProfileMode = "avatar" | "mini" | "photo";
 
 function AvatarOptionGrid({
   label,
@@ -124,6 +142,23 @@ export function Component() {
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [mode, setMode] = useState<ProfileMode>(() =>
+    profile?.profileImagePath
+      ? "photo"
+      : profile?.avatarConfig?.style === "mini"
+        ? "mini"
+        : "avatar",
+  );
+  const [imageFile, setImageFile] = useState<File | undefined>();
+  const [imagePreview, setImagePreview] = useState(profile?.avatarUrl ?? "");
+  const [preparingImage, setPreparingImage] = useState(false);
+
+  useEffect(() => {
+    if (!imageFile) return;
+    const objectUrl = URL.createObjectURL(imageFile);
+    setImagePreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [imageFile]);
 
   if (!profile) return null;
   if (isStudentPreview) return <Navigate to="/" replace />;
@@ -139,7 +174,15 @@ export function Component() {
     setSaving(true);
     setMessage("");
     try {
-      await updateProfile({ displayName, avatarConfig: config });
+      await updateProfile({
+        displayName,
+        avatarConfig:
+          mode === "photo"
+            ? undefined
+            : { ...config, style: mode === "mini" ? "mini" : "avataaars" },
+        imageFile: mode === "photo" ? imageFile : undefined,
+        removeImage: mode !== "photo" || (!imageFile && !imagePreview),
+      });
       setMessage("Perfil actualizado.");
     } catch (error) {
       setMessage(
@@ -157,6 +200,22 @@ export function Component() {
     ["clothing", "Ropa", Shirt],
   ] as const;
 
+  async function selectImage(file: File | undefined) {
+    if (!file) return;
+    setPreparingImage(true);
+    setMessage("");
+    try {
+      validateProfileImage(file);
+      const prepared = await prepareProfileImage(file);
+      setImageFile(prepared);
+      setMode("photo");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo leer la imagen.");
+    } finally {
+      setPreparingImage(false);
+    }
+  }
+
   return (
     <main className="page profile-page">
       <header className="page-header compact-header">
@@ -170,8 +229,17 @@ export function Component() {
       <form className="profile-editor" onSubmit={submit}>
         <aside className="profile-preview">
           <ProfileAvatar
-            profile={{ ...profile, displayName }}
-            config={config}
+            profile={{
+              ...profile,
+              displayName,
+              avatarUrl: mode === "photo" ? imagePreview : undefined,
+              avatarConfig: mode === "photo" ? undefined : config,
+            }}
+            config={
+              mode === "photo"
+                ? undefined
+                : { ...config, style: mode === "mini" ? "mini" : "avataaars" }
+            }
             size="preview"
           />
           <strong>{displayName.trim() || profile.displayName}</strong>
@@ -182,11 +250,11 @@ export function Component() {
           <button
             className="button secondary"
             type="button"
-            onClick={() =>
-              setConfig(
-                defaultAvatarConfig(`${profile.id}-${crypto.randomUUID()}`),
-              )
-            }
+            onClick={() => {
+              const next = defaultAvatarConfig(`${profile.id}-${crypto.randomUUID()}`);
+              setConfig({ ...next, style: mode === "mini" ? "mini" : "avataaars" });
+            }}
+            disabled={mode === "photo"}
           >
             <Shuffle aria-hidden="true" />
             Crear otro
@@ -211,7 +279,34 @@ export function Component() {
             </small>
           </label>
 
-          <div className="avatar-editor-tabs" role="tablist" aria-label="Partes del avatar">
+          <div className="profile-mode-tabs" role="tablist" aria-label="Tipo de imagen de perfil">
+            {[
+              ["avatar", "Avatar", UserRound],
+              ["mini", "Mini", Sparkles],
+              ["photo", "Foto", ImageUp],
+            ].map(([value, label, Icon]) => (
+              <button
+                key={String(value)}
+                type="button"
+                role="tab"
+                aria-selected={mode === value}
+                className={mode === value ? "is-active" : ""}
+                onClick={() => {
+                  setMode(value as ProfileMode);
+                  setConfig((current) => ({
+                    ...current,
+                    style: value === "mini" ? "mini" : "avataaars",
+                  }));
+                  setMessage("");
+                }}
+              >
+                <Icon aria-hidden="true" />
+                <span>{String(label)}</span>
+              </button>
+            ))}
+          </div>
+
+          {mode === "avatar" ? <><div className="avatar-editor-tabs" role="tablist" aria-label="Partes del avatar">
             {tabs.map(([value, label, Icon]) => (
               <button
                 type="button"
@@ -353,16 +448,65 @@ export function Component() {
                 />
               </>
             ) : null}
-          </div>
+          </div></> : null}
+
+          {mode === "mini" ? (
+            <div className="avatar-editor-panel mini-editor-panel">
+              <AvatarOptionGrid label="Forma" property="miniBody" options={MINI_BODIES} value={config.miniBody} profile={profile} config={{ ...config, style: "mini" }} onChange={changeConfig} />
+              <AvatarOptionGrid label="Ojos" property="miniEyes" options={MINI_EYES} value={config.miniEyes} profile={profile} config={{ ...config, style: "mini" }} onChange={changeConfig} />
+              <AvatarOptionGrid label="Boca" property="miniMouth" options={MINI_MOUTHS} value={config.miniMouth} profile={profile} config={{ ...config, style: "mini" }} onChange={changeConfig} />
+              <AvatarOptionGrid label="Pelo o gorro" property="miniHair" options={MINI_HAIR} value={config.miniHair} profile={profile} config={{ ...config, style: "mini" }} onChange={changeConfig} />
+              <AvatarOptionGrid label="Accesorio" property="miniAccessory" options={MINI_ACCESSORIES} value={config.miniAccessory} profile={profile} config={{ ...config, style: "mini" }} onChange={changeConfig} />
+              <AvatarOptionGrid label="Ropa" property="miniOutfit" options={MINI_OUTFITS} value={config.miniOutfit} profile={profile} config={{ ...config, style: "mini" }} onChange={changeConfig} />
+              <div className="avatar-color-row">
+                <ColorSwatches label="Color del Mini" property="miniBodyColor" colors={MINI_BODY_COLORS} value={config.miniBodyColor} onChange={changeConfig} />
+                <ColorSwatches label="Color de ropa" property="miniAccentColor" colors={MINI_ACCENT_COLORS} value={config.miniAccentColor} onChange={changeConfig} />
+              </div>
+            </div>
+          ) : null}
+
+          {mode === "photo" ? (
+            <section className="photo-upload-panel">
+              <div>
+                <ImageUp aria-hidden="true" />
+                <h2>Sube una foto</h2>
+                <p>JPG, PNG, WebP, GIF animado o HEIC. Máximo 5 MB.</p>
+                <small>Las fotos estáticas se recortan al centro. Los GIF conservan su animación.</small>
+              </div>
+              <label className="button secondary photo-file-button">
+                <ImageUp aria-hidden="true" />
+                {preparingImage ? "Preparando..." : "Elegir archivo"}
+                <input
+                  type="file"
+                  accept={PROFILE_IMAGE_ACCEPT}
+                  disabled={preparingImage}
+                  onChange={(event) => void selectImage(event.target.files?.[0])}
+                />
+              </label>
+              {imagePreview ? (
+                <button
+                  type="button"
+                  className="button ghost"
+                  onClick={() => {
+                    setImageFile(undefined);
+                    setImagePreview("");
+                  }}
+                >
+                  <X aria-hidden="true" />
+                  Quitar foto
+                </button>
+              ) : null}
+            </section>
+          ) : null}
 
           <footer className="profile-editor-actions">
-            <a
+            {mode === "avatar" ? <a
               href="https://www.dicebear.com/styles/avataaars/"
               target="_blank"
               rel="noreferrer"
             >
               Avatar local basado en DiceBear Avataaars
-            </a>
+            </a> : <span />}
             <span className="editor-message" role="status">
               {message ? (
                 <>

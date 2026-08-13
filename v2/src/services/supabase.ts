@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { isFrontendOnly } from "@/config/runtime";
+import { edgeFunctionErrorMessage } from "@/lib/edge-function-error";
 import type { StudentRepository } from "@/types";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
@@ -65,6 +66,33 @@ export async function provisionStudentRepository(): Promise<{
   if (error) throw error;
   if (!data) throw new Error("El backend no respondió.");
   return data;
+}
+
+export async function notifyAssignment(assignmentId: string) {
+  if (!supabase) throw new Error("Supabase no está configurado.");
+  const { data, error } = await supabase.functions.invoke<{
+    delivery?: {
+      status: "pending" | "sent" | "partial" | "failed";
+      githubCommentUrl?: string;
+    };
+    duplicate?: boolean;
+  }>("notify-assignment", { body: { assignmentId } });
+  if (error) {
+    throw new Error(
+      await edgeFunctionErrorMessage(
+        error,
+        "No se pudo enviar el aviso de la tarea.",
+      ),
+    );
+  }
+  return data;
+}
+
+export function getRewardImageUrl(path?: string): string | undefined {
+  if (!path) return undefined;
+  if (/^(https?:|data:|\/)/.test(path)) return path;
+  return supabase?.storage.from("reward-images").getPublicUrl(path).data
+    .publicUrl;
 }
 
 export async function signOutSupabase() {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ArrowRight,
   BookOpenCheck,
+  CalendarClock,
   Clock3,
   Search,
   SlidersHorizontal,
@@ -9,7 +10,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatDate, isOverdue } from "@/lib/format";
+import { formatDate, isOverdue, relativeDueDate } from "@/lib/format";
+import { publishedAssignmentsForStudent } from "@/lib/mission-access";
 import { useCatalog } from "@/state/catalog";
 import { useClassroom } from "@/state/classroom-context";
 import { LANGUAGE_META, LANGUAGES, type Course } from "@/types";
@@ -23,36 +25,18 @@ export function Component() {
   const [query, setQuery] = useState("");
   const [onlyAssigned, setOnlyAssigned] = useState(true);
 
-  const assignments =
-    viewProfile && snapshot
-      ? snapshot.assignments.filter((assignment) =>
-          assignment.studentIds.includes(viewProfile.id),
-        )
-      : [];
-  const assignmentByMission = new Map(
-    assignments.map((assignment) => [assignment.missionId, assignment]),
+  if (!viewProfile || !snapshot) return null;
+
+  const studentView = viewProfile.role === "student";
+  const assignments = publishedAssignmentsForStudent(
+    snapshot.assignments,
+    viewProfile.id,
   );
   const progressByAssignment = new Map(
-    (snapshot?.progress ?? [])
-      .filter((entry) => entry.userId === viewProfile?.id)
+    snapshot.progress
+      .filter((entry) => entry.userId === viewProfile.id)
       .map((entry) => [entry.assignmentId, entry]),
   );
-
-  const normalized = query.trim().toLowerCase();
-  const filtered = missions.filter((mission) => {
-    if (course !== "all" && mission.course !== course) return false;
-    if (onlyAssigned && !assignmentByMission.has(mission.id)) return false;
-    if (!normalized) return true;
-    return [
-      mission.title,
-      mission.summary,
-      mission.module,
-      ...mission.tags,
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalized);
-  });
   const assignedJourney = assignments
     .map((assignment) => {
       const progress = progressByAssignment.get(assignment.id);
@@ -63,11 +47,15 @@ export function Component() {
       return mission ? { assignment, progress, mission } : null;
     })
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
-    .sort(
-      (a, b) =>
-        a.mission.course.localeCompare(b.mission.course) ||
-        a.mission.order - b.mission.order,
-    );
+    .sort((a, b) => {
+      const aApproved = a.progress?.status === "approved";
+      const bApproved = b.progress?.status === "approved";
+      if (aApproved !== bApproved) return aApproved ? 1 : -1;
+      const difference =
+        new Date(a.assignment.dueAt).getTime() -
+        new Date(b.assignment.dueAt).getTime();
+      return aApproved ? -difference : difference;
+    });
   const recommended = assignedJourney.find(
     (entry) => entry.progress?.status !== "approved",
   );
@@ -86,19 +74,62 @@ export function Component() {
     },
   );
 
-  if (!viewProfile || !snapshot) return null;
+  const normalized = query.trim().toLowerCase();
+  const matchesCourse = (missionCourse: Course) =>
+    course === "all" || missionCourse === course;
+  const matchesQuery = (values: string[]) =>
+    !normalized || values.join(" ").toLowerCase().includes(normalized);
+  const assignedEntries = assignedJourney
+    .filter(
+      ({ assignment, mission }) =>
+        matchesCourse(mission.course) &&
+        matchesQuery([
+          assignment.title,
+          assignment.instructions,
+          mission.title,
+          mission.summary,
+          mission.module,
+          ...mission.tags,
+        ]),
+    )
+    .map((entry) => ({ kind: "assigned" as const, ...entry }));
+  const assignedMissionIds = new Set(
+    assignedJourney.map((entry) => entry.mission.id),
+  );
+  const practiceEntries = studentView
+    ? []
+    : missions
+        .filter(
+          (mission) =>
+            !assignedMissionIds.has(mission.id) &&
+            matchesCourse(mission.course) &&
+            matchesQuery([
+              mission.title,
+              mission.summary,
+              mission.module,
+              ...mission.tags,
+            ]),
+        )
+        .map((mission) => ({ kind: "practice" as const, mission }));
+  const displayEntries =
+    studentView || onlyAssigned
+      ? assignedEntries
+      : [...assignedEntries, ...practiceEntries];
 
   return (
     <main className="page missions-page">
       <header className="page-header">
         <div>
           <p className="eyebrow">
-            CATÁLOGO // {missions.length} MISIONES
+            {studentView
+              ? `RECORRIDO // ${assignedJourney.length} MISIONES ASIGNADAS`
+              : `CATÁLOGO // ${missions.length} MISIONES`}
           </p>
           <h1>Misiones</h1>
           <p>
-            Las tareas asignadas aparecen primero. Puedes practicar cualquier
-            otra misión sin afectar el ranking.
+            {studentView
+              ? "Aquí aparecen únicamente las misiones que eeminionn te asignó."
+              : "Las tareas asignadas aparecen primero. El equipo mentor puede revisar el catálogo completo."}
           </p>
         </div>
         <div className="language-key" aria-label="Lenguajes disponibles">
@@ -115,7 +146,7 @@ export function Component() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por tema o misión"
+            placeholder="Buscar por tarea, descripción o misión"
           />
         </label>
         <div className="segmented-control" role="group" aria-label="Curso">
@@ -135,21 +166,23 @@ export function Component() {
             </button>
           ))}
         </div>
-        <label className="toggle-control">
-          <input
-            type="checkbox"
-            checked={onlyAssigned}
-            onChange={(event) => setOnlyAssigned(event.target.checked)}
-          />
-          <span aria-hidden="true" />
-          Solo asignadas
-        </label>
+        {!studentView ? (
+          <label className="toggle-control">
+            <input
+              type="checkbox"
+              checked={onlyAssigned}
+              onChange={(event) => setOnlyAssigned(event.target.checked)}
+            />
+            <span aria-hidden="true" />
+            Solo asignadas
+          </label>
+        ) : null}
       </section>
 
       <div className="catalog-summary">
         <span>
           <SlidersHorizontal aria-hidden="true" />
-          {filtered.length} resultados
+          {displayEntries.length} resultados
         </span>
         <button
           type="button"
@@ -157,7 +190,7 @@ export function Component() {
           onClick={() => {
             setCourse("all");
             setQuery("");
-            setOnlyAssigned(false);
+            if (!studentView) setOnlyAssigned(false);
           }}
         >
           Limpiar filtros
@@ -190,7 +223,7 @@ export function Component() {
               to={`/mission/${recommended.mission.slug}?assignment=${recommended.assignment.id}`}
             >
               <span>
-                <small>SIGUIENTE MISIÓN</small>
+                <small>PRÓXIMA ENTREGA</small>
                 <strong>{recommended.assignment.title}</strong>
               </span>
               <ArrowRight aria-hidden="true" />
@@ -204,25 +237,25 @@ export function Component() {
         </section>
       ) : null}
 
-      <section className="mission-grid" aria-label="Misiones">
-        {filtered.map((mission) => {
-          const assignment = assignmentByMission.get(mission.id);
-          const progress = assignment
-            ? progressByAssignment.get(assignment.id)
-            : undefined;
-          const displayMission = assignment
-            ? getMissionById(
-                mission.id,
-                progress?.missionVersion ?? assignment.missionVersion,
-              )
-            : mission;
-          if (!displayMission) return null;
-          const status = progress?.status ?? "not_started";
-          const overdue = assignment
-            ? isOverdue(assignment.dueAt, status)
-            : false;
-          return (
-            <article className="mission-card" key={mission.id}>
+      {displayEntries.length > 0 ? (
+        <section className="mission-grid" aria-label="Misiones">
+          {displayEntries.map((entry) => {
+            const assignment =
+              entry.kind === "assigned" ? entry.assignment : undefined;
+            const progress =
+              entry.kind === "assigned" ? entry.progress : undefined;
+            const mission = entry.mission;
+            const status = progress?.status ?? "not_started";
+            const overdue = assignment
+              ? isOverdue(assignment.dueAt, status)
+              : false;
+            return (
+              <article
+                className={`mission-card ${
+                  assignment ? "is-assigned" : "is-practice"
+                }`}
+                key={assignment?.id ?? `practice-${mission.id}`}
+              >
               <div className="mission-card-top">
                 <span className="mission-number">
                   {mission.course === "programming-1" ? "P1" : "P2"}.
@@ -234,14 +267,31 @@ export function Component() {
                   <span className="practice-label">Práctica</span>
                 )}
               </div>
+              {assignment ? (
+                <div
+                  className={`mission-card-priority ${overdue ? "is-overdue" : ""}`}
+                >
+                  <CalendarClock aria-hidden="true" />
+                  <span>
+                    <strong>{relativeDueDate(assignment.dueAt)}</strong>
+                    <small>{formatDate(assignment.dueAt, true)}</small>
+                  </span>
+                </div>
+              ) : null}
               <div className="mission-card-body">
-                <span className="mission-module">{displayMission.module}</span>
-                <h2>{displayMission.title}</h2>
-                <p className="mission-summary">{displayMission.summary}</p>
-                {displayMission.prerequisites.length > 0 ? (
+                <span className="mission-module">{mission.module}</span>
+                <h2>{assignment?.title ?? mission.title}</h2>
+                <p className="mission-summary assignment-instructions">
+                  {assignment?.instructions || mission.summary}
+                </p>
+                {assignment ? (
+                  <p className="mission-base-label">
+                    Misión base: <strong>{mission.title}</strong>
+                  </p>
+                ) : mission.prerequisites.length > 0 ? (
                   <p className="mission-prerequisite">
                     Antes:{" "}
-                    {displayMission.prerequisites
+                    {mission.prerequisites
                       .map(
                         (missionId) =>
                           getMissionById(missionId)?.title ?? missionId,
@@ -254,36 +304,47 @@ export function Component() {
                   </p>
                 )}
                 <div className="mission-tags">
-                  {displayMission.tags.slice(0, 3).map((tag) => (
+                  {mission.tags.slice(0, 3).map((tag) => (
                     <span key={tag}>{tag}</span>
                   ))}
                 </div>
               </div>
               <div className="mission-card-meta">
                 <span>
-                  <Clock3 aria-hidden="true" /> {displayMission.duration} min
+                  <Clock3 aria-hidden="true" /> {mission.duration} min
                 </span>
                 <span>
-                  <Zap aria-hidden="true" /> {assignment?.points ?? displayMission.points} XP
+                  <Zap aria-hidden="true" /> {assignment?.points ?? mission.points} XP
                 </span>
-                {assignment ? (
-                  <span>{formatDate(assignment.dueAt)}</span>
-                ) : (
-                  <span>{displayMission.difficulty}</span>
-                )}
+                <span>{mission.difficulty}</span>
               </div>
               <Link
                 className="mission-card-link"
-                to={`/mission/${displayMission.slug}${assignment ? `?assignment=${assignment.id}` : ""}`}
+                to={`/mission/${mission.slug}${assignment ? `?assignment=${assignment.id}` : ""}`}
               >
                 <BookOpenCheck aria-hidden="true" />
-                Abrir workspace
+                {assignment ? "Trabajar en la tarea" : "Abrir workspace"}
                 <ArrowRight aria-hidden="true" />
               </Link>
-            </article>
-          );
-        })}
-      </section>
+              </article>
+            );
+          })}
+        </section>
+      ) : (
+        <section className="empty-state mission-empty-state">
+          <BookOpenCheck aria-hidden="true" />
+          <h2>
+            {assignedJourney.length === 0
+              ? "Aún no tienes misiones asignadas"
+              : "No encontramos misiones con esos filtros"}
+          </h2>
+          <p>
+            {assignedJourney.length === 0
+              ? "Cuando eeminionn publique una tarea, aparecerá aquí."
+              : "Prueba otra búsqueda o limpia los filtros."}
+          </p>
+        </section>
+      )}
     </main>
   );
 }

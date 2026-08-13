@@ -37,7 +37,13 @@ import {
 } from "lucide-react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import type { BeforeMount, OnMount } from "@monaco-editor/react";
-import { formatDate, relativeDueDate } from "@/lib/format";
+import { StatusBadge } from "@/components/StatusBadge";
+import { formatDate, isOverdue, relativeDueDate } from "@/lib/format";
+import {
+  languageContract,
+  learningFeedback,
+} from "@/lib/learning-feedback";
+import { publishedAssignmentsForStudent } from "@/lib/mission-access";
 import {
   createDraftKey,
   loadDraft,
@@ -155,33 +161,38 @@ const configureMonaco: BeforeMount = (monaco) => {
 function ResultSummary({
   result,
   testInputs,
+  language,
+  code,
   onDiagnosticLine,
 }: {
   result: RunResult | null;
   testInputs: Record<string, string>;
+  language: Language;
+  code: string;
   onDiagnosticLine: (line: number) => void;
 }) {
   if (!result) {
     return (
       <div className="result-empty">
         <TerminalSquare aria-hidden="true" />
-        <strong>Esperando una ejecución</strong>
-        <span>Los tests y diagnósticos aparecerán aquí.</span>
+        <strong>Ejecuta tu código para ver qué ocurre</strong>
+        <span>Aquí verás qué salió bien y qué debes revisar.</span>
       </div>
     );
   }
 
   const passed = result.tests.filter((test) => test.passed).length;
+  const learningNotices = learningFeedback(language, code, result);
   const statusLabel: Record<RunResult["status"], string> = {
     idle: "Sin ejecutar",
     queued: "En cola",
     running: "Ejecutando",
-    passed: "Todos los tests pasaron",
-    failed: "El código corre, pero aún no pasa todos los tests",
-    compile_error: "Error de compilación",
-    runtime_error: "Error de ejecución",
-    timeout: "Tiempo agotado",
-    provider_error: "Ejecutor no disponible",
+    passed: "Todo salió bien",
+    failed: "Tu código funciona, pero hay resultados por corregir",
+    compile_error: "Hay un error antes de ejecutar",
+    runtime_error: "El código se detuvo durante la ejecución",
+    timeout: "El código tardó demasiado",
+    provider_error: "No pudimos ejecutar tu código",
   };
 
   return (
@@ -195,12 +206,31 @@ function ResultSummary({
         <div>
           <strong>{statusLabel[result.status]}</strong>
           <span>
-            {passed}/{result.tests.length} tests
+            {passed} de {result.tests.length} pruebas correctas
             {result.durationMs !== undefined ? ` · ${result.durationMs} ms` : ""}
             {result.memoryKb !== undefined ? ` · ${result.memoryKb} KB` : ""}
           </span>
         </div>
       </div>
+
+      {learningNotices.length > 0 ? (
+        <section className="learning-notices" aria-labelledby="next-step-title">
+          <h3 id="next-step-title">Qué hacer ahora</h3>
+          {learningNotices.map((notice) => (
+            <article className={`learning-notice tone-${notice.tone}`} key={notice.title}>
+              {notice.tone === "success" ? (
+                <CheckCircle2 aria-hidden="true" />
+              ) : (
+                <Lightbulb aria-hidden="true" />
+              )}
+              <div>
+                <strong>{notice.title}</strong>
+                <p>{notice.detail}</p>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       {result.repositorySync &&
       result.repositorySync.status !== "not_applicable" ? (
@@ -236,7 +266,7 @@ function ResultSummary({
 
       {result.diagnostics.length > 0 ? (
         <section className="diagnostic-list" aria-labelledby="diagnostics-title">
-          <h3 id="diagnostics-title">Diagnósticos</h3>
+          <h3 id="diagnostics-title">Errores para corregir</h3>
           {result.diagnostics.map((diagnostic, index) => (
             <button
               className={`diagnostic ${diagnostic.severity}`}
@@ -259,7 +289,7 @@ function ResultSummary({
 
       {result.tests.length > 0 ? (
         <section className="test-results" aria-labelledby="tests-title">
-          <h3 id="tests-title">Tests</h3>
+          <h3 id="tests-title">Pruebas</h3>
           {result.tests.map((test) => (
             <article className={`test-result ${test.passed ? "passed" : "failed"}`} key={test.id}>
               {test.passed ? (
@@ -270,7 +300,7 @@ function ResultSummary({
               <div>
                 <strong>
                   {test.label}
-                  {test.hidden ? <span className="hidden-test-label">oculto</span> : null}
+                  {test.hidden ? <span className="hidden-test-label">privada</span> : null}
                 </strong>
                 {!test.passed ? (
                   <>
@@ -278,15 +308,17 @@ function ResultSummary({
                       <dl>
                         {testInputs[test.id] ? (
                           <div>
-                            <dt>Entrada</dt>
-                            <dd>{testInputs[test.id]}</dd>
+                            <dt>Llamada</dt>
+                            <dd>
+                              <code>{testInputs[test.id]}</code>
+                            </dd>
                           </div>
                         ) : null}
                         <div>
                           <dt>Esperado</dt>
                           <dd>{test.expected}</dd>
                         </div>
-                        {test.actual ? (
+                        {test.actual !== undefined ? (
                           <div>
                             <dt>Obtenido</dt>
                             <dd>{test.actual}</dd>
@@ -298,7 +330,11 @@ function ResultSummary({
                         Un caso privado encontró un comportamiento pendiente.
                       </p>
                     )}
-                    {test.feedback ? <p>{test.feedback}</p> : null}
+                    {test.feedback ? (
+                      <p>
+                        <strong>Siguiente paso:</strong> {test.feedback}
+                      </p>
+                    ) : null}
                   </>
                 ) : null}
               </div>
@@ -338,18 +374,46 @@ export function Component() {
   const assignmentId = searchParams.get("assignment") ?? undefined;
   const linkedAttemptId = searchParams.get("attempt") ?? undefined;
   const linkedReviewId = searchParams.get("review") ?? undefined;
-  const assignment = snapshot?.assignments.find(
+  const studentView = viewProfile?.role === "student";
+  const latestMission = slug ? getMissionBySlug(slug) : undefined;
+  const studentAssignments =
+    snapshot && viewProfile
+      ? publishedAssignmentsForStudent(snapshot.assignments, viewProfile.id)
+      : [];
+  const requestedAssignment = snapshot?.assignments.find(
     (entry) => entry.id === assignmentId,
   );
+  const fallbackAssignment =
+    studentView && !assignmentId && latestMission
+      ? studentAssignments.find(
+          (entry) => entry.missionId === latestMission.id,
+        )
+      : undefined;
+  const assignment = requestedAssignment ?? fallbackAssignment;
+  const assignmentIsAvailable =
+    assignment &&
+    (!studentView ||
+      (assignment.status === "published" &&
+        assignment.studentIds.includes(viewProfile?.id ?? "")));
   const progress = snapshot?.progress.find(
     (entry) =>
       entry.userId === viewProfile?.id &&
       entry.assignmentId === assignment?.id,
   );
   const missionVersion = progress?.missionVersion ?? assignment?.missionVersion;
-  const mission = slug ? getMissionBySlug(slug, missionVersion) : undefined;
+  const resolvedMission = slug
+    ? getMissionBySlug(slug, missionVersion)
+    : undefined;
   const validAssignment =
-    assignment && assignment.missionId === mission?.id ? assignment : undefined;
+    assignmentIsAvailable && assignment.missionId === resolvedMission?.id
+      ? assignment
+      : undefined;
+  const mission =
+    studentView && !validAssignment ? undefined : resolvedMission;
+  const assignmentStatus = progress?.status ?? "not_started";
+  const assignmentOverdue = validAssignment
+    ? isOverdue(validAssignment.dueAt, assignmentStatus)
+    : false;
   const initialLanguage =
     progress?.language &&
     validAssignment?.allowedLanguages.includes(progress.language)
@@ -390,6 +454,7 @@ export function Component() {
   const saveTimer = useRef<number | undefined>(undefined);
   const lastEditingSignal = useRef(0);
   const openedActivityKey = useRef("");
+  const loadedLinkedAttemptId = useRef<string | null>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const workbenchRef = useRef<HTMLDivElement | null>(null);
   const isStaff = profile?.role === "owner" || profile?.role === "mentor";
@@ -427,11 +492,16 @@ export function Component() {
   }, [mission?.id, mission?.version]);
 
   useEffect(() => {
-    if (!linkedAttemptId) return;
+    if (!linkedAttemptId) {
+      loadedLinkedAttemptId.current = null;
+      return;
+    }
+    if (loadedLinkedAttemptId.current === linkedAttemptId) return;
     const linkedAttempt = history.find(
       (attempt) => attempt.id === linkedAttemptId,
     );
     if (!linkedAttempt) return;
+    loadedLinkedAttemptId.current = linkedAttemptId;
     setBriefTab("history");
     setMobilePane("brief");
     setLanguage(linkedAttempt.language);
@@ -681,10 +751,23 @@ export function Component() {
       testCase.actualExpression ?? testCase.expression,
     ]),
   );
-  const manualSignatureHints = activeMission.variants[language].expectedSignature
-    .split("\n")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+  const contractGuide = languageContract(language);
+  const visibleExample = activeMission.variants[language].examples[0];
+  const visibleCall =
+    activeMission.variants[language].publicTests[0]?.actualExpression ??
+    activeMission.variants[language].publicTests[0]?.expression;
+  const visiblePrerequisites = activeMission.prerequisites
+    .map((missionId) => {
+      const prerequisite = getMissionById(missionId);
+      const prerequisiteAssignment = studentAssignments.find(
+        (entry) => entry.missionId === missionId,
+      );
+      if (studentView && !prerequisiteAssignment) return null;
+      return prerequisite
+        ? { mission: prerequisite, assignment: prerequisiteAssignment }
+        : null;
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 
   async function execute(kind: AttemptKind) {
     if (
@@ -900,6 +983,75 @@ export function Component() {
           <div className="brief-scroll">
             {briefTab === "problem" ? (
               <>
+                {validAssignment ? (
+                  <section
+                    className={`assignment-note assignment-note-priority ${
+                      assignmentOverdue ? "is-overdue" : ""
+                    }`}
+                  >
+                    <p className="eyebrow">ENCARGO DEL MENTOR</p>
+                    <h2>{validAssignment.title}</h2>
+                    <p>
+                      {validAssignment.instructions ||
+                        "Completa esta misión y envíala antes del vencimiento."}
+                    </p>
+                    <div className="assignment-note-meta">
+                      <span>
+                        <Clock3 aria-hidden="true" />
+                        <strong>{relativeDueDate(validAssignment.dueAt)}</strong>
+                        <small>{formatDate(validAssignment.dueAt, true)}</small>
+                      </span>
+                      <StatusBadge
+                        status={assignmentStatus}
+                        overdue={assignmentOverdue}
+                      />
+                    </div>
+                  </section>
+                ) : null}
+                <section className="brief-section evaluation-flow">
+                  <p className="eyebrow">ASÍ SE EVALÚA</p>
+                  <h2>Los datos llegan solos a tu función</h2>
+                  <div className="evaluation-flow-steps">
+                    <article>
+                      <span>1</span>
+                      <div>
+                        <strong>El test prepara los valores</strong>
+                        <code>{visibleExample?.input ?? "Datos del caso de prueba"}</code>
+                      </div>
+                    </article>
+                    <article>
+                      <span>2</span>
+                      <div>
+                        <strong>Llama a tu función</strong>
+                        <code>
+                          {visibleCall ??
+                            activeMission.variants[language].expectedSignature}
+                        </code>
+                      </div>
+                    </article>
+                    <article>
+                      <span>3</span>
+                      <div>
+                        <strong>Tu código usa los parámetros</strong>
+                        <p>
+                          No uses <code>{contractGuide.manualInput}</code> ni
+                          escribas los valores del ejemplo dentro de la función.
+                        </p>
+                      </div>
+                    </article>
+                    <article>
+                      <span>4</span>
+                      <div>
+                        <strong>La respuesta sale por return</strong>
+                        <p>
+                          Termina con <code>{contractGuide.returnExample}</code>.
+                          <code>{contractGuide.consoleOutput}</code> solo muestra
+                          notas y no responde la misión.
+                        </p>
+                      </div>
+                    </article>
+                  </div>
+                </section>
                 <section className="brief-section">
                   <p className="eyebrow">CONTEXTO</p>
                   <p>{mission.context}</p>
@@ -920,7 +1072,7 @@ export function Component() {
                       LANGUAGE_META[language].fileName}
                   </code>
                   <p>
-                    Conserva esta firma: los tests llaman directamente a esta
+                    Conserva esta firma: las pruebas llaman directamente a esta
                     función.
                   </p>
                 </section>
@@ -976,20 +1128,23 @@ export function Component() {
                     ))}
                   </ul>
                 </section>
-                {mission.prerequisites.length > 0 ? (
+                {visiblePrerequisites.length > 0 ? (
                   <section className="brief-section prerequisites">
                     <p className="eyebrow">ANTES DE ESTA MISIÓN</p>
-                    {mission.prerequisites.map((missionId) => {
-                      const prerequisite = getMissionById(missionId);
-                      return prerequisite ? (
+                    {visiblePrerequisites.map((entry) => {
+                      return (
                         <Link
-                          key={missionId}
-                          to={`/mission/${prerequisite.slug}`}
+                          key={entry.mission.id}
+                          to={`/mission/${entry.mission.slug}${
+                            entry.assignment
+                              ? `?assignment=${entry.assignment.id}`
+                              : ""
+                          }`}
                         >
-                          {prerequisite.title}
+                          {entry.mission.title}
                           <ChevronRight aria-hidden="true" />
                         </Link>
-                      ) : null;
+                      );
                     })}
                   </section>
                 ) : null}
@@ -1003,15 +1158,6 @@ export function Component() {
                   </span>
                   <span>{mission.difficulty}</span>
                 </section>
-                {validAssignment ? (
-                  <section className="assignment-note">
-                    <strong>{validAssignment.title}</strong>
-                    <p>{validAssignment.instructions}</p>
-                    <small>
-                      Entrega: {formatDate(validAssignment.dueAt, true)}
-                    </small>
-                  </section>
-                ) : null}
               </>
             ) : null}
 
@@ -1548,13 +1694,15 @@ export function Component() {
               <span>
                 {language === "cpp" || running === "submit"
                   ? "Compilando en el entorno aislado..."
-                  : "Ejecutando tests visibles..."}
+                  : "Ejecutando pruebas visibles..."}
               </span>
             </div>
           ) : (
             <ResultSummary
               result={result}
               testInputs={testInputs}
+              language={language}
+              code={currentCode}
               onDiagnosticLine={(line) => {
                 setMobilePane("code");
                 window.setTimeout(() => {

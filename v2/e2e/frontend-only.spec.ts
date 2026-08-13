@@ -29,6 +29,7 @@ test("frontend sandbox keeps the current student UI without backend calls", asyn
 
   await expect(page.getByText("Sandbox local de Aula 3.0")).toBeVisible();
   await page.getByRole("button", { name: "Ver interfaz de estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
   await expect(
     page.getByText("Vista para contribuir al frontend"),
   ).toBeVisible();
@@ -49,8 +50,29 @@ test("frontend sandbox keeps the current student UI without backend calls", asyn
   await expect(
     page.getByRole("button", { name: "Guardar perfil" }),
   ).toBeDisabled();
+  await page.getByRole("tab", { name: "Mini" }).click();
+  await expect(page.getByText("Forma", { exact: true })).toBeVisible();
+  await expect(page.locator(".profile-preview .profile-avatar svg")).toBeVisible();
+  await page.getByRole("tab", { name: "Foto" }).click();
+  await expect(page.getByText("Sube una foto")).toBeVisible();
+  await expect(page.getByText(/GIF animado o HEIC/)).toBeVisible();
   await page.getByRole("link", { name: "Acerca del proyecto" }).click();
   await expect(page.getByText("Sin conexiones a servicios externos")).toBeVisible();
+  expect(backendRequests).toEqual([]);
+});
+
+test("frontend sandbox renders rewards while keeping redemptions disabled", async ({
+  page,
+}) => {
+  const backendRequests = watchBackendRequests(page);
+  await page.goto("./");
+  await page.getByRole("button", { name: "Ver interfaz de estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
+  await page.getByRole("link", { name: "Premios" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Premios", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Canjear" })).toBeDisabled();
   expect(backendRequests).toEqual([]);
 });
 
@@ -60,6 +82,7 @@ test("frontend sandbox displays mentor controls but blocks mutations", async ({
   const backendRequests = watchBackendRequests(page);
   await page.goto("./");
   await page.getByRole("button", { name: "Ver panel del mentor" }).click();
+  await page.getByRole("button", { name: "Entendido" }).click();
   await expect(
     page.getByRole("heading", { name: "Panel de eeminionn" }),
   ).toBeVisible();
@@ -72,10 +95,15 @@ test("frontend sandbox displays mentor controls but blocks mutations", async ({
 
   await page.getByRole("link", { name: /^Revisiones/ }).click();
   await expect(
-    page.getByRole("button", { name: "Solicitar cambios" }),
+    page.getByRole("button", { name: "Pedir cambios" }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Aprobar y asignar XP" }),
+    page.getByRole("button", { name: /Aprobar \(\+\d+ XP\)/ }),
+  ).toBeDisabled();
+  await page.getByRole("link", { name: "Premios", exact: true }).click();
+  await page.getByRole("button", { name: "Nuevo premio" }).click();
+  await expect(
+    page.getByRole("button", { name: "Guardar premio" }),
   ).toBeDisabled();
   expect(backendRequests).toEqual([]);
 });
@@ -84,6 +112,7 @@ test("frontend sandbox remains usable on a narrow viewport", async ({ page }) =>
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("./");
   await page.getByRole("button", { name: "Ver interfaz de estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
 
   await expect(
     page.getByText("Vista para contribuir al frontend"),
