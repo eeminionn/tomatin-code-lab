@@ -1,7 +1,7 @@
 {
   "name": "Tomatin Code Lab",
   "short_name": "Tomatin Lab",
-  "description": "Misiones originales de Programacion I y II con humor chileno.",
+  "description": "Aula para aprender programación resolviendo misiones junto a un profesor.",
   "lang": "es-CL",
   "start_url": "./",
   "scope": "./",
@@ -17,4 +17,3 @@
     }
   ]
 }
-

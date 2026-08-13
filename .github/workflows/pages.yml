@@ -33,7 +33,7 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Verify beta configuration
+      - name: Verify production configuration
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -47,11 +47,11 @@ jobs:
             exit 1
           }
 
-      - name: Build beta
+      - name: Build application
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/beta/
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
         run: |
           pnpm install --frozen-lockfile
           pnpm build
@@ -59,9 +59,8 @@ jobs:
       - name: Assemble static site
         run: |
           mkdir _site
-          cp index.html 404.html styles.css manifest.webmanifest robots.txt sitemap.xml sw.js .nojekyll _site/
-          cp -R assets js _site/
-          cp -R dist-beta _site/beta
+          cp -R dist-app/. _site/
+          cp dist-app/index.html _site/404.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
@@ -82,25 +81,28 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Smoke test beta
+      - name: Smoke test stable application
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
           REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
-          beta_url="${PAGE_URL%/}/beta/"
+          root_url="${PAGE_URL%/}/"
           for attempt in {1..12}; do
             curl \
               --fail \
               --silent \
               --show-error \
-              --output beta.html \
-              "$beta_url"
-            if grep -Fq "<title>Tomatin Code Lab 3.0</title>" beta.html \
-              && grep -Fq "/$REPOSITORY_NAME/beta/assets/" beta.html; then
-              exit 0
+              --output app.html \
+              "$root_url"
+            if grep -Fq "<title>Tomatin Code Lab</title>" app.html \
+              && grep -Fq "/$REPOSITORY_NAME/assets/" app.html; then
+              curl --fail --silent --show-error --output redirect.html "${root_url}beta/"
+              if grep -Fq "Redirigiendo a Tomatin Code Lab" redirect.html; then
+                exit 0
+              fi
             fi
             echo "Waiting for GitHub Pages propagation ($attempt/12)."
             sleep 5
           done
-          echo "::error::The deployed beta did not expose Tomatin Code Lab 3.0."
+          echo "::error::The stable Tomatin Code Lab application was not available at the root URL."
           exit 1

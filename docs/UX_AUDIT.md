@@ -1,4 +1,4 @@
-# Auditoría de interacción: Aula 3.3
+# Auditoría de interacción
 
 ## Objetivo
 

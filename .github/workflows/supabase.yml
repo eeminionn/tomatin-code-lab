@@ -64,6 +64,9 @@ jobs:
       - name: Link project
         run: supabase link --project-ref "$PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
 
+      - name: Configure authentication URLs
+        run: supabase config push --project-ref "$PROJECT_ID" --yes
+
       - name: Apply database migrations
         run: supabase db push
 

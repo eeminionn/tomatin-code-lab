@@ -17,9 +17,11 @@ port = 54323
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173/tomatin-code-lab/beta/"
+site_url = "https://eeminionn.github.io/tomatin-code-lab/"
 additional_redirect_urls = [
-  "http://localhost:5173/tomatin-code-lab/beta/",
+  "http://127.0.0.1:4173/tomatin-code-lab/",
+  "http://localhost:5173/tomatin-code-lab/",
+  "https://eeminionn.github.io/tomatin-code-lab/",
   "https://eeminionn.github.io/tomatin-code-lab/beta/"
 ]
 

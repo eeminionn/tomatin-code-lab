@@ -1,84 +1,51 @@
 name: Reportar un error
-description: Informa un comportamiento incorrecto o una regresión reproducible.
+description: Cuéntanos qué no funcionó.
 title: "[Bug]: "
-labels:
-  - bug
-assignees:
-  - eeminionn
+labels: [bug]
+assignees: [eeminionn]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Gracias por ayudar a mejorar Tomatin Code Lab. No incluyas tokens, contraseñas, soluciones privadas ni datos personales de estudiantes.
   - type: dropdown
     id: area
     attributes:
-      label: Área afectada
+      label: ¿Dónde ocurrió?
       options:
-        - Aula del estudiante
-        - Panel del mentor
-        - Misiones o evaluador
-        - Autenticación e invitaciones
-        - Sincronización con GitHub
-        - Accesibilidad o diseño responsive
-        - Documentación o infraestructura
+        - Vista del estudiante
+        - Panel del profesor
+        - Editor o ejecución de código
+        - Inicio de sesión
+        - Documentación
+        - Otro
     validations:
       required: true
   - type: textarea
-    id: summary
+    id: problem
     attributes:
-      label: Descripción
-      description: Explica qué ocurrió y cuál es el impacto.
-      placeholder: Al intentar..., la aplicación...
+      label: ¿Qué pasó?
+      placeholder: Explica el problema con tus palabras.
     validations:
       required: true
   - type: textarea
-    id: reproduction
+    id: steps
     attributes:
-      label: Pasos para reproducir
-      description: Incluye el recorrido mínimo y datos de ejemplo no sensibles.
-      placeholder: |
-        1. Iniciar sesión como...
-        2. Abrir...
-        3. Presionar...
+      label: ¿Cómo podemos repetirlo?
+      placeholder: "1. Abrí...\n2. Presioné...\n3. Apareció..."
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Resultado esperado
+      label: ¿Qué esperabas que ocurriera?
     validations:
       required: true
   - type: textarea
-    id: actual
+    id: evidence
     attributes:
-      label: Resultado actual y evidencia
-      description: Puedes arrastrar capturas o pegar errores ya redactados.
-    validations:
-      required: true
-  - type: input
-    id: environment
-    attributes:
-      label: Entorno
-      description: URL, navegador, sistema operativo y tamaño de pantalla.
-      placeholder: Beta, Safari 18, macOS, 1440 × 900
-    validations:
-      required: true
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Criterios de aceptación sugeridos
-      description: ¿Qué debería comprobarse para cerrar este issue?
-      placeholder: |
-        - [ ] El recorrido termina sin errores.
-        - [ ] Existe una prueba de regresión.
+      label: Captura o información adicional
+      description: No incluyas contraseñas, tokens ni datos personales.
   - type: checkboxes
-    id: checks
+    id: privacy
     attributes:
-      label: Confirmaciones
+      label: Confirmación
       options:
-        - label: Busqué issues existentes y no encontré uno equivalente.
+        - label: Revisé que el reporte no contenga información privada.
           required: true
-        - label: Eliminé secretos y datos personales de la evidencia.
-          required: true
-

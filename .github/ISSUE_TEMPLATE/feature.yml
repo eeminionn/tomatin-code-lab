@@ -1,74 +1,35 @@
 name: Proponer una mejora
-description: Propón una capacidad nueva a partir de una necesidad concreta.
+description: Comparte una idea para hacer más útil o agradable la plataforma.
 title: "[Mejora]: "
-labels:
-  - enhancement
-assignees:
-  - eeminionn
+labels: [enhancement]
+assignees: [eeminionn]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Describe primero el problema. Una buena propuesta permite comparar alternativas antes de elegir una implementación.
   - type: dropdown
     id: audience
     attributes:
-      label: Persona beneficiada
+      label: ¿A quién ayuda?
       options:
-        - Estudiante
-        - Mentor o administrador
-        - Creador de contenido
-        - Contribuidor
-        - Varias de las anteriores
+        - Estudiantes
+        - Profesor
+        - Ambos
+        - Quienes contribuyen
     validations:
       required: true
   - type: textarea
-    id: problem
+    id: idea
     attributes:
-      label: Problema u oportunidad
-      description: Explica qué necesidad existe y cómo se resuelve actualmente.
+      label: Tu idea
+      placeholder: Describe qué te gustaría cambiar o agregar.
     validations:
       required: true
   - type: textarea
-    id: proposal
+    id: reason
     attributes:
-      label: Propuesta
-      description: Describe el resultado deseado sin asumir detalles técnicos innecesarios.
+      label: ¿Por qué sería útil?
     validations:
       required: true
   - type: textarea
-    id: alternatives
+    id: reference
     attributes:
-      label: Alternativas consideradas
-      description: Incluye opciones descartadas y sus principales compromisos.
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Criterios de aceptación
-      placeholder: |
-        - [ ] ...
-        - [ ] ...
-    validations:
-      required: true
-  - type: textarea
-    id: privacy
-    attributes:
-      label: Privacidad, seguridad y accesibilidad
-      description: Indica si toca datos estudiantiles, permisos, autenticación o interacción por teclado.
-    validations:
-      required: true
-  - type: textarea
-    id: references
-    attributes:
-      label: Referencias o diseños
-      description: Enlaces, capturas o productos de referencia.
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Confirmaciones
-      options:
-        - label: Busqué propuestas existentes y no encontré una equivalente.
-          required: true
-        - label: Entiendo que el proyecto está en desarrollo y la propuesta puede iterarse.
-          required: true
-
+      label: Captura, dibujo o referencia
+      description: Opcional.

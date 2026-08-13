@@ -107,7 +107,7 @@ export function AppShell() {
             <span className="brand-command">T_</span>
             <span>
               <strong>Tomatin</strong>
-              <small>CODE LAB 3.0</small>
+              <small>CODE LAB</small>
             </span>
           </NavLink>
           <button

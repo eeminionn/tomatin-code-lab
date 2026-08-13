@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from "node:url";
 const frontendOnly = process.env.VITE_FRONTEND_ONLY === "true";
 const serverUrl = frontendOnly
   ? "http://127.0.0.1:4173/"
-  : "http://127.0.0.1:4173/tomatin-code-lab/beta/";
+  : "http://127.0.0.1:4173/tomatin-code-lab/";
 
 export default defineConfig({
   testDir: "./e2e",

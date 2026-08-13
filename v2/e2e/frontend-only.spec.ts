@@ -27,7 +27,7 @@ test("frontend sandbox keeps the current student UI without backend calls", asyn
   const backendRequests = watchBackendRequests(page);
   await page.goto("./");
 
-  await expect(page.getByText("Sandbox local de Aula 3.0")).toBeVisible();
+  await expect(page.getByText("Sandbox local para contribuir")).toBeVisible();
   await page.getByRole("button", { name: "Ver interfaz de estudiante" }).click();
   await page.getByRole("button", { name: "Omitir", exact: true }).click();
   await expect(

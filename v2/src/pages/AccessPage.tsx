@@ -50,7 +50,7 @@ export function AccessPage() {
           <div className="access-heading">
             <TerminalSquare aria-hidden="true" />
             <div>
-              <p className="eyebrow">AULA 3.0</p>
+              <p className="eyebrow">AULA DE PROGRAMACIÓN</p>
               <h2 id="access-title">Entrar al curso</h2>
             </div>
           </div>
@@ -79,10 +79,10 @@ export function AccessPage() {
           ) : (
             <>
               <div className="demo-notice">
-                <strong>Vista beta</strong>
+                <strong>Vista local</strong>
                 <span>
                   {isFrontendOnly
-                    ? "Sandbox local de Aula 3.0. El backend está desactivado y los datos son de demostración."
+                    ? "Sandbox local para contribuir. El backend está desactivado y los datos son de demostración."
                     : "El backend aún no está conectado. Puedes recorrer todos los flujos con datos locales de demostración."}
                 </span>
               </div>

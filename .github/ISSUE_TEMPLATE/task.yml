@@ -1,59 +1,26 @@
-name: Registrar una tarea técnica
-description: Define mantenimiento, documentación, deuda técnica o trabajo interno verificable.
+name: Tarea del proyecto
+description: Registra una tarea concreta de mantenimiento o documentación.
 title: "[Tarea]: "
-labels:
-  - maintenance
-assignees:
-  - eeminionn
+labels: [maintenance]
+assignees: [eeminionn]
 body:
-  - type: dropdown
-    id: area
-    attributes:
-      label: Área
-      options:
-        - Frontend
-        - Backend y Supabase
-        - Contenido de misiones
-        - Pruebas y accesibilidad
-        - GitHub Actions y despliegue
-        - Documentación y comunidad
-    validations:
-      required: true
   - type: textarea
-    id: context
+    id: goal
     attributes:
-      label: Contexto
-      description: Explica por qué la tarea existe y qué riesgo o costo evita.
+      label: Objetivo
+      placeholder: Explica brevemente qué debe quedar listo.
     validations:
       required: true
   - type: textarea
     id: work
     attributes:
-      label: Tareas
-      placeholder: |
-        - [ ] ...
-        - [ ] ...
+      label: Pasos
+      placeholder: "- [ ] Primer paso\n- [ ] Segundo paso"
     validations:
       required: true
   - type: textarea
-    id: acceptance
+    id: done
     attributes:
-      label: Criterios de aceptación
-      placeholder: |
-        - [ ] ...
-        - [ ] ...
+      label: ¿Cómo sabremos que está listo?
     validations:
       required: true
-  - type: textarea
-    id: validation
-    attributes:
-      label: Validación prevista
-      description: Comandos, recorridos o métricas que demostrarán que quedó terminado.
-    validations:
-      required: true
-  - type: textarea
-    id: rollout
-    attributes:
-      label: Despliegue y reversión
-      description: Completa esta sección cuando la tarea cambie producción, datos o permisos.
-

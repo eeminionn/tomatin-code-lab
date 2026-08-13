@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Aula multilenguaje para practicar Programacion I y II.",
+  "description": "Aula para aprender programación resolviendo misiones junto a un profesor.",
   "scripts": {
     "dev": "vite --config v2/vite.config.ts",
     "frontend": "pnpm frontend:build && VITE_FRONTEND_ONLY=true VITE_BASE_PATH=/ vite preview --config v2/vite.config.ts --host 127.0.0.1 --port 4173 --open /",

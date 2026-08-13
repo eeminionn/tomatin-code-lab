@@ -36,7 +36,7 @@ export function Component() {
           <p className="eyebrow">PROYECTO ABIERTO</p>
           <h1>Tomatin Code Lab</h1>
           <p>
-            Aula multilenguaje en desarrollo para Programación I y II.
+            Un espacio para aprender programación, recibir feedback y avanzar en clase.
           </p>
         </div>
         <a
@@ -60,7 +60,7 @@ export function Component() {
                 ? "Sandbox de frontend"
                 : backendMode === "supabase"
                   ? "Aula conectada"
-                  : "Beta en modo demo"}
+                  : "Modo de demostración"}
             </strong>
             <small>
               {frontendOnly

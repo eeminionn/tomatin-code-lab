@@ -1,7 +1,7 @@
 {
-  "name": "Tomatin Code Lab 3.0",
+  "name": "Tomatin Code Lab",
   "short_name": "Tomatin Lab",
-  "description": "Aula multilenguaje para Programacion I y II.",
+  "description": "Aula para aprender programación resolviendo misiones junto a un profesor.",
   "start_url": "./#/",
   "display": "standalone",
   "background_color": "#040906",

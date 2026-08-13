@@ -5,16 +5,16 @@ describe("OAuth redirect", () => {
   it("returns to the application root without competing with the hash router", () => {
     expect(
       getOAuthRedirectUrl(
-        "https://eeminionn.github.io/tomatin-code-lab/beta/#/auth/callback",
+        "https://eeminionn.github.io/tomatin-code-lab/#/auth/callback",
       ),
-    ).toBe("https://eeminionn.github.io/tomatin-code-lab/beta/");
+    ).toBe("https://eeminionn.github.io/tomatin-code-lab/");
   });
 
   it("removes stale OAuth query and fragment values before a new login", () => {
     expect(
       getOAuthRedirectUrl(
-        "https://eeminionn.github.io/tomatin-code-lab/beta/?code=old#/missions",
+        "https://eeminionn.github.io/tomatin-code-lab/?code=old#/missions",
       ),
-    ).toBe("https://eeminionn.github.io/tomatin-code-lab/beta/");
+    ).toBe("https://eeminionn.github.io/tomatin-code-lab/");
   });
 });

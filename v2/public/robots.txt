@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://eeminionn.github.io/tomatin-code-lab/sitemap.xml

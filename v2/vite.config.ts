@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 
-const basePath = process.env.VITE_BASE_PATH ?? "/tomatin-code-lab/beta/";
+const basePath = process.env.VITE_BASE_PATH ?? "/tomatin-code-lab/";
 
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
@@ -15,7 +15,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: fileURLToPath(new URL("../dist-beta", import.meta.url)),
+    outDir: fileURLToPath(new URL("../dist-app", import.meta.url)),
     emptyOutDir: true,
     sourcemap: false,
     target: "es2022",

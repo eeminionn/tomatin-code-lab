@@ -5,7 +5,7 @@ const DEFAULT_GITHUB_OWNER = "eeminionn";
 const DEFAULT_GITHUB_REPOSITORY = "tomatin-code-lab";
 const DEFAULT_GITHUB_ISSUE_NUMBER = "59";
 const DEFAULT_APP_BASE_URL =
-  "https://eeminionn.github.io/tomatin-code-lab/beta/#";
+  "https://eeminionn.github.io/tomatin-code-lab/#";
 
 type DeliveryStatus = "pending" | "sent" | "partial" | "failed";
 
@@ -97,7 +97,7 @@ function commentBody(
       assignmentUrl(slug, assignment.id)
     })`,
     "",
-    "Tomatin Code Lab Aula 3.1 beta está en desarrollo.",
+    "Tarea enviada desde Tomatin Code Lab.",
   ]
     .filter((line, index, lines) => line !== "" || lines[index - 1] !== "")
     .join("\n")
