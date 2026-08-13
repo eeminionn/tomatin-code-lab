@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Activity,
+  AlertTriangle,
   ArrowRight,
+  BarChart3,
   BookCopy,
   CalendarPlus,
   Check,
@@ -11,6 +13,7 @@ import {
   Clock3,
   Code2,
   Copy,
+  Download,
   Eye,
   FilePlus2,
   Gift,
@@ -38,6 +41,11 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import {
+  buildClassroomAlerts,
+  buildClassroomCsv,
+  buildWeeklyTrends,
+} from "@/models/classroom-insights";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RankingBoard } from "@/components/RankingBoard";
 import { RewardsManager } from "@/components/RewardsManager";
@@ -103,6 +111,16 @@ function toDateTimeLocal(value: string) {
   const date = new Date(value);
   const offset = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function downloadCsv(contents: string) {
+  const blob = new Blob(["\uFEFF", contents], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `tomatin-curso-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function MentorOverview({
@@ -204,6 +222,16 @@ function MentorOverview({
         new Date(a.lastActivityAt!).getTime(),
     )
     .slice(0, 8);
+  const classroomAlerts = buildClassroomAlerts(snapshot).slice(0, 8);
+  const weeklyTrends = buildWeeklyTrends(snapshot);
+  const trendMax = Math.max(
+    1,
+    ...weeklyTrends.flatMap((entry) => [
+      entry.activity,
+      entry.submissions,
+      entry.approvals,
+    ]),
+  );
   const eventLabels = {
     opened: "abrió",
     editing: "está editando",
@@ -278,6 +306,75 @@ function MentorOverview({
           </article>
         </div>
       </details>
+
+      <div className="insights-grid">
+        <section className="mentor-section insight-panel" aria-labelledby="alerts-title">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">PARA MIRAR</p>
+              <h2 id="alerts-title">Necesitan atención</h2>
+            </div>
+            <span className="section-note">El motivo siempre está visible</span>
+          </div>
+          {classroomAlerts.length > 0 ? (
+            <div className="classroom-alerts">
+              {classroomAlerts.map((alert) => (
+                <Link
+                  className={`classroom-alert is-${alert.priority}`}
+                  key={alert.id}
+                  to={`/admin/students/${alert.studentId}?assignment=${alert.assignmentId}`}
+                >
+                  <AlertTriangle aria-hidden="true" />
+                  <span>
+                    <strong>{alert.studentName}</strong>
+                    <small>{alert.assignmentTitle} · {alert.reason}</small>
+                  </span>
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="insight-empty">
+              <CheckCircle2 aria-hidden="true" />
+              <span><strong>Sin alertas por ahora</strong><small>No hay atrasos ni señales que requieran una revisión rápida.</small></span>
+            </div>
+          )}
+        </section>
+
+        <section className="mentor-section insight-panel" aria-labelledby="trends-title">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">ÚLTIMAS 6 SEMANAS</p>
+              <h2 id="trends-title">Movimiento del curso</h2>
+            </div>
+            <button
+              className="button secondary compact-button"
+              type="button"
+              onClick={() => downloadCsv(buildClassroomCsv(snapshot))}
+            >
+              <Download aria-hidden="true" /> Exportar CSV
+            </button>
+          </div>
+          <div className="trend-legend" aria-hidden="true">
+            <span><i className="activity" />Ejecuciones</span>
+            <span><i className="submissions" />Entregas</span>
+            <span><i className="approvals" />Aprobaciones</span>
+          </div>
+          <div className="weekly-trends" role="img" aria-label="Ejecuciones, entregas y aprobaciones de las últimas seis semanas">
+            {weeklyTrends.map((week) => (
+              <div className="trend-week" key={week.key}>
+                <div className="trend-bars">
+                  <i className="activity" style={{ height: `${Math.max(3, (week.activity / trendMax) * 100)}%` }} title={`${week.activity} ejecuciones`} />
+                  <i className="submissions" style={{ height: `${Math.max(3, (week.submissions / trendMax) * 100)}%` }} title={`${week.submissions} entregas`} />
+                  <i className="approvals" style={{ height: `${Math.max(3, (week.approvals / trendMax) * 100)}%` }} title={`${week.approvals} aprobaciones`} />
+                </div>
+                <span>{week.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="trend-note"><BarChart3 aria-hidden="true" />Los datos describen actividad real; no califican a los estudiantes.</p>
+        </section>
+      </div>
 
       <section className="mentor-section" aria-labelledby="matrix-title">
         <div className="section-header">

@@ -77,6 +77,21 @@ test("mentor overview prioritizes actions without duplicate navigation", async (
   await expect(page.getByText("Ver más indicadores")).toBeVisible();
 });
 
+test("mentor opens an explained alert and exports the course summary", async ({
+  page,
+}) => {
+  await loginAsMentor(page);
+  await expect(page.getByRole("heading", { name: "Necesitan atención" })).toBeVisible();
+  const firstAlert = page.locator(".classroom-alert").first();
+  await expect(firstAlert).toContainText(/intentos|cambios solicitados|vence/i);
+  await expect(firstAlert).toHaveAttribute("href", /\/admin\/students\//);
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Exportar CSV" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^tomatin-curso-\d{4}-\d{2}-\d{2}\.csv$/);
+});
+
 test("mentor can reopen the classroom preparation summary", async ({ page }) => {
   await loginAsMentor(page);
   await page.getByRole("button", { name: "Abrir guía rápida" }).click();
