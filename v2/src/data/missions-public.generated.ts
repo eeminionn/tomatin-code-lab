@@ -1046,7 +1046,7 @@ export const publicMissions = [
       "javascript": {
         "language": "javascript",
         "starterCode": "function stockSeguro(stock, retiro) {\n  const retiroInvalido = false; // TODO: valida ambos casos inválidos.\n  if (retiroInvalido) return -1;\n  return stock; // TODO: aplica el retiro.\n}\n\nfunction necesitaReposicion(stock, minimo) {\n  return false; // TODO: compara el stock con el mínimo.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// stockSeguro(12, 5)\n// Resultado esperado: 7\n",
-        "expectedSignature": "function stockSeguro(stock, retiro)\nfunction necesitaReposicion(stock, minimo)",
+        "expectedSignature": "function stockSeguro(stock, retiro)",
         "examples": [
           {
             "id": "stock-update",
@@ -1086,7 +1086,7 @@ export const publicMissions = [
       "python": {
         "language": "python",
         "starterCode": "def stock_seguro(stock, retiro):\n    retiro_invalido = False  # TODO: valida ambos casos inválidos.\n    if retiro_invalido:\n        return -1\n    return stock  # TODO: aplica el retiro.\n\ndef necesita_reposicion(stock, minimo):\n    return False  # TODO: compara el stock con el mínimo.\n\n# DATOS DE EJEMPLO (el evaluador usará también otros valores):\n# stock_seguro(12, 5)\n# Resultado esperado: 7\n",
-        "expectedSignature": "def stock_seguro(stock, retiro)\ndef necesita_reposicion(stock, minimo)",
+        "expectedSignature": "def stock_seguro(stock, retiro)",
         "examples": [
           {
             "id": "stock-update",
@@ -1126,7 +1126,7 @@ export const publicMissions = [
       "cpp": {
         "language": "cpp",
         "starterCode": "#include <algorithm>\n#include <cmath>\n#include <deque>\n#include <iostream>\n#include <memory>\n#include <numeric>\n#include <optional>\n#include <queue>\n#include <regex>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <utility>\n#include <vector>\nusing namespace std;\n\nint stockSeguro(int stock, int retiro) {\n  bool retiroInvalido = false;  // TODO: valida ambos casos inválidos.\n  if (retiroInvalido) return -1;\n  return stock;  // TODO: aplica el retiro.\n}\n\nbool necesitaReposicion(int stock, int minimo) {\n  return false;  // TODO: compara el stock con el mínimo.\n}\n\n// DATOS DE EJEMPLO (el evaluador usará también otros valores):\n// stockSeguro(12, 5) == 7\n// Resultado esperado: 7\n",
-        "expectedSignature": "int stockSeguro(int stock, int retiro)\nbool necesitaReposicion(int stock, int minimo)",
+        "expectedSignature": "int stockSeguro(int stock, int retiro)",
         "examples": [
           {
             "id": "stock-update",
