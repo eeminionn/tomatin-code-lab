@@ -171,6 +171,16 @@ export interface Assignment {
   allowedLanguages: Language[];
   studentIds: string[];
   status: "draft" | "published" | "archived";
+  rubricId?: string;
+}
+
+export interface ReviewRubric {
+  id: string;
+  classId: string;
+  title: string;
+  criteria: Array<{ id: string; label: string }>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StudentProgress {
@@ -392,6 +402,7 @@ export interface ClassroomSnapshot {
   rewards: Reward[];
   rewardRedemptions: RewardRedemption[];
   githubNotifications: AssignmentGitHubNotification[];
+  reviewRubrics: ReviewRubric[];
 }
 
 export interface RunnerRequest {
@@ -410,12 +421,19 @@ export interface CreateAssignmentInput {
   points: number;
   allowedLanguages: Language[];
   studentIds: string[];
+  rubricId?: string;
 }
 
 export interface UpdateAssignmentInput {
   title: string;
   instructions: string;
   dueAt: string;
+  rubricId?: string;
+}
+
+export interface ReviewRubricInput {
+  title: string;
+  criteria: string[];
 }
 
 export interface MissionDraftInput {

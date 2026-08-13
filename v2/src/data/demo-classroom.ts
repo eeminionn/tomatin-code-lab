@@ -304,6 +304,20 @@ export function createDemoSnapshot(): ClassroomSnapshot {
         updatedAt: dateAgo(1),
       },
     ],
+    reviewRubrics: [
+      {
+        id: "rubric-default",
+        classId: "class-tomatin-2026",
+        title: "Revisión general",
+        criteria: [
+          { id: "correctness", label: "Da la respuesta correcta" },
+          { id: "readability", label: "Se entiende cómo lo resolvió" },
+          { id: "edge-cases", label: "Funciona también con otros casos" },
+        ],
+        createdAt: dateAgo(5),
+        updatedAt: dateAgo(5),
+      },
+    ],
   };
 }
 

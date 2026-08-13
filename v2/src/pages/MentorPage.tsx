@@ -772,7 +772,7 @@ function StudentDirectory({
 }
 
 function ReviewQueue() {
-  const { profile, snapshot, frontendOnly, reviewAttempt } = useClassroom();
+  const { profile, snapshot, frontendOnly, reviewAttempt, approveAttempts } = useClassroom();
   const { getMissionById } = useCatalog();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
@@ -785,9 +785,27 @@ function ReviewQueue() {
   >([]);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewMessage, setReviewMessage] = useState("");
-  const [criteria, setCriteria] = useState(() =>
+  const [selectedBatch, setSelectedBatch] = useState<string[]>([]);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [criteria, setCriteria] = useState<Array<{ id: string; label: string; met: boolean }>>(() =>
     REVIEW_CRITERIA.map((entry) => ({ ...entry, met: false })),
   );
+  useEffect(() => {
+    if (!snapshot) return;
+    const queueEntry =
+      getPendingReviews(snapshot).find(
+        (entry) => entry.attempt.id === selectedId,
+      ) ?? getPendingReviews(snapshot)[0];
+    const rubric = snapshot.reviewRubrics.find(
+      (entry) => entry.id === queueEntry?.assignment.rubricId,
+    );
+    setCriteria(
+      (rubric?.criteria ?? REVIEW_CRITERIA).map((entry) => ({
+        ...entry,
+        met: false,
+      })),
+    );
+  }, [selectedId, snapshot?.assignments, snapshot?.reviewRubrics]);
   if (!profile || !snapshot) return null;
 
   const queue = getPendingReviews(snapshot);
@@ -812,6 +830,19 @@ function ReviewQueue() {
         selected.progress.missionVersion,
       )
     : undefined;
+  const selectedRubric = selected
+    ? snapshot.reviewRubrics.find(
+        (entry) => entry.id === selected.assignment.rubricId,
+      )
+    : undefined;
+
+  function criteriaFor(rubricId?: string) {
+    const rubric = snapshot!.reviewRubrics.find((entry) => entry.id === rubricId);
+    return (rubric?.criteria ?? REVIEW_CRITERIA).map((entry) => ({
+      ...entry,
+      met: false,
+    }));
+  }
 
   async function decide(decision: "approved" | "changes_requested") {
     if (frontendOnly) return;
@@ -857,7 +888,25 @@ function ReviewQueue() {
     setInlineComments([]);
     setInlineBody("");
     setInlineLine(1);
-    setCriteria(REVIEW_CRITERIA.map((entry) => ({ ...entry, met: false })));
+    const entry = queue.find((item) => item.attempt.id === attemptId);
+    setCriteria(criteriaFor(entry?.assignment.rubricId));
+  }
+
+  async function approveSelected() {
+    if (frontendOnly || selectedBatch.length === 0) return;
+    setBatchBusy(true);
+    setReviewMessage("");
+    try {
+      const approved = await approveAttempts(selectedBatch);
+      setSelectedBatch([]);
+      setReviewMessage(`${approved} ${approved === 1 ? "entrega aprobada" : "entregas aprobadas"}.`);
+    } catch (error) {
+      setReviewMessage(
+        error instanceof Error ? error.message : "Una entrega no pudo procesarse.",
+      );
+    } finally {
+      setBatchBusy(false);
+    }
   }
 
   function addInlineComment(event: FormEvent<HTMLFormElement>) {
@@ -881,6 +930,17 @@ function ReviewQueue() {
               {visibleQueue.length === 1 ? "entrega" : "entregas"}
             </h2>
           </div>
+          {visibleQueue.length > 1 ? (
+            <button
+              className="button secondary compact-button"
+              type="button"
+              disabled={selectedBatch.length === 0 || batchBusy || frontendOnly}
+              onClick={() => void approveSelected()}
+            >
+              {batchBusy ? <LoaderCircle className="spin" aria-hidden="true" /> : <Check aria-hidden="true" />}
+              Aprobar {selectedBatch.length || "selección"}
+            </button>
+          ) : null}
         </div>
         <div className="review-list-filters">
           <label className="search-field">
@@ -908,22 +968,35 @@ function ReviewQueue() {
           </select>
         </div>
         {visibleQueue.map((entry) => (
-          <button
-            className={`review-list-item ${selected?.attempt?.id === entry.attempt?.id ? "is-active" : ""}`}
-            type="button"
-            key={entry.attempt.id}
-            onClick={() => selectReview(entry.attempt.id)}
-          >
-            <span className="avatar">{initials(entry.student?.displayName ?? "?")}</span>
-            <span>
-              <strong>{entry.student?.displayName}</strong>
-              <small>{entry.assignment.title}</small>
-              <em>
-                {`${LANGUAGE_META[entry.attempt.language].shortLabel} · ${formatDate(entry.attempt.createdAt, true)}`}
-              </em>
-            </span>
-            <ArrowRight aria-hidden="true" />
-          </button>
+          <div className="review-select-row" key={entry.attempt.id}>
+            {visibleQueue.length > 1 ? (
+              <input
+                type="checkbox"
+                aria-label={`Seleccionar entrega de ${entry.student.displayName}`}
+                checked={selectedBatch.includes(entry.attempt.id)}
+                onChange={(event) =>
+                  setSelectedBatch((current) =>
+                    event.target.checked
+                      ? [...current, entry.attempt.id]
+                      : current.filter((id) => id !== entry.attempt.id),
+                  )
+                }
+              />
+            ) : null}
+            <button
+              className={`review-list-item ${selected?.attempt.id === entry.attempt.id ? "is-active" : ""}`}
+              type="button"
+              onClick={() => selectReview(entry.attempt.id)}
+            >
+              <span className="avatar">{initials(entry.student.displayName)}</span>
+              <span>
+                <strong>{entry.student.displayName}</strong>
+                <small>{entry.assignment.title}</small>
+                <em>{`${LANGUAGE_META[entry.attempt.language].shortLabel} · ${formatDate(entry.attempt.createdAt, true)}`}</em>
+              </span>
+              <ArrowRight aria-hidden="true" />
+            </button>
+          </div>
         ))}
         {visibleQueue.length === 0 ? (
           <div className="empty-state compact-empty">
@@ -1050,7 +1123,9 @@ function ReviewQueue() {
               </ul>
             ) : null}
             <fieldset className="review-criteria">
-              <legend>Lista rápida (opcional)</legend>
+              <legend>
+                {selectedRubric ? selectedRubric.title : "Lista rápida"} (opcional)
+              </legend>
               {criteria.map((entry) => (
                 <label key={entry.id}>
                   <input
@@ -1111,6 +1186,65 @@ function ReviewQueue() {
   );
 }
 
+function ReviewRubricsManager() {
+  const { snapshot, frontendOnly, saveReviewRubric, deleteReviewRubric } = useClassroom();
+  const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  if (!snapshot) return null;
+  const editing = snapshot.reviewRubrics.find((entry) => entry.id === editingId);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setBusy(true);
+    setMessage("");
+    try {
+      await saveReviewRubric(editingId, {
+        title: String(data.get("rubricTitle") ?? ""),
+        criteria: formLines(data.get("rubricCriteria")),
+      });
+      setOpen(false);
+      setEditingId(null);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar la pauta.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rubrics-manager" aria-labelledby="rubrics-title">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">CORRECCIÓN</p>
+          <h2 id="rubrics-title">Pautas reutilizables</h2>
+          <p className="section-description">Preguntas breves que puedes asociar a cualquier tarea.</p>
+        </div>
+        <button className="button secondary" type="button" disabled={frontendOnly} onClick={() => { setEditingId(null); setOpen(true); }}>
+          <Plus aria-hidden="true" /> Nueva pauta
+        </button>
+      </div>
+      {open ? (
+        <form className="rubric-form" onSubmit={submit}>
+          <label><span>Nombre</span><input name="rubricTitle" required maxLength={80} defaultValue={editing?.title ?? ""} placeholder="Ej. Funciones y retornos" /></label>
+          <label><span>Una pregunta por línea</span><textarea name="rubricCriteria" required rows={4} defaultValue={editing?.criteria.map((entry) => entry.label).join("\n") ?? ""} placeholder={"Devuelve el valor correcto\nSe entiende cómo lo resolvió"} /></label>
+          <div className="form-actions"><span>Entre 1 y 10 preguntas.</span><button className="button ghost" type="button" onClick={() => { setOpen(false); setEditingId(null); }}>Cancelar</button><button className="button primary" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : <Save />} Guardar pauta</button></div>
+          {message ? <p className="form-error" role="alert">{message}</p> : null}
+        </form>
+      ) : null}
+      <div className="rubric-list">
+        {snapshot.reviewRubrics.map((rubric) => {
+          const useCount = snapshot.assignments.filter((entry) => entry.rubricId === rubric.id).length;
+          return <article key={rubric.id}><span><strong>{rubric.title}</strong><small>{rubric.criteria.length} preguntas · {useCount} tareas</small></span><button className="icon-button" type="button" aria-label={`Editar pauta ${rubric.title}`} disabled={frontendOnly} onClick={() => { setEditingId(rubric.id); setOpen(true); }}><Pencil /></button><button className="icon-button danger-button" type="button" aria-label={`Eliminar pauta ${rubric.title}`} disabled={frontendOnly || useCount > 0} title={useCount > 0 ? "Quita la pauta de sus tareas antes de eliminarla" : "Eliminar pauta"} onClick={() => void deleteReviewRubric(rubric.id)}><Trash2 /></button></article>;
+        })}
+      </div>
+    </section>
+  );
+}
+
 function AssignmentsManager() {
   const {
     snapshot,
@@ -1151,6 +1285,7 @@ function AssignmentsManager() {
       points: Number(data.get("points") || selectedMission.points),
       allowedLanguages: languageSelection,
       studentIds: studentSelection,
+      rubricId: String(data.get("rubricId") || "") || undefined,
     };
     setBusyId("create");
     setActionError("");
@@ -1197,6 +1332,7 @@ function AssignmentsManager() {
         title: String(data.get("title") ?? ""),
         instructions: String(data.get("instructions") ?? ""),
         dueAt: new Date(String(data.get("dueAt"))).toISOString(),
+        rubricId: String(data.get("rubricId") || "") || undefined,
       });
       setEditingId(null);
     } catch (error) {
@@ -1228,6 +1364,7 @@ function AssignmentsManager() {
 
   return (
     <section className="mentor-section" aria-labelledby="assignments-manager-title">
+      <ReviewRubricsManager />
       <div className="section-header">
         <div>
           <p className="eyebrow">PLANIFICACIÓN</p>
@@ -1274,6 +1411,13 @@ function AssignmentsManager() {
           <label>
             <span>XP</span>
             <input name="points" type="number" min="10" max="2000" step="10" defaultValue="100" required />
+          </label>
+          <label className="form-span-2">
+            <span>Pauta de corrección (opcional)</span>
+            <select name="rubricId" defaultValue="">
+              <option value="">Lista general</option>
+              {snapshot.reviewRubrics.map((rubric) => <option value={rubric.id} key={rubric.id}>{rubric.title}</option>)}
+            </select>
           </label>
           <fieldset className="language-fieldset form-span-2">
             <legend>Lenguajes permitidos</legend>
@@ -1516,6 +1660,13 @@ function AssignmentsManager() {
                     required
                     defaultValue={toDateTimeLocal(assignment.dueAt)}
                   />
+                </label>
+                <label>
+                  <span>Pauta de corrección</span>
+                  <select name="rubricId" defaultValue={assignment.rubricId ?? ""}>
+                    <option value="">Lista general</option>
+                    {snapshot.reviewRubrics.map((rubric) => <option value={rubric.id} key={rubric.id}>{rubric.title}</option>)}
+                  </select>
                 </label>
                 <div className="form-actions form-span-2">
                   <span>La misión, estudiantes, lenguajes y XP no cambian.</span>

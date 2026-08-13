@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { createDemoSnapshot } from "../src/data/demo-classroom";
 
 async function loginAsMentor(page: Page) {
   await page.goto("./");
@@ -100,6 +101,58 @@ test("mentor creates an assignment for selected students", async ({ page }) => {
   await expect(
     page.locator(".assignment-admin-item").filter({ hasText: "Prueba de aula" }),
   ).toContainText("Aviso fallido");
+});
+
+test("mentor creates a reusable review guide and assigns it to a task", async ({
+  page,
+}) => {
+  await loginAsMentor(page);
+  await page.getByRole("link", { name: "Tareas", exact: true }).click();
+  await page.getByRole("button", { name: "Nueva pauta" }).click();
+  await page.getByLabel("Nombre").fill("Funciones simples");
+  await page
+    .getByLabel("Una pregunta por línea")
+    .fill("Devuelve el valor pedido\nNo imprime la respuesta");
+  await page.getByRole("button", { name: "Guardar pauta" }).click();
+  await expect(page.getByText("Funciones simples")).toBeVisible();
+
+  await page.getByRole("button", { name: "Nueva tarea" }).click();
+  await page.getByLabel("Misión").selectOption({ index: 1 });
+  await page.getByLabel("Título de la tarea").fill("Tarea con pauta");
+  await page.getByLabel("Pauta de corrección (opcional)").selectOption({
+    label: "Funciones simples",
+  });
+  await page.getByRole("button", { name: "Publicar tarea" }).click();
+  await expect(page.getByText("Tarea con pauta")).toBeVisible();
+});
+
+test("mentor can approve several available submissions", async ({ page }) => {
+  await loginAsMentor(page);
+  await page.evaluate((baseSnapshot) => {
+    const key = "tomatin.v2.demo-classroom";
+    const snapshot = JSON.parse(
+      window.localStorage.getItem(key) ?? JSON.stringify(baseSnapshot),
+    );
+    const sourceAttempt = snapshot.attempts[0];
+    snapshot.progress = snapshot.progress.map((entry: { userId: string; assignmentId: string; status: string }) =>
+      entry.userId === "student-03" && entry.assignmentId === "assignment-once"
+        ? { ...entry, status: "awaiting_review", submittedAt: new Date().toISOString() }
+        : entry,
+    );
+    snapshot.attempts.push({
+      ...sourceAttempt,
+      id: "attempt-antonia-once",
+      userId: "student-03",
+      createdAt: new Date().toISOString(),
+    });
+    window.localStorage.setItem(key, JSON.stringify(snapshot));
+  }, createDemoSnapshot());
+  await page.reload();
+  await page.getByRole("link", { name: /^Revisiones/ }).click();
+  await page.getByLabel("Seleccionar entrega de Camila Rojas").check();
+  await page.getByLabel("Seleccionar entrega de Antonia Pérez").check();
+  await page.getByRole("button", { name: "Aprobar 2" }).click();
+  await expect(page.getByText("Cola al día")).toBeVisible();
 });
 
 test("mentor creates a reward and fulfills a student redemption", async ({

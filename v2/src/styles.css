@@ -5206,6 +5206,75 @@ fieldset legend {
   margin-top: 10px;
 }
 
+.review-list-heading {
+  gap: 8px;
+}
+
+.review-select-row {
+  display: grid;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.review-select-row > input {
+  width: 15px;
+  min-height: 15px;
+  margin: 0 0 0 10px;
+  accent-color: var(--green);
+}
+
+.review-select-row .review-list-item {
+  width: 100%;
+  border-top: 0;
+}
+
+.rubrics-manager {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.rubric-form {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid rgba(103, 232, 165, 0.22);
+  background: rgba(103, 232, 165, 0.03);
+}
+
+.rubric-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.rubric-list article {
+  display: grid;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  grid-template-columns: minmax(0, 1fr) 30px 30px;
+}
+
+.rubric-list article > span {
+  display: grid;
+}
+
+.rubric-list strong {
+  font-size: 10px;
+}
+
+.rubric-list small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
 .assignment-form {
   display: grid;
   gap: 14px;

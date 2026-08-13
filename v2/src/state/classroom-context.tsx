@@ -24,6 +24,7 @@ import type {
   ProfileUpdateInput,
   RewardInput,
   Review,
+  ReviewRubricInput,
   UpdateAssignmentInput,
 } from "@/types";
 import {
@@ -65,9 +66,12 @@ interface ClassroomContextValue {
     comment: string,
     details?: Pick<Review, "inlineComments" | "criteria">,
   ) => Promise<void>;
+  approveAttempts: (attemptIds: string[]) => Promise<number>;
   createAssignment: (input: CreateAssignmentInput) => Promise<void>;
   retryAssignmentNotification: (assignmentId: string) => Promise<void>;
   updateAssignment: (id: string, input: UpdateAssignmentInput) => Promise<void>;
+  saveReviewRubric: (id: string | null, input: ReviewRubricInput) => Promise<void>;
+  deleteReviewRubric: (id: string) => Promise<void>;
   deleteAssignment: (id: string) => Promise<void>;
   createInvitation: (input: InvitationInput) => Promise<void>;
   updateInvitation: (id: string, input: InvitationInput) => Promise<void>;
@@ -119,6 +123,7 @@ function readDemoSnapshot(): ClassroomSnapshot {
         rewards: parsed.rewards ?? [],
         rewardRedemptions: parsed.rewardRedemptions ?? [],
         githubNotifications: parsed.githubNotifications ?? [],
+        reviewRubrics: parsed.reviewRubrics ?? [],
       };
     }
   } catch {
@@ -243,6 +248,7 @@ async function fetchSupabaseSnapshot(session: Session) {
     rewards,
     rewardRedemptions,
     githubNotifications,
+    reviewRubrics,
   ] = await Promise.all([
     supabase.from("classes").select("*").eq("id", classId).single(),
     supabase
@@ -284,6 +290,13 @@ async function fetchSupabaseSnapshot(session: Session) {
           .eq("class_id", classId)
           .order("updated_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
+    isStaff
+      ? supabase
+          .from("review_rubrics")
+          .select("*")
+          .eq("class_id", classId)
+          .order("updated_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const firstError = [
@@ -299,6 +312,7 @@ async function fetchSupabaseSnapshot(session: Session) {
     rewards,
     rewardRedemptions,
     githubNotifications,
+    reviewRubrics,
   ].find((query) => query.error)?.error;
   if (firstError) throw firstError;
 
@@ -338,6 +352,7 @@ async function fetchSupabaseSnapshot(session: Session) {
         allowedLanguages: row.allowed_languages,
         studentIds: row.student_ids ?? [],
         status: row.status,
+        rubricId: row.rubric_id ?? undefined,
       })),
       progress: (progress.data ?? []).map((row) => ({
         userId: row.user_id,
@@ -447,6 +462,14 @@ async function fetchSupabaseSnapshot(session: Session) {
         attempts: row.attempts,
         lastError: row.last_error ?? undefined,
         sentAt: row.sent_at ?? undefined,
+        updatedAt: row.updated_at,
+      })),
+      reviewRubrics: (reviewRubrics.data ?? []).map((row) => ({
+        id: row.id,
+        classId: row.class_id,
+        title: row.title,
+        criteria: row.criteria ?? [],
+        createdAt: row.created_at,
         updatedAt: row.updated_at,
       })),
     },
@@ -821,6 +844,72 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     [persistDemo, previewStudentId, profile, refresh, snapshot],
   );
 
+  const approveAttempts = useCallback(
+    async (attemptIds: string[]) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot || !profile) return 0;
+      const uniqueIds = [...new Set(attemptIds)].slice(0, 25);
+      if (supabase) {
+        let approved = 0;
+        for (const attemptId of uniqueIds) {
+          const { error: reviewError } = await supabase.rpc("review_submission", {
+            p_attempt_id: attemptId,
+            p_decision: "approved",
+            p_comment: "Buen trabajo. La entrega cumple los objetivos de la misión.",
+            p_inline_comments: [],
+            p_criteria: [],
+          });
+          if (reviewError) throw new Error(`${approved} aprobadas. ${reviewError.message}`);
+          approved += 1;
+        }
+        await refresh();
+        return approved;
+      }
+
+      const now = new Date().toISOString();
+      const attempts = snapshot.attempts.filter((entry) => uniqueIds.includes(entry.id));
+      const reviews = attempts.map((attempt) => ({
+        id: crypto.randomUUID(),
+        attemptId: attempt.id,
+        mentorId: profile.id,
+        decision: "approved" as const,
+        comment: "Buen trabajo. La entrega cumple los objetivos de la misión.",
+        inlineComments: [],
+        criteria: [],
+        createdAt: now,
+      }));
+      persistDemo({
+        ...snapshot,
+        reviews: [...reviews, ...snapshot.reviews],
+        progress: snapshot.progress.map((entry) => {
+          const attempt = attempts.find(
+            (item) => item.userId === entry.userId && item.assignmentId === entry.assignmentId,
+          );
+          const review = attempt
+            ? reviews.find((item) => item.attemptId === attempt.id)
+            : undefined;
+          return review ? progressAfterReview(entry, review) : entry;
+        }),
+        notifications: [
+          ...snapshot.notifications,
+          ...attempts.map((attempt) => ({
+            id: crypto.randomUUID(),
+            userId: attempt.userId,
+            classId: snapshot.classroom.id,
+            assignmentId: attempt.assignmentId,
+            attemptId: attempt.id,
+            reviewId: reviews.find((entry) => entry.attemptId === attempt.id)?.id,
+            title: "Entrega aprobada",
+            body: "Buen trabajo. La entrega cumple los objetivos de la misión.",
+            createdAt: now,
+          })),
+        ],
+      });
+      return attempts.length;
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
   const createAssignment = useCallback(
     async (input: CreateAssignmentInput) => {
       if (isFrontendOnly) throw new Error(frontendOnlyMessage);
@@ -839,6 +928,14 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         if (assignmentError) {
           setError(assignmentError.message);
           throw assignmentError;
+        }
+        if (input.rubricId) {
+          const { error: rubricError } = await supabase
+            .from("assignments")
+            .update({ rubric_id: input.rubricId })
+            .eq("id", assignmentId)
+            .eq("class_id", snapshot.classroom.id);
+          if (rubricError) throw rubricError;
         }
         await refresh();
         try {
@@ -872,6 +969,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             id,
             missionVersion,
             status: "published",
+            rubricId: input.rubricId,
           },
         ],
         progress: [
@@ -976,6 +1074,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             title,
             instructions,
             due_at: dueAt.toISOString(),
+            rubric_id: input.rubricId ?? null,
           })
           .eq("id", id)
           .eq("class_id", snapshot.classroom.id)
@@ -998,8 +1097,88 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 title,
                 instructions,
                 dueAt: dueAt.toISOString(),
+                rubricId: input.rubricId,
               }
             : assignment,
+        ),
+      });
+    },
+    [persistDemo, previewStudentId, refresh, snapshot],
+  );
+
+  const saveReviewRubric = useCallback(
+    async (id: string | null, input: ReviewRubricInput) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot || !profile) return;
+      const title = input.title.trim();
+      const labels = input.criteria.map((entry) => entry.trim()).filter(Boolean);
+      if (!title || labels.length === 0 || labels.length > 10) {
+        throw new Error("Escribe un nombre y entre 1 y 10 preguntas.");
+      }
+      const criteria = labels.map((label, index) => ({
+        id: `${index + 1}-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 36)}`,
+        label,
+      }));
+      if (supabase) {
+        const payload = {
+          class_id: snapshot.classroom.id,
+          title,
+          criteria,
+          updated_at: new Date().toISOString(),
+        };
+        const query = id
+          ? supabase.from("review_rubrics").update(payload).eq("id", id)
+          : supabase.from("review_rubrics").insert({
+              ...payload,
+              created_by: profile.id,
+            });
+        const { error: rubricError } = await query;
+        if (rubricError) throw rubricError;
+        await refresh();
+        return;
+      }
+      const now = new Date().toISOString();
+      persistDemo({
+        ...snapshot,
+        reviewRubrics: id
+          ? snapshot.reviewRubrics.map((entry) =>
+              entry.id === id ? { ...entry, title, criteria, updatedAt: now } : entry,
+            )
+          : [
+              {
+                id: crypto.randomUUID(),
+                classId: snapshot.classroom.id,
+                title,
+                criteria,
+                createdAt: now,
+                updatedAt: now,
+              },
+              ...snapshot.reviewRubrics,
+            ],
+      });
+    },
+    [persistDemo, previewStudentId, profile, refresh, snapshot],
+  );
+
+  const deleteReviewRubric = useCallback(
+    async (id: string) => {
+      if (isFrontendOnly) throw new Error(frontendOnlyMessage);
+      if (previewStudentId || !snapshot) return;
+      if (supabase) {
+        const { error: rubricError } = await supabase
+          .from("review_rubrics")
+          .delete()
+          .eq("id", id)
+          .eq("class_id", snapshot.classroom.id);
+        if (rubricError) throw rubricError;
+        await refresh();
+        return;
+      }
+      persistDemo({
+        ...snapshot,
+        reviewRubrics: snapshot.reviewRubrics.filter((entry) => entry.id !== id),
+        assignments: snapshot.assignments.map((entry) =>
+          entry.rubricId === id ? { ...entry, rubricId: undefined } : entry,
         ),
       });
     },
@@ -1750,6 +1929,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       error,
       clearError,
       backendMode,
+      approveAttempts,
       frontendOnly: isFrontendOnly,
       loginDemo,
       logout,
@@ -1760,6 +1940,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       retryAssignmentNotification,
       updateAssignment,
       deleteAssignment,
+      deleteReviewRubric,
       createInvitation,
       updateInvitation,
       getInvitationToken,
@@ -1768,6 +1949,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
       dismissNotification,
       dismissAllNotifications,
       saveReward,
+      saveReviewRubric,
       deleteReward,
       redeemReward,
       updateRedemptionStatus,

@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(45);
+select plan(49);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -308,6 +308,29 @@ select is(
   'students cannot list classroom invitation links'
 );
 
+select is(
+  (select count(*) from public.review_rubrics),
+  0::bigint,
+  'students cannot read classroom review guides'
+);
+
+select throws_ok(
+  $$
+    insert into public.review_rubrics (
+      class_id, title, criteria, created_by
+    )
+    values (
+      '00000000-0000-0000-0000-000000000201',
+      'Forged guide',
+      '[{"id":"answer","label":"Da la respuesta"}]',
+      '00000000-0000-0000-0000-000000000102'
+    )
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "review_rubrics"',
+  'students cannot create review guides'
+);
+
 select throws_ok(
   $$
     select *
@@ -470,6 +493,27 @@ select set_config(
   true
 );
 select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select lives_ok(
+  $$
+    insert into public.review_rubrics (
+      class_id, title, criteria, created_by
+    )
+    values (
+      '00000000-0000-0000-0000-000000000201',
+      'Funciones simples',
+      '[{"id":"answer","label":"Devuelve el valor pedido"}]',
+      '00000000-0000-0000-0000-000000000101'
+    )
+  $$,
+  'class staff can create reusable review guides'
+);
+
+select is(
+  (select count(*) from public.review_rubrics),
+  1::bigint,
+  'class staff can read their reusable review guides'
+);
 
 select is(
   (
