@@ -4,6 +4,18 @@ import AxeBuilder from "@axe-core/playwright";
 test.beforeEach(async ({ page }) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Entrar como estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Hola, Camila/ })).toBeVisible();
+});
+
+test("student can reopen the short getting started guide", async ({ page }) => {
+  await page.getByRole("button", { name: "Abrir guía rápida" }).click();
+  await expect(page.getByRole("heading", { name: "Abre tu próxima tarea" })).toBeVisible();
+  await page.getByRole("button", { name: "Siguiente" }).click();
+  await expect(page.getByRole("heading", { name: "Ejecuta antes de entregar" })).toBeVisible();
+  await page.getByRole("button", { name: "Siguiente" }).click();
+  await expect(page.getByRole("heading", { name: "Entrega y espera feedback" })).toBeVisible();
+  await page.getByRole("button", { name: "Ir a mis tareas" }).click();
   await expect(page.getByRole("heading", { name: /Hola, Camila/ })).toBeVisible();
 });
 

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   BookCopy,
   BookOpen,
   CalendarPlus,
+  CircleHelp,
   ChevronDown,
   ClipboardCheck,
   Eye,
@@ -28,6 +29,10 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import {
+  GettingStarted,
+  shouldOpenGettingStarted,
+} from "@/components/GettingStarted";
 import { getPendingReviews } from "@/models/reviews";
 import { useClassroom } from "@/state/classroom-context";
 
@@ -68,6 +73,7 @@ export function AppShell() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const unread =
@@ -83,6 +89,12 @@ export function AppShell() {
   const students =
     snapshot?.profiles.filter((entry) => entry.role === "student") ?? [];
   const pendingReviews = snapshot ? getPendingReviews(snapshot).length : 0;
+
+  useEffect(() => {
+    if (profile && !isStudentPreview && shouldOpenGettingStarted(profile.id)) {
+      setGuideOpen(true);
+    }
+  }, [isStudentPreview, profile]);
 
   return (
     <div className={`app-shell ${frontendOnly ? "frontend-only" : ""}`}>
@@ -215,6 +227,17 @@ export function AppShell() {
             </span>
           </div>
           <div className="topbar-actions">
+            {!isStudentPreview ? (
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Abrir guía rápida"
+                title="Guía rápida"
+                onClick={() => setGuideOpen(true)}
+              >
+                <CircleHelp aria-hidden="true" />
+              </button>
+            ) : null}
             {isStudentPreview ? (
               <div className="preview-indicator" role="status">
                 <Eye aria-hidden="true" />
@@ -369,6 +392,7 @@ export function AppShell() {
         ) : null}
         <Outlet />
       </div>
+      <GettingStarted open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }

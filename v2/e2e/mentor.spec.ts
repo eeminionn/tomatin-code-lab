@@ -3,6 +3,10 @@ import { expect, test, type Page } from "@playwright/test";
 async function loginAsMentor(page: Page) {
   await page.goto("./");
   await page.getByRole("button", { name: "Entrar como eeminionn" }).click();
+  const guide = page.getByRole("dialog", { name: "Lo esencial está en un solo lugar" });
+  if (await guide.waitFor({ state: "visible", timeout: 2_000 }).then(() => true).catch(() => false)) {
+    await guide.getByRole("button", { name: "Entendido" }).click();
+  }
   await expect(
     page.getByRole("heading", { name: "Panel de eeminionn" }),
   ).toBeVisible();
@@ -72,6 +76,16 @@ test("mentor overview prioritizes actions without duplicate navigation", async (
   await expect(page.getByText("Ver más indicadores")).toBeVisible();
 });
 
+test("mentor can reopen the classroom preparation summary", async ({ page }) => {
+  await loginAsMentor(page);
+  await page.getByRole("button", { name: "Abrir guía rápida" }).click();
+  const guide = page.getByRole("dialog", {
+    name: "Lo esencial está en un solo lugar",
+  });
+  await expect(guide.getByText("Hay estudiantes en el curso")).toBeVisible();
+  await expect(guide.getByText("Hay al menos una tarea publicada")).toBeVisible();
+});
+
 test("mentor creates an assignment for selected students", async ({ page }) => {
   await loginAsMentor(page);
   await page.getByRole("link", { name: "Tareas", exact: true }).click();
@@ -93,6 +107,7 @@ test("mentor creates a reward and fulfills a student redemption", async ({
 }) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Entrar como estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
   await page.getByRole("link", { name: "Premios" }).click();
   const reward = page.locator(".reward-card").filter({ hasText: "Pista extra" });
   await reward.getByRole("button", { name: "Canjear" }).click();
@@ -104,6 +119,7 @@ test("mentor creates a reward and fulfills a student redemption", async ({
   await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();
 
   await page.getByRole("button", { name: "Entrar como eeminionn" }).click();
+  await page.getByRole("button", { name: "Entendido" }).click();
   await page.getByRole("link", { name: "Premios", exact: true }).click();
   const redemption = page
     .locator(".redemption-admin-row")

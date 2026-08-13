@@ -5,6 +5,7 @@ test("mobile navigation and workspace remain inside the viewport", async ({
 }) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Entrar como estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Tienes 3 tareas pendientes" }),
   ).toBeVisible();
@@ -46,6 +47,7 @@ test("mobile rewards keep cards and confirmation inside the viewport", async ({
 }) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Entrar como estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
   await page.getByRole("button", { name: "Abrir navegación" }).click();
   await page.getByRole("link", { name: "Premios" }).click();
   await expect(

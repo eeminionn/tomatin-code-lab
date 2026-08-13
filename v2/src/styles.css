@@ -5773,6 +5773,137 @@ fieldset legend {
   grid-column: 1 / -1;
 }
 
+.getting-started-backdrop {
+  z-index: 80;
+}
+
+.getting-started {
+  position: relative;
+  width: min(460px, calc(100vw - 28px));
+  padding: 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+
+.getting-started-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.getting-started-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 18px;
+  place-items: center;
+  border: 1px solid rgba(103, 232, 165, 0.3);
+  border-radius: 5px;
+  color: var(--green);
+  background: rgba(103, 232, 165, 0.08);
+}
+
+.getting-started-icon svg {
+  width: 23px;
+}
+
+.getting-started h2 {
+  margin: 6px 0 9px;
+  font-size: 23px;
+}
+
+.getting-started > p:not(.eyebrow) {
+  margin: 0 0 20px;
+  color: var(--muted-strong);
+  line-height: 1.55;
+}
+
+.guide-progress {
+  display: grid;
+  gap: 6px;
+  margin: 22px 0;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.guide-progress span {
+  height: 3px;
+  background: var(--line-strong);
+}
+
+.guide-progress span.is-active {
+  background: var(--green);
+}
+
+.getting-started-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.setup-checklist {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-checklist li {
+  display: grid;
+  min-height: 46px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+}
+
+.setup-checklist li > svg,
+.setup-checklist li > span:first-child {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+}
+
+.setup-checklist li.is-done > svg {
+  border: 0;
+  color: var(--green);
+}
+
+.setup-checklist strong,
+.setup-checklist small {
+  font-size: 9px;
+}
+
+.setup-checklist small {
+  color: var(--yellow);
+}
+
+.setup-checklist .is-done small {
+  color: var(--green);
+}
+
+.getting-started-tip {
+  display: flex;
+  align-items: start;
+  gap: 9px;
+  margin: 14px 0 20px;
+  padding: 10px;
+  color: var(--muted-strong);
+  background: rgba(101, 201, 232, 0.055);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.getting-started-tip svg {
+  width: 16px;
+  flex: 0 0 auto;
+  color: var(--cyan);
+}
+
 .rewards-header {
   align-items: center;
 }

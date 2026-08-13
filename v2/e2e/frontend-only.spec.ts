@@ -29,6 +29,7 @@ test("frontend sandbox keeps the current student UI without backend calls", asyn
 
   await expect(page.getByText("Sandbox local de Aula 3.0")).toBeVisible();
   await page.getByRole("button", { name: "Ver interfaz de estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
   await expect(
     page.getByText("Vista para contribuir al frontend"),
   ).toBeVisible();
@@ -66,6 +67,7 @@ test("frontend sandbox renders rewards while keeping redemptions disabled", asyn
   const backendRequests = watchBackendRequests(page);
   await page.goto("./");
   await page.getByRole("button", { name: "Ver interfaz de estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
   await page.getByRole("link", { name: "Premios" }).click();
   await expect(
     page.getByRole("heading", { name: "Premios", exact: true }),
@@ -80,6 +82,7 @@ test("frontend sandbox displays mentor controls but blocks mutations", async ({
   const backendRequests = watchBackendRequests(page);
   await page.goto("./");
   await page.getByRole("button", { name: "Ver panel del mentor" }).click();
+  await page.getByRole("button", { name: "Entendido" }).click();
   await expect(
     page.getByRole("heading", { name: "Panel de eeminionn" }),
   ).toBeVisible();
@@ -109,6 +112,7 @@ test("frontend sandbox remains usable on a narrow viewport", async ({ page }) =>
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("./");
   await page.getByRole("button", { name: "Ver interfaz de estudiante" }).click();
+  await page.getByRole("button", { name: "Omitir", exact: true }).click();
 
   await expect(
     page.getByText("Vista para contribuir al frontend"),
