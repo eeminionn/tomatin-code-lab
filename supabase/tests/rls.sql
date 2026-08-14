@@ -271,6 +271,8 @@ from public.record_remote_attempt(
   '{"status":"passed","tests":[{"id":"visible","passed":true}]}'
 );
 
+grant select on accepted_submission to authenticated;
+
 select is(
   (select count(*) from accepted_submission),
   1::bigint,
