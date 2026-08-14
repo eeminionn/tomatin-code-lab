@@ -25,6 +25,11 @@ interface VariantRow {
   };
 }
 
+interface RecordedAttemptRow {
+  attempt_id: string;
+  attempt_created_at: string;
+}
+
 const LANGUAGES = new Set<Language>(["javascript", "python", "cpp"]);
 const CODE_LIMIT = 65_536;
 const INPUT_LIMIT = 16_384;
@@ -33,6 +38,16 @@ function bearerToken(request: Request): string | null {
   const value = request.headers.get("authorization");
   if (!value?.startsWith("Bearer ")) return null;
   return value.slice("Bearer ".length);
+}
+
+function submissionLockMessage(status: string | null | undefined) {
+  if (status === "awaiting_review") {
+    return "Tu entrega ya está esperando revisión del mentor.";
+  }
+  if (status === "approved") {
+    return "Esta tarea ya fue aprobada.";
+  }
+  return null;
 }
 
 export function createExecutionHandler(kind: "run" | "submit") {
@@ -114,6 +129,7 @@ export function createExecutionHandler(kind: "run" | "submit") {
     }
 
     let classId: string | null = null;
+    let isAssignedStudent = false;
     let missionVersion = body.missionVersion;
     let assignment:
       | {
@@ -150,6 +166,7 @@ export function createExecutionHandler(kind: "run" | "submit") {
         (membership.role === "owner" || membership.role === "mentor");
       const isAssigned =
         membership?.status === "active" && data.student_ids.includes(userId);
+      isAssignedStudent = Boolean(isAssigned && !isStaff);
 
       if (!isStaff && !isAssigned) {
         return jsonResponse(request, { error: "No tienes acceso a esta tarea." }, 403);
@@ -164,10 +181,10 @@ export function createExecutionHandler(kind: "run" | "submit") {
 
       assignment = data;
       classId = data.class_id;
-      if (isAssigned && !isStaff) {
+      if (isAssignedStudent) {
         const { data: progress, error: progressError } = await admin
           .from("student_progress")
-          .select("mission_version")
+          .select("mission_version, status")
           .eq("user_id", userId)
           .eq("assignment_id", data.id)
           .single();
@@ -177,6 +194,12 @@ export function createExecutionHandler(kind: "run" | "submit") {
             { error: "No se encontró la versión asignada al estudiante." },
             409,
           );
+        }
+        if (kind === "submit") {
+          const lockMessage = submissionLockMessage(progress.status);
+          if (lockMessage) {
+            return jsonResponse(request, { error: lockMessage }, 409);
+          }
         }
         missionVersion = progress.mission_version;
       } else {
@@ -240,25 +263,38 @@ export function createExecutionHandler(kind: "run" | "submit") {
       hiddenTests,
     );
 
-    const { data: attempt, error: attemptError } = await admin
-      .from("attempts")
-      .insert({
-        class_id: classId,
-        user_id: userId,
-        mission_id: body.missionId,
-        assignment_id: assignment?.id ?? null,
-        mission_version: missionVersion,
-        language: body.language,
-        kind,
-        remote: true,
-        code: body.code,
-        result,
-      })
-      .select("id, created_at")
-      .single();
-    if (attemptError || !attempt) {
+    const { data: attemptRows, error: attemptError } = await admin.rpc(
+      "record_remote_attempt",
+      {
+        p_user_id: userId,
+        p_class_id: classId,
+        p_assignment_id: assignment?.id ?? null,
+        p_mission_id: body.missionId,
+        p_mission_version: missionVersion,
+        p_language: body.language,
+        p_kind: kind,
+        p_code: body.code,
+        p_result: result,
+      },
+    );
+    if (attemptError) {
+      const lockMessage = ["awaiting_review", "approved"]
+        .map(submissionLockMessage)
+        .find((message) => message && attemptError.message.includes(message));
+      if (lockMessage) {
+        return jsonResponse(request, { error: lockMessage }, 409);
+      }
+      console.error("record_remote_attempt failed", attemptError);
       return jsonResponse(request, { error: "No se pudo registrar el intento." }, 503);
     }
+    const attemptRow = (attemptRows as RecordedAttemptRow[] | null)?.[0];
+    if (!attemptRow) {
+      return jsonResponse(request, { error: "No se pudo registrar el intento." }, 503);
+    }
+    const attempt = {
+      id: attemptRow.attempt_id,
+      created_at: attemptRow.attempt_created_at,
+    };
 
     const repositorySync =
       kind === "submit"
@@ -288,39 +324,7 @@ export function createExecutionHandler(kind: "run" | "submit") {
 
     if (assignment) {
       const passed = result.status === "passed";
-      const progressPatch: Record<string, unknown> = {
-        language: body.language,
-        last_event:
-          kind === "submit" && passed ? "submitted" : "ran",
-        last_activity_at: attempt.created_at,
-      };
-      if (kind === "submit" && passed) {
-        progressPatch.status = "awaiting_review";
-        progressPatch.submitted_at = attempt.created_at;
-      }
-
-      const { data: currentProgress } = await admin
-        .from("student_progress")
-        .select("status, attempts")
-        .eq("user_id", userId)
-        .eq("assignment_id", assignment.id)
-        .single();
-      if (currentProgress) {
-        if (
-          !progressPatch.status &&
-          currentProgress.status === "not_started"
-        ) {
-          progressPatch.status = "in_progress";
-        }
-        progressPatch.attempts = currentProgress.attempts + 1;
-        await admin
-          .from("student_progress")
-          .update(progressPatch)
-          .eq("user_id", userId)
-          .eq("assignment_id", assignment.id);
-      }
-
-      if (kind === "submit" && passed) {
+      if (kind === "submit" && passed && isAssignedStudent) {
         const { data: student } = await admin
           .from("profiles")
           .select("display_name")

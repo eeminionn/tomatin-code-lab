@@ -411,6 +411,13 @@ export function Component() {
   const mission =
     studentView && !validAssignment ? undefined : resolvedMission;
   const assignmentStatus = progress?.status ?? "not_started";
+  const submissionLockMessage =
+    assignmentStatus === "awaiting_review"
+      ? "Tu entrega ya está esperando revisión del mentor."
+      : assignmentStatus === "approved"
+        ? "Esta tarea ya fue aprobada."
+        : "";
+  const submissionLocked = Boolean(validAssignment && submissionLockMessage);
   const assignmentOverdue = validAssignment
     ? isOverdue(validAssignment.dueAt, assignmentStatus)
     : false;
@@ -776,6 +783,7 @@ export function Component() {
   async function execute(kind: AttemptKind) {
     if (
       isStudentPreview ||
+      (kind === "submit" && submissionLocked) ||
       (kind === "submit" && submitNeedsRun) ||
       (frontendOnly && (kind === "submit" || language === "cpp"))
     ) return;
@@ -817,11 +825,16 @@ export function Component() {
       createdAt: annotatedResult.createdAt,
     };
     recordAttempt(attempt);
-    if (validAssignment && activeProfile.role === "student") {
+    if (
+      validAssignment &&
+      activeProfile.role === "student" &&
+      kind === "run" &&
+      language !== "cpp"
+    ) {
       recordActivity(
         validAssignment.id,
         language,
-        kind === "submit" ? "submitted" : "ran",
+        "ran",
       );
     }
     setRunning(null);
@@ -1496,15 +1509,18 @@ export function Component() {
               disabled={
                 Boolean(running) ||
                 isStudentPreview ||
+                submissionLocked ||
                 submitNeedsRun ||
                 frontendOnly
               }
               title={
                 frontendOnly
                   ? "Las entregas requieren el backend oficial"
-                  : submitNeedsRun
-                  ? "Ejecuta este código antes de entregarlo"
-                  : undefined
+                  : submissionLockMessage
+                    ? submissionLockMessage
+                    : submitNeedsRun
+                      ? "Ejecuta este código antes de entregarlo"
+                      : undefined
               }
               onClick={() => void execute("submit")}
             >

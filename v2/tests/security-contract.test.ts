@@ -36,6 +36,29 @@ describe("security contracts", () => {
     );
   });
 
+  it("accepts remote submissions atomically through a service-only RPC", () => {
+    const migration = readFileSync(
+      resolve(
+        "supabase/migrations/20260814170421_atomic_submission_lock.sql",
+      ),
+      "utf8",
+    );
+    const execute = readFileSync(
+      resolve("supabase/functions/_shared/execute.ts"),
+      "utf8",
+    );
+
+    expect(migration).toContain("for update");
+    expect(migration).toContain("submitted_attempt_id");
+    expect(migration).toContain("record_remote_attempt");
+    expect(migration).toContain("from public, anon, authenticated");
+    expect(migration).toContain("to service_role");
+    expect(execute).toContain('admin.rpc(\n      "record_remote_attempt"');
+    expect(execute.indexOf('"record_remote_attempt"')).toBeLessThan(
+      execute.indexOf("syncSubmissionToGitHub({"),
+    );
+  });
+
   it("versions student drafts and protects staff-only solutions", () => {
     const contracts = readFileSync(
       resolve(

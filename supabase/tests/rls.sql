@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(49);
+select plan(64);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -234,6 +234,153 @@ select is(
 set local role service_role;
 select set_config('request.jwt.claim.role', 'service_role', true);
 
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.record_remote_attempt(uuid,uuid,uuid,text,integer,text,text,text,jsonb)',
+    'EXECUTE'
+  ),
+  'service role can record a guarded remote attempt'
+);
+
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.record_remote_attempt(uuid,uuid,uuid,text,integer,text,text,text,jsonb)',
+    'EXECUTE'
+  ),
+  'students cannot call the guarded remote attempt RPC directly'
+);
+
+create temporary table accepted_submission on commit drop as
+select *
+from public.record_remote_attempt(
+  '00000000-0000-0000-0000-000000000102',
+  '00000000-0000-0000-0000-000000000201',
+  '00000000-0000-0000-0000-000000000301',
+  'p1-01-la-once',
+  (
+    select mission_version
+    from public.student_progress
+    where user_id = '00000000-0000-0000-0000-000000000102'
+      and assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  'python',
+  'submit',
+  'def total_once(precios, cantidades): return 42',
+  '{"status":"passed","tests":[{"id":"visible","passed":true}]}'
+);
+
+select is(
+  (select count(*) from accepted_submission),
+  1::bigint,
+  'the first passing submission is accepted once'
+);
+
+select is(
+  (
+    select status
+    from public.student_progress
+    where user_id = '00000000-0000-0000-0000-000000000102'
+      and assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  'awaiting_review',
+  'a passing submission moves progress into review atomically'
+);
+
+select is(
+  (
+    select submitted_attempt_id
+    from public.student_progress
+    where user_id = '00000000-0000-0000-0000-000000000102'
+      and assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  (select attempt_id from accepted_submission),
+  'progress points to the accepted active submission'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.record_remote_attempt(
+      '00000000-0000-0000-0000-000000000102',
+      '00000000-0000-0000-0000-000000000201',
+      '00000000-0000-0000-0000-000000000301',
+      'p1-01-la-once',
+      (
+        select mission_version
+        from public.student_progress
+        where user_id = '00000000-0000-0000-0000-000000000102'
+          and assignment_id = '00000000-0000-0000-0000-000000000301'
+      ),
+      'python',
+      'submit',
+      'def total_once(precios, cantidades): return 99',
+      '{"status":"passed","tests":[{"id":"visible","passed":true}]}'
+    )
+  $$,
+  'P0001',
+  'Tu entrega ya está esperando revisión del mentor.',
+  'a second active submission is rejected before insertion'
+);
+
+select is(
+  (
+    select count(*)
+    from public.attempts
+    where user_id = '00000000-0000-0000-0000-000000000102'
+      and assignment_id = '00000000-0000-0000-0000-000000000301'
+      and kind = 'submit'
+  ),
+  1::bigint,
+  'a rejected duplicate does not create an attempt'
+);
+
+select lives_ok(
+  $$
+    select *
+    from public.record_remote_attempt(
+      '00000000-0000-0000-0000-000000000102',
+      '00000000-0000-0000-0000-000000000201',
+      '00000000-0000-0000-0000-000000000301',
+      'p1-01-la-once',
+      (
+        select mission_version
+        from public.student_progress
+        where user_id = '00000000-0000-0000-0000-000000000102'
+          and assignment_id = '00000000-0000-0000-0000-000000000301'
+      ),
+      'python',
+      'run',
+      'def total_once(precios, cantidades): return 42',
+      '{"status":"passed","tests":[{"id":"visible","passed":true}]}'
+    )
+  $$,
+  'runs remain available while a submission is waiting for review'
+);
+
+select is(
+  (
+    select status
+    from public.student_progress
+    where user_id = '00000000-0000-0000-0000-000000000102'
+      and assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  'awaiting_review',
+  'a run cannot reopen locked progress'
+);
+
+select is(
+  (
+    select submitted_attempt_id
+    from public.student_progress
+    where user_id = '00000000-0000-0000-0000-000000000102'
+      and assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  (select attempt_id from accepted_submission),
+  'a run cannot replace the active submission pointer'
+);
+
 select is(
   (
     select count(*)
@@ -273,7 +420,11 @@ select set_config(
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select is(
-  (select count(*) from public.attempts),
+  (
+    select count(*)
+    from public.attempts
+    where user_id <> auth.uid()
+  ),
   0::bigint,
   'students cannot read another student code'
 );
@@ -524,6 +675,98 @@ select is(
   1::bigint,
   'the owner can review student attempts'
 );
+
+select lives_ok(
+  $$
+    select public.review_submission(
+      (select attempt_id from accepted_submission),
+      'changes_requested',
+      'Revisa el acumulador dentro del ciclo.',
+      '[]'::jsonb,
+      '[]'::jsonb
+    )
+  $$,
+  'requesting changes reviews the explicit active submission'
+);
+
+select is(
+  (
+    select status
+    from public.student_progress
+    where user_id = '00000000-0000-0000-0000-000000000102'
+      and assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  'changes_requested',
+  'requesting changes unlocks the assignment'
+);
+
+select is(
+  (
+    select submitted_attempt_id
+    from public.student_progress
+    where user_id = '00000000-0000-0000-0000-000000000102'
+      and assignment_id = '00000000-0000-0000-0000-000000000301'
+  ),
+  null::uuid,
+  'requesting changes clears the active submission pointer'
+);
+
+select throws_ok(
+  $$
+    select public.review_submission(
+      (select attempt_id from accepted_submission),
+      'approved',
+      'Duplicate decision',
+      '[]'::jsonb,
+      '[]'::jsonb
+    )
+  $$,
+  'P0001',
+  'Esta entrega ya no está esperando revisión.',
+  'a stale submission cannot receive a second final decision'
+);
+
+set local role service_role;
+
+update public.student_progress
+set
+  status = 'approved',
+  submitted_attempt_id = (select attempt_id from accepted_submission)
+where user_id = '00000000-0000-0000-0000-000000000102'
+  and assignment_id = '00000000-0000-0000-0000-000000000301';
+
+select throws_ok(
+  $$
+    select *
+    from public.record_remote_attempt(
+      '00000000-0000-0000-0000-000000000102',
+      '00000000-0000-0000-0000-000000000201',
+      '00000000-0000-0000-0000-000000000301',
+      'p1-01-la-once',
+      (
+        select mission_version
+        from public.student_progress
+        where user_id = '00000000-0000-0000-0000-000000000102'
+          and assignment_id = '00000000-0000-0000-0000-000000000301'
+      ),
+      'python',
+      'submit',
+      'def total_once(precios, cantidades): return 42',
+      '{"status":"passed","tests":[{"id":"visible","passed":true}]}'
+    )
+  $$,
+  'P0001',
+  'Esta tarea ya fue aprobada.',
+  'an approved assignment rejects new submissions'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000101',
+  true
+);
+select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select lives_ok(
   $$

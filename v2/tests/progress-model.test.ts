@@ -45,6 +45,7 @@ describe("assignment progress", () => {
       lastEvent: "submitted",
       attempts: 1,
       submittedAt: "2026-07-25T12:00:00.000Z",
+      submittedAttemptId: "attempt-1",
     });
   });
 
@@ -67,5 +68,36 @@ describe("assignment progress", () => {
       createdAt: "2026-07-25T14:00:00.000Z",
     });
     expect(reviewedAgain.approvedAt).toBe("2026-07-25T13:00:00.000Z");
+  });
+
+  it("keeps locked progress locked after a run", () => {
+    const locked = {
+      ...initial,
+      status: "awaiting_review" as const,
+      submittedAttemptId: "attempt-active",
+    };
+
+    expect(progressAfterAttempt(locked, attempt(false, "run"))).toMatchObject({
+      status: "awaiting_review",
+      submittedAttemptId: "attempt-active",
+      lastEvent: "ran",
+    });
+  });
+
+  it("clears the active submission when the mentor requests changes", () => {
+    const reviewed = progressAfterReview(
+      {
+        ...initial,
+        status: "awaiting_review",
+        submittedAttemptId: "attempt-active",
+      },
+      {
+        decision: "changes_requested",
+        createdAt: "2026-07-25T14:00:00.000Z",
+      },
+    );
+
+    expect(reviewed.status).toBe("changes_requested");
+    expect(reviewed.submittedAttemptId).toBeUndefined();
   });
 });

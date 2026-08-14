@@ -192,6 +192,7 @@ export interface StudentProgress {
   lastEvent?: ActivityKind;
   lastActivityAt?: string;
   submittedAt?: string;
+  submittedAttemptId?: string;
   approvedAt?: string;
   attempts: number;
   hintsUsed: number;

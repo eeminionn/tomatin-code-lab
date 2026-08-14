@@ -363,6 +363,7 @@ async function fetchSupabaseSnapshot(session: Session) {
         lastEvent: row.last_event ?? undefined,
         lastActivityAt: row.last_activity_at ?? undefined,
         submittedAt: row.submitted_at ?? undefined,
+        submittedAttemptId: row.submitted_attempt_id ?? undefined,
         approvedAt: row.approved_at ?? undefined,
         attempts: row.attempts,
         hintsUsed: row.hints_used,

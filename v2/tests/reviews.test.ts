@@ -17,4 +17,23 @@ describe("pending reviews", () => {
 
     expect(getPendingReviews(snapshot)).toEqual([]);
   });
+
+  it("uses the explicit active submission instead of a newer duplicate", () => {
+    const snapshot = createDemoSnapshot();
+    const activeAttempt = snapshot.attempts[0];
+    const progress = snapshot.progress.find(
+      (entry) =>
+        entry.userId === activeAttempt.userId &&
+        entry.assignmentId === activeAttempt.assignmentId,
+    );
+    if (!progress) throw new Error("Demo progress is missing.");
+    progress.submittedAttemptId = activeAttempt.id;
+    snapshot.attempts.unshift({
+      ...activeAttempt,
+      id: "attempt-duplicate-newer",
+      createdAt: "2099-01-01T00:00:00.000Z",
+    });
+
+    expect(getPendingReviews(snapshot)[0].attempt.id).toBe(activeAttempt.id);
+  });
 });

@@ -19,7 +19,7 @@ test("student can reopen the short getting started guide", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Hola, Camila/ })).toBeVisible();
 });
 
-test("opens an assigned mission in two actions and runs visible tests", async ({
+test("runs visible tests while an active submission remains locked", async ({
   page,
 }) => {
   await expect(page.getByRole("heading", { name: /Hola, Camila/ })).toBeVisible();
@@ -50,6 +50,26 @@ test("opens an assigned mission in two actions and runs visible tests", async ({
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Qué hacer ahora")).toBeVisible();
   await expect(page.getByText("Compara un caso paso a paso")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Entregar" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Entregar" })).toHaveAttribute(
+    "title",
+    "Tu entrega ya está esperando revisión del mentor.",
+  );
+});
+
+test("unlocks an editable assignment after running the current code", async ({
+  page,
+}) => {
+  const task = page
+    .locator(".assignment-row")
+    .filter({ hasText: "Recorridos seguros" })
+    .first();
+  await task.click();
+  await expect(page.getByRole("button", { name: "Entregar" })).toBeDisabled();
+  await page.getByRole("button", { name: "Ejecutar" }).click();
+  await expect(page.getByText("Qué hacer ahora")).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByRole("button", { name: "Entregar" })).toBeEnabled();
 });
 
