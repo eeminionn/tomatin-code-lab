@@ -1,4 +1,5 @@
 import { buildJudge0Source } from "./harness.ts";
+import { decodeUtf8Base64, encodeUtf8Base64 } from "./base64.ts";
 import type {
   Language,
   MissionTest,
@@ -22,6 +23,40 @@ interface Judge0Response {
   time: string | null;
   memory: number | null;
   status?: { id: number; description: string };
+}
+
+function decodeJudge0Response(response: Judge0Response): Judge0Response {
+  return {
+    ...response,
+    stdout: decodeUtf8Base64(response.stdout),
+    stderr: decodeUtf8Base64(response.stderr),
+    compile_output: decodeUtf8Base64(response.compile_output),
+    message: decodeUtf8Base64(response.message),
+  };
+}
+
+async function judge0ResponseError(response: Response): Promise<Error> {
+  let detail = "";
+  try {
+    const payload = await response.json() as {
+      error?: unknown;
+      message?: unknown;
+    };
+    const candidate = typeof payload.error === "string"
+      ? payload.error
+      : typeof payload.message === "string"
+      ? payload.message
+      : "";
+    detail = candidate.replace(/\s+/g, " ").trim().slice(0, 500);
+  } catch {
+    // Some Judge0 installations return an empty or non-JSON error body.
+  }
+
+  return new Error(
+    detail
+      ? `Judge0 respondió ${response.status}: ${detail}`
+      : `Judge0 respondió ${response.status}.`,
+  );
 }
 
 function providerStatus(response: Judge0Response): RunStatus {
@@ -132,10 +167,10 @@ async function waitForSubmission(
   for (let attempt = 0; attempt < 30; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 400));
     const response = await fetch(
-      `${baseUrl}/submissions/${initial.token}?base64_encoded=false`,
+      `${baseUrl}/submissions/${initial.token}?base64_encoded=true`,
       { headers: judgeHeaders(), signal },
     );
-    if (!response.ok) throw new Error(`Judge0 respondió ${response.status}.`);
+    if (!response.ok) throw await judge0ResponseError(response);
     const payload = (await response.json()) as Judge0Response;
     if (payload.status && payload.status.id > 2) return payload;
   }
@@ -177,14 +212,16 @@ export async function executeJudge0(
 
   try {
     const response = await fetch(
-      `${baseUrl}/submissions?base64_encoded=false&wait=true`,
+      `${baseUrl}/submissions?base64_encoded=true&wait=true`,
       {
         method: "POST",
         headers: judgeHeaders(),
         signal,
         body: JSON.stringify({
           language_id: LANGUAGE_IDS[language],
-          source_code: buildJudge0Source(language, code, tests),
+          source_code: encodeUtf8Base64(
+            buildJudge0Source(language, code, tests),
+          ),
           cpu_time_limit: 2,
           wall_time_limit: 5,
           memory_limit: 128000,
@@ -192,10 +229,12 @@ export async function executeJudge0(
         }),
       },
     );
-    if (!response.ok) throw new Error(`Judge0 respondió ${response.status}.`);
+    if (!response.ok) throw await judge0ResponseError(response);
 
     const initial = (await response.json()) as Judge0Response;
-    const payload = await waitForSubmission(baseUrl, initial, signal);
+    const payload = decodeJudge0Response(
+      await waitForSubmission(baseUrl, initial, signal),
+    );
     const stderr = [payload.compile_output, payload.stderr, payload.message]
       .filter(Boolean)
       .join("\n")

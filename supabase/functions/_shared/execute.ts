@@ -297,7 +297,7 @@ export function createExecutionHandler(kind: "run" | "submit") {
     };
 
     const repositorySync =
-      kind === "submit"
+      kind === "submit" && result.status !== "provider_error"
         ? await syncSubmissionToGitHub({
             admin,
             attemptId: attempt.id,

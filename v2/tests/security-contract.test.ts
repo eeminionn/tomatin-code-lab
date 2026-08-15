@@ -57,6 +57,9 @@ describe("security contracts", () => {
     expect(execute.indexOf('"record_remote_attempt"')).toBeLessThan(
       execute.indexOf("syncSubmissionToGitHub({"),
     );
+    expect(execute).toContain(
+      'kind === "submit" && result.status !== "provider_error"',
+    );
   });
 
   it("versions student drafts and protects staff-only solutions", () => {
@@ -114,6 +117,10 @@ describe("security contracts", () => {
       "Revisa los casos límite y el contrato de la misión.",
     );
     expect(judge0).not.toContain("feedback: result.passed ? undefined : match");
+    expect(judge0).toContain("base64_encoded=true");
+    expect(judge0).not.toContain("base64_encoded=false");
+    expect(judge0).toContain("encodeUtf8Base64(");
+    expect(judge0).toContain("decodeJudge0Response(");
   });
 
   it("requires GitHub login and keeps repository credentials server-side", () => {
